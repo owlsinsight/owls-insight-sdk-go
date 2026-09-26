@@ -1,0 +1,37 @@
+{
+  "success": true,
+  "a_field_added_later": {"anything": [1, 2, 3]},
+  "data": {
+    "pinnacle": [
+      {
+        "id": "4001",
+        "eventId": "nba:Away@Home-20260925",
+        "sport_key": "basketball_nba",
+        "home_team": "Home",
+        "away_team": "Away",
+        "commence_time": "2026-09-25T23:00:00Z",
+        "status": "a_status_added_next_year",
+        "phase": null,
+        "isLive": null,
+        "future_field": {"nested": true},
+        "bookmakers": [
+          {
+            "key": "pinnacle",
+            "title": "Pinnacle",
+            "last_update": "2026-09-25T20:00:00Z",
+            "markets": [
+              {
+                "key": "a_new_market_key",
+                "outcomes": [
+                  {"name": "Home", "price": -110, "point": -2.5, "selectionId": 29172},
+                  {"name": "Away", "price": "not-a-number", "point": null, "selectionId": "sel-abc"}
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "meta": {"sport": "nba", "ignored_params": ["foo"], "unknown_meta": 1}
+}

@@ -1,0 +1,60 @@
+# Go-only adjustments applied by oapi-codegen before it generates models_gen.go.
+# The spec itself (spec/openapi.json) is vendored unchanged from owls-insight-sdk-js.
+overlay: 1.1.0
+info:
+  title: owls-insight-sdk-go model overlay
+  version: 1.0.0
+actions:
+  - target: $.paths.*
+    description: >-
+      Models only. The REST methods are written by hand, so no operation, parameter
+      or request-body types are generated.
+    remove: true
+  - target: $.components.schemas.RawJson
+    description: A book's own JSON, served verbatim. Kept as raw bytes, never re-typed.
+    update:
+      x-go-type: json.RawMessage
+  - target: >-
+      $.components.schemas[?!(@.type || @['$ref'] || @.anyOf || @.oneOf || @.allOf ||
+      @.properties || @.items || @.additionalProperties || @.enum)]
+    description: >-
+      An untyped schema (the spec's form for a union of a primitive and a list or an
+      object: V2LeagueFilter, ProphetXSubscription) is kept as raw JSON, not
+      interface{}. RawJson matches too and is raw JSON already.
+    update:
+      x-go-type: json.RawMessage
+  - target: >-
+      $.components.schemas..properties[?!(@.type || @['$ref'] || @.anyOf || @.oneOf ||
+      @.allOf || @.properties || @.items || @.additionalProperties || @.enum)]
+    description: >-
+      An untyped property (the spec leaves a mix of primitive kinds such as number or
+      string untyped, and a property whose type differs between merged response
+      shapes) is kept as raw JSON, not interface{}, so it decodes with Decode.
+    update:
+      x-go-type: json.RawMessage
+  - target: >-
+      $.components.schemas..[?@.items && !(@.items.type || @.items['$ref'] ||
+      @.items.anyOf || @.items.oneOf || @.items.allOf || @.items.properties ||
+      @.items.items || @.items.additionalProperties || @.items.enum)].items
+    description: >-
+      An untyped list item (a Pinnacle esports matchup in its own wire format) is kept
+      as raw JSON too.
+    update:
+      x-go-type: json.RawMessage
+  - target: $.components.schemas..[?@.anyOf[2]]
+    description: >-
+      A union of three or more branches is raw JSON, with or without a null branch:
+      oapi-codegen's union types need `github.com/oapi-codegen/runtime`. The spec
+      leaves every other non-null union untyped ({}), which the property and item
+      actions above keep as raw JSON; a union of one schema and null is left to
+      oapi-codegen, which makes it a pointer. spec_test.go fails if a union type
+      that needs the runtime is ever generated.
+    update:
+      x-go-type: json.RawMessage
+  - target: $.components.schemas.ProphetXMarket.properties.sport_event_id
+    description: >-
+      ProphetX sends both sportEventId and sport_event_id. The spec names the second
+      SportEventIdAlt (x-go-name); this keeps the Go initialism, SportEventIDAlt,
+      next to SportEventID.
+    update:
+      x-go-name: SportEventIDAlt

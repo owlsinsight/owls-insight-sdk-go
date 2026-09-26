@@ -1,0 +1,377 @@
+{
+ "_note": "Sanitized live ProphetX payloads captured through GET /api/v1/prophetx/odds?sport=baseball on 2026-09-02. Levels trimmed to two per side, amounts rounded to cents, otherwise verbatim. moneyline = delta-shaped, book at the top level, holds two partially filled levels. prop = catalog-shaped (name/subType/categoryName/totalStake). line_delta = delta-shaped total with selections null at the top level and the book under marketLines[0], one side null.",
+ "markets": {
+  "moneyline": {
+   "key": "251:0",
+   "event": {
+    "id": 10079377,
+    "name": "Chicago White Sox at Houston Astros",
+    "scheduled": "2026-09-03T00:10:00Z",
+    "status": "live"
+   },
+   "market": {
+    "line": 0,
+    "market_id": 251,
+    "outcomes": [
+     {
+      "competitorId": 10000030,
+      "id": 4,
+      "lineID": "64e15f2ed8fab8145cc82ec6764b969c",
+      "outcome_link": "https://www.prophetx.co/?action=addtobetslip&partner_id=partner_062a267b-37c8-4e8a-bc80-7374d7bde6d7&lineID=64e15f2ed8fab8145cc82ec6764b969c"
+     },
+     {
+      "competitorId": 10000016,
+      "id": 5,
+      "lineID": "2f39a173c960b90a5842c4c041e6f306",
+      "outcome_link": "https://www.prophetx.co/?action=addtobetslip&partner_id=partner_062a267b-37c8-4e8a-bc80-7374d7bde6d7&lineID=2f39a173c960b90a5842c4c041e6f306"
+     }
+    ],
+    "ref_ids": [
+     "partner_062a267b-37c8-4e8a-bc80-7374d7bde6d7"
+    ],
+    "selections": [
+     [
+      {
+       "abbreviatedName": "HOU -162",
+       "competitorId": 10000030,
+       "displayName": "Houston Astros -162",
+       "displayOdds": "-162",
+       "id": 4,
+       "line": 0,
+       "lineID": "64e15f2ed8fab8145cc82ec6764b969c",
+       "name": "Houston Astros -162",
+       "odds": -162,
+       "stake": 2031.54,
+       "value": 3291.09
+      },
+      {
+       "abbreviatedName": "HOU -164",
+       "competitorId": 10000030,
+       "displayName": "Houston Astros -164",
+       "displayOdds": "-164",
+       "id": 4,
+       "line": 0,
+       "lineID": "64e15f2ed8fab8145cc82ec6764b969c",
+       "name": "Houston Astros -164",
+       "odds": -164,
+       "stake": 527.54,
+       "value": 31.16
+      }
+     ],
+     [
+      {
+       "abbreviatedName": "CHW +142",
+       "competitorId": 10000016,
+       "displayName": "Chicago White Sox +142",
+       "displayOdds": "+142",
+       "id": 5,
+       "line": 0,
+       "lineID": "2f39a173c960b90a5842c4c041e6f306",
+       "name": "Chicago White Sox +142",
+       "odds": 142,
+       "stake": 2934,
+       "value": 2066.2
+      },
+      {
+       "abbreviatedName": "CHW +125",
+       "competitorId": 10000016,
+       "displayName": "Chicago White Sox +125",
+       "displayOdds": "+125",
+       "id": 5,
+       "line": 0,
+       "lineID": "2f39a173c960b90a5842c4c041e6f306",
+       "name": "Chicago White Sox +125",
+       "odds": 125,
+       "stake": 146.68,
+       "value": 16.8
+      }
+     ]
+    ],
+    "sport_event_id": 10079377,
+    "traded_value": 0,
+    "type": "moneyline"
+   }
+  },
+  "line_delta": {
+   "key": "258:8.5",
+   "event": {
+    "id": 10079377,
+    "name": "Chicago White Sox at Houston Astros",
+    "scheduled": "2026-09-03T00:10:00Z",
+    "status": "live"
+   },
+   "market": {
+    "favouriteMarketLine": {
+     "favourite": true,
+     "id": 258,
+     "name": "Fixed total 6.5",
+     "outcomes": [
+      {
+       "displayLine": "6.5",
+       "displayName": "over 6.5",
+       "id": 12,
+       "line": 6.5,
+       "lineID": "fb3eab9fb9d752732132b4290467eee0",
+       "name": "over 6.5"
+      },
+      {
+       "displayLine": "6.5",
+       "displayName": "under 6.5",
+       "id": 13,
+       "line": 6.5,
+       "lineID": "019dd0c500a234432a38d869775b70ab",
+       "name": "under 6.5"
+      }
+     ],
+     "selections": [
+      [
+       {
+        "displayLine": "6.5",
+        "displayName": "over 6.5",
+        "displayOdds": "-142",
+        "id": 12,
+        "line": 6.5,
+        "lineID": "fb3eab9fb9d752732132b4290467eee0",
+        "name": "over 6.5",
+        "odds": -142,
+        "stake": 143.5,
+        "value": 203.77
+       }
+      ],
+      [
+       {
+        "displayLine": "6.5",
+        "displayName": "under 6.5",
+        "displayOdds": "+101",
+        "id": 13,
+        "line": 6.5,
+        "lineID": "019dd0c500a234432a38d869775b70ab",
+        "name": "under 6.5",
+        "odds": 101,
+        "stake": 175,
+        "value": 173.27
+       }
+      ]
+     ],
+     "type": "total"
+    },
+    "line": 8.5,
+    "marketLines": [
+     {
+      "id": 258,
+      "name": "Fixed total 8.5",
+      "outcomes": [
+       {
+        "displayLine": "8.5",
+        "displayName": "over 8.5",
+        "id": 12,
+        "line": 8.5,
+        "lineID": "c050b6fec1f85108637c8a0e7b3d334f",
+        "name": "over 8.5"
+       },
+       {
+        "displayLine": "8.5",
+        "displayName": "under 8.5",
+        "id": 13,
+        "line": 8.5,
+        "lineID": "51ee07ff19127aaf455776d53e3e1acc",
+        "name": "under 8.5"
+       }
+      ],
+      "selections": [
+       [
+        {
+         "displayLine": "8.5",
+         "displayName": "over 8.5",
+         "displayOdds": "+156",
+         "id": 12,
+         "line": 8.5,
+         "lineID": "c050b6fec1f85108637c8a0e7b3d334f",
+         "name": "over 8.5",
+         "odds": 156,
+         "stake": 213.5,
+         "value": 136.86
+        },
+        {
+         "displayLine": "8.5",
+         "displayName": "over 8.5",
+         "displayOdds": "-102",
+         "id": 12,
+         "line": 8.5,
+         "lineID": "c050b6fec1f85108637c8a0e7b3d334f",
+         "name": "over 8.5",
+         "odds": -102,
+         "stake": 457.6,
+         "value": 59.75
+        }
+       ],
+       null
+      ],
+      "type": "total"
+     }
+    ],
+    "market_id": 258,
+    "ref_ids": [
+     "partner_a996f660-6842-4ffd-a50f-b98a97b042d3"
+    ],
+    "selections": null,
+    "sport_event_id": 10079377,
+    "traded_value": 24,
+    "type": "total"
+   }
+  },
+  "prop": {
+   "key": "480017208:0.5",
+   "event": {
+    "id": 10079377,
+    "name": "Chicago White Sox at Houston Astros",
+    "scheduled": "2026-09-03T00:10:00Z",
+    "status": "live"
+   },
+   "market": {
+    "id": 480017208,
+    "name": "Cam Smith Total Runs",
+    "status": "active",
+    "totalStake": 145.04,
+    "sportEventId": 10079377,
+    "type": "total",
+    "marketLines": [
+     {
+      "id": 480017208,
+      "name": "Fixed total 0.5",
+      "selections": [
+       [
+        {
+         "id": 12,
+         "name": "over 0.5",
+         "displayName": "over 0.5",
+         "odds": 138,
+         "line": 0.5,
+         "displayOdds": "+138",
+         "displayLine": "0.5",
+         "value": 63.04,
+         "stake": 87,
+         "lineID": "b25226eeae1c7864598bef4b67556122"
+        },
+        {
+         "id": 12,
+         "name": "over 0.5",
+         "displayName": "over 0.5",
+         "odds": 134,
+         "line": 0.5,
+         "displayOdds": "+134",
+         "displayLine": "0.5",
+         "value": 7.27,
+         "stake": 9.74,
+         "lineID": "b25226eeae1c7864598bef4b67556122"
+        }
+       ],
+       [
+        {
+         "id": 13,
+         "name": "under 0.5",
+         "displayName": "under 0.5",
+         "odds": -210,
+         "line": 0.5,
+         "displayOdds": "-210",
+         "displayLine": "0.5",
+         "value": 101.43,
+         "stake": 48.3,
+         "lineID": "49f86cad33d4c65d4fd2cdb81d15f07d"
+        }
+       ]
+      ],
+      "outcomes": [
+       {
+        "id": 12,
+        "name": "over 0.5",
+        "displayName": "over 0.5",
+        "line": 0.5,
+        "displayLine": "0.5",
+        "lineID": "b25226eeae1c7864598bef4b67556122"
+       },
+       {
+        "id": 13,
+        "name": "under 0.5",
+        "displayName": "under 0.5",
+        "line": 0.5,
+        "displayLine": "0.5",
+        "lineID": "49f86cad33d4c65d4fd2cdb81d15f07d"
+       }
+      ],
+      "type": "total",
+      "favourite": true,
+      "highRisk": false
+     }
+    ],
+    "subType": "player_total_runs",
+    "categoryID": 131,
+    "categoryName": "Runs",
+    "highRisk": false,
+    "market_id": 480017208,
+    "sport_event_id": 10079377,
+    "line": 0.5,
+    "selections": [
+     [
+      {
+       "id": 12,
+       "name": "over 0.5",
+       "displayName": "over 0.5",
+       "odds": 138,
+       "line": 0.5,
+       "displayOdds": "+138",
+       "displayLine": "0.5",
+       "value": 63.04,
+       "stake": 87,
+       "lineID": "b25226eeae1c7864598bef4b67556122"
+      },
+      {
+       "id": 12,
+       "name": "over 0.5",
+       "displayName": "over 0.5",
+       "odds": 134,
+       "line": 0.5,
+       "displayOdds": "+134",
+       "displayLine": "0.5",
+       "value": 7.27,
+       "stake": 9.74,
+       "lineID": "b25226eeae1c7864598bef4b67556122"
+      }
+     ],
+     [
+      {
+       "id": 13,
+       "name": "under 0.5",
+       "displayName": "under 0.5",
+       "odds": -210,
+       "line": 0.5,
+       "displayOdds": "-210",
+       "displayLine": "0.5",
+       "value": 101.43,
+       "stake": 48.3,
+       "lineID": "49f86cad33d4c65d4fd2cdb81d15f07d"
+      }
+     ]
+    ],
+    "outcomes": [
+     {
+      "id": 12,
+      "name": "over 0.5",
+      "displayName": "over 0.5",
+      "line": 0.5,
+      "displayLine": "0.5",
+      "lineID": "b25226eeae1c7864598bef4b67556122"
+     },
+     {
+      "id": 13,
+      "name": "under 0.5",
+      "displayName": "under 0.5",
+      "line": 0.5,
+      "displayLine": "0.5",
+      "lineID": "49f86cad33d4c65d4fd2cdb81d15f07d"
+     }
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "owls-insight-go-conformance",
+  "private": true,
+  "description": "The WebSocket conformance server's socket.io, pinned to the versions the Owls Insight API runs.",
+  "dependencies": {
+    "socket.io": "4.8.1"
+  },
+  "overrides": {
+    "engine.io": "6.6.4",
+    "ws": "8.17.1"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-09-25T20:00:00Z",
+  "curling": [{"id": "c1", "home_team": "A", "away_team": "B"}],
+  "nba": [{"id": "n1"}],
+  "delta": true,
+  "resync": null,
+  "stream": {"sport": "curling", "epoch": "e1", "seq": 7, "checkpoint": true},
+  "removed": {"curling": ["c0"]}
+}

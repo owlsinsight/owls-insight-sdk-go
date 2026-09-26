@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "sport": "mlb",
+  "league": "mlb",
+  "marketCount": 4,
+  "etag": "\"abc123\"",
+  "data": {
+    "m1": {"odds": [1.5, "2/1", null], "deep": {"x": {"y": [true, {"z": 1e3}]}}},
+    "m2": [1, 2],
+    "m3": "a string",
+    "m4": null
+  },
+  "meta": {"source": "cache", "cached": true, "status": "a_new_status", "ageSeconds": 3.5, "timestamp": "2026-09-25T20:00:00Z"}
+}

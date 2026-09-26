@@ -1,0 +1,521 @@
+{
+  "clientEvents": {
+    "subscribe": {
+      "ack": "subscribed",
+      "description": "REPLACE the subscription on this connection.",
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/SubscribeOptions"
+      }
+    },
+    "subscribe-props": {
+      "ack": "props-subscribed",
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsSubscribeOptions"
+      }
+    },
+    "subscribe-{book}-props": {
+      "ack": "{book}-props-subscribed",
+      "books": [
+        "bet365",
+        "betmgm",
+        "caesars",
+        "draftkings",
+        "fanduel"
+      ],
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsSubscribeOptions"
+      }
+    },
+    "unsubscribe-props": {
+      "payload": null
+    },
+    "unsubscribe-{book}-props": {
+      "payload": null
+    },
+    "update-subscription": {
+      "ack": "subscribed",
+      "description": "MERGE fields into the subscription (shallow).",
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/SubscribeOptions"
+      }
+    }
+  },
+  "connectError": {
+    "codes": [
+      "API_KEY_DEACTIVATED",
+      "CLIENT_CLOSED",
+      "CONNECTION_LIMIT",
+      "INTERNAL",
+      "INVALID_API_KEY",
+      "IP_BLOCKED",
+      "MISSING_API_KEY",
+      "PAYMENT_OVERDUE",
+      "SUBSCRIPTION_CHECK_FAILED",
+      "SUBSCRIPTION_INACTIVE",
+      "TIER_NO_WS",
+      "TRIAL_EXPIRED",
+      "TRIAL_UNVERIFIABLE"
+    ],
+    "data": {
+      "$ref": "openapi.json#/components/schemas/ConnectErrorData"
+    }
+  },
+  "info": {
+    "title": "Owls Insight WebSocket",
+    "version": "0.69.0",
+    "x-owls-manifest-commit": "981e9466"
+  },
+  "serverEvents": {
+    "1xbet-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Isolated 1xBet soccer odds, pushed on change. 1xBet soccer is not part of odds-update; it has its own REST endpoint and this event.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/OneXBetSoccerUpdate"
+      }
+    },
+    "4casters-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "4casters Source API (v2) event deltas from a peer-to-peer betting exchange. Each entry is a whole event carrying its full order book: every resting offer with its own price and the size still available on it (sumUntaken), plus matched volume. Alternate spreads and totals appear as keyed rungs, and player props are separate leagues. Odds are American and may carry a half point.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "ballybet-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Bally Bet Source API (v2) deltas delivered verbatim, in the same shape as betrivers-v2-update because both books run on one trading platform: each entry is a whole event with all of its bet offers. Event ids match BetRivers; prices are Bally Bet's own.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "bet105-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Bet105 Source API (v2) event deltas from the Ganchrow pandora platform, a reduced-juice Pinnacle mirror carrying both a prematch and an in-play plane. Each entry is a whole event; odds are decimal.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "bet365-props-subscribed": {
+      "documented": false,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsSubscription"
+      }
+    },
+    "bet365-props-unsubscribed": {
+      "documented": false,
+      "payload": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success"
+        ]
+      }
+    },
+    "bet365-props-update": {
+      "access": "WebSocket access plus Rookie or above",
+      "description": "Bet365 player props, streamed on change. Subscribe with the subscribe-bet365-props event; the server acknowledges with bet365-props-subscribed.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsPayload"
+      }
+    },
+    "bet365-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Bet365 Source API (v2) market deltas: per-market snapshots and outcome patches, possibly chunked.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "betmgm-props-subscribed": {
+      "documented": false,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsSubscription"
+      }
+    },
+    "betmgm-props-unsubscribed": {
+      "documented": false,
+      "payload": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success"
+        ]
+      }
+    },
+    "betmgm-props-update": {
+      "access": "WebSocket access plus Rookie or above",
+      "description": "BetMGM player props, streamed on change. Subscribe with the subscribe-betmgm-props event; the server acknowledges with betmgm-props-subscribed.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsPayload"
+      }
+    },
+    "betonline-realtime": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "BetOnline Source API (v2) market deltas, batched per flush cycle. The payload carries a markets array; there is no payload.data. The event name is betonline-realtime, not betonline-v2-update.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "betrivers-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "BetRivers Source API (v2) deltas delivered verbatim. Each entry is a whole event with all of its bet offers rather than a single market.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "betus-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "BetUS Source API (v2) event deltas from the book's live platform, which carries both a prematch and an in-play plane. Each entry is a whole event.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "caesars-props-subscribed": {
+      "documented": false,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsSubscription"
+      }
+    },
+    "caesars-props-unsubscribed": {
+      "documented": false,
+      "payload": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success"
+        ]
+      }
+    },
+    "caesars-props-update": {
+      "access": "WebSocket access plus Rookie or above",
+      "description": "Caesars player props, streamed on change. Subscribe with the subscribe-caesars-props event; the server acknowledges with caesars-props-subscribed.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsPayload"
+      }
+    },
+    "cs2-realtime": {
+      "access": "WebSocket access plus MVP or above",
+      "description": "Pinnacle cs2 realtime in the Pinnacle wire format (matchups, markets, prices).",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/EsportsRealtimePayload"
+      }
+    },
+    "dota2-realtime": {
+      "access": "WebSocket access plus MVP or above",
+      "description": "Pinnacle dota2 realtime in the Pinnacle wire format (matchups, markets, prices).",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/EsportsRealtimePayload"
+      }
+    },
+    "draftkings-props-subscribed": {
+      "documented": false,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsSubscription"
+      }
+    },
+    "draftkings-props-unsubscribed": {
+      "documented": false,
+      "payload": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success"
+        ]
+      }
+    },
+    "draftkings-props-update": {
+      "access": "WebSocket access plus Rookie or above",
+      "description": "DraftKings player props, streamed on change. Subscribe with the subscribe-draftkings-props event; the server acknowledges with draftkings-props-subscribed.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsPayload"
+      }
+    },
+    "draftkings-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "DraftKings Source API (v2) market deltas, one market per message. Live pushes cover soccer and WNBA; the DraftKings US sports are served on the v2 REST endpoint and are not pushed on this event.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "error": {
+      "documented": false,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/WSError"
+      }
+    },
+    "esports-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Esports odds (CS2, Valorant, LoL, Dota 2), pushed on change.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/OddsUpdatePayload"
+      }
+    },
+    "fanaticsmarkets-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Fanatics Markets Source API (v2) contract deltas. A prediction market settled on Nadex: prices are implied probabilities (0 to 1), not odds.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "fanduel-props-subscribed": {
+      "documented": false,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsSubscription"
+      }
+    },
+    "fanduel-props-unsubscribed": {
+      "documented": false,
+      "payload": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success"
+        ]
+      }
+    },
+    "fanduel-props-update": {
+      "access": "WebSocket access plus Rookie or above",
+      "description": "FanDuel player props, streamed on change. Subscribe with the subscribe-fanduel-props event; the server acknowledges with fanduel-props-subscribed.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsPayload"
+      }
+    },
+    "fanduel-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "FanDuel Source API (v2) market deltas, one (event, tab) bucket per message, across every FanDuel v2 sport. Alternate lines and player prop tabs are included.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "kalshi-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Kalshi prediction market deltas: raw market objects plus orderbook and trade events for game lines, spreads, totals and player-prop series. League keys are Kalshi series tickers from the /leagues index.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "lol-realtime": {
+      "access": "WebSocket access plus MVP or above",
+      "description": "Pinnacle lol realtime in the Pinnacle wire format (matchups, markets, prices).",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/EsportsRealtimePayload"
+      }
+    },
+    "lowvig-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "LowVig Source API (v2) market deltas, live in-play and pregame. LowVig shares BetOnline's upstream, event ids and market ids but prices differently (reduced juice pregame).",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "mybookie-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "MyBookie Source API (v2) per-event deltas including a removedGhids array so finished games can be dropped from local state.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "odds-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Consensus odds for the sports and books in your subscription. After a subscribe the first frames are a snapshot of that shape; later frames carry only the games that changed, so merge by event id. A connection that never subscribes receives the default (all sports, all books) after a short grace. Subscriptions belong to one connection: send yours again after every reconnect.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/OddsUpdatePayload"
+      }
+    },
+    "pinnacle-realtime": {
+      "access": "WebSocket access plus MVP or above",
+      "description": "Pinnacle real-time odds, sent to eligible connections for the sports in your subscription (all sports if you never subscribe; the books filter does not apply). Each frame carries one sport and at least one event: {timestamp, <sport>: [events], delta: true, resync?, stream?, removed?}. Events have the same fields as the data of GET /api/v1/{sport}/realtime, including status, isLive, phase when known, lastUpdate, seenAt and freshness; that endpoint's notes describe them. Frames are partial: merge each event into your board by event id, replacing the whole event, then delete the ids in removed[<sport>]. resync: true marks a frame from the periodic resend, which also carries events that have not changed. When present, stream is {sport, epoch, seq, checkpoint?}: seq goes up by 1 per frame for that sport within one epoch. Ignore a frame whose seq is at or below the last one you applied (a duplicate). A skipped seq, a new epoch, or a frame without stream after frames that had one means you must load the board again; keep your current board until the new one is ready. To load a board, on every connect or reconnect and after any of those: buffer the sport's frames from both pinnacle-realtime and pinnacle-realtime-sync, wait up to 25 seconds for one with stream.checkpoint set (load at once if the sport's frames carry no stream), then call GET /api/v1/{sport}/realtime and read its meta.stream. If meta.stream is null, replace your board with data, merge every frame with no seq filter, and load again after 10, 20, 40 seconds and so on, up to every 5 minutes; replacing the board is also what drops ended events while frames carry no removed. If its epoch differs from the checkpoint's, or its seq is lower than the checkpoint's, load again at the next checkpoint. Otherwise replace your board with data, discard buffered frames with a seq at or below meta.stream.seq, and apply the rest in order. Each load counts against your request quota. Stream positions and removals for a sport with no events to send arrive on pinnacle-realtime-sync.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/RealtimeOddsPayload"
+      }
+    },
+    "pinnacle-realtime-sync": {
+      "access": "WebSocket access plus MVP or above",
+      "description": "Companion of pinnacle-realtime, sent on the same connections and for the same sports: a stream position or removals for a sport that has no events to send, as {timestamp, sport, stream?, removed?}. Track stream and delete removed ids exactly as on pinnacle-realtime; it never carries events.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PinnacleRealtimeSyncPayload"
+      }
+    },
+    "pinnacle-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Pinnacle Source API (v2) per-matchup deltas: changed matchupIds plus the league hash, with a 30 second heartbeat per league (heartbeat: true) whose matchupIds is the full league membership rather than a change set. The hash equals the REST etag (without quotes) whenever that response is not partial, so a hash you already hold needs no refetch; otherwise refetch with If-None-Match, and a 304 on /api/v2 does not count toward the monthly quota. A delta or a heartbeat may also carry removedMatchupIds: matchup ids the league dropped, which you delete. That list is not exhaustive and an id can reappear later in matchupIds, so heartbeat membership and the REST board stay authoritative. When a league empties, its final heartbeat can carry an empty matchupIds; after that the league sends nothing until it has matchups again.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "player-props-update": {
+      "access": "WebSocket access plus Rookie or above",
+      "description": "Pinnacle player props, streamed on change. Subscribe with the subscribe-props event; the server acknowledges with props-subscribed.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsPayload"
+      }
+    },
+    "polymarket-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Polymarket CLOB deltas: raw market objects plus price and orderbook changes for game lines and player props. League keys are Polymarket tag slugs from the /leagues index.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "prophetx-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "ProphetX sports exchange odds and liquidity deltas, pushed on change.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/ProphetXDeltaPayload"
+      }
+    },
+    "props-subscribed": {
+      "documented": false,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/PropsSubscription"
+      }
+    },
+    "props-unsubscribed": {
+      "documented": false,
+      "payload": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success"
+        ]
+      }
+    },
+    "ps3838-realtime": {
+      "access": "WebSocket access plus MVP or above",
+      "description": "PS3838 real-time odds, sent to eligible connections for the sports in your subscription (all sports if you never subscribe; the books filter does not apply). Each frame carries one sport, and a frame can be several MB, so allow a client message size of at least 32 MB.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/RealtimeOddsPayload"
+      }
+    },
+    "server-heartbeat": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "A small {seq, ts} message every 10 seconds on every connection, independent of odds traffic, so silence is detectable. seq is counted by the server, not per connection: it goes up by 1 every 10 seconds, and after a reconnect it can jump ahead or start again from 1. Compare it only within one connection, where a gap means messages were missed.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/ServerHeartbeat"
+      }
+    },
+    "server-notice": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Why the server closed your previous connection, sent once on the next connect: {code, message, at, socketId, details, hint}. Codes: BACKLOG_CAP, AGGREGATE_SHED, GHOST, SLOT_EVICTED, CLIENT_FRAME_LIMIT, SERVER_RESTART. SERVER_RESTART is sent to open connections just before a restart instead; reconnect after a short delay and send your subscription again.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/ServerNotice"
+      }
+    },
+    "subscribed": {
+      "documented": false,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/ClientSubscription"
+      }
+    },
+    "thunderpick-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Thunderpick Source API (v2) change notification per sport. Carries sport, count, hash and timestamp only; refetch the REST snapshot on receipt.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "tippmixpro-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "TippmixPro Source API (v2) market deltas from Hungary's state sportsbook (EveryMatrix platform), pushed as they happen. Each entry is one market with its outcomes and prices, plus one {matchId}-event entry per event carrying the match record and live score info. Odds are decimal. Multi-league sports need a league filter.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "valorant-realtime": {
+      "access": "WebSocket access plus MVP or above",
+      "description": "Pinnacle valorant realtime in the Pinnacle wire format (matchups, markets, prices).",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/EsportsRealtimePayload"
+      }
+    },
+    "versus-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "versus.es Source API (v2) per-market deltas at poll cadence. Every sport is multi-league, so a league filter is required.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    }
+  },
+  "transport": {
+    "auth": {
+      "apiKey": "query string parameter apiKey"
+    },
+    "engineIoVersion": 4,
+    "handshakeAuth": {
+      "sdk": "owls-insight-<lang>/<version>",
+      "subscription": "SubscribeOptions, optional"
+    },
+    "path": "/socket.io/",
+    "perMessageDeflate": "offered by default; the server can turn it off",
+    "pingIntervalMs": 25000,
+    "pingTimeoutMs": 120000,
+    "protocol": "socket.io",
+    "recommendedMaxMessageBytes": 67108864,
+    "socketIoProtocol": 5,
+    "subscriptionSurvivesReconnect": false,
+    "transports": [
+      "websocket"
+    ],
+    "url": "https://api.owlsinsight.com"
+  },
+  "wsSpecVersion": 1
+}

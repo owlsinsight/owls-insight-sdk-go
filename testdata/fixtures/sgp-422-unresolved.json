@@ -1,0 +1,11 @@
+{
+  "success": false,
+  "error": "Could not resolve all legs",
+  "reasonCode": "unresolved",
+  "code": "unresolved",
+  "legs": [
+    {"resolved": true, "description": "Chicago Sky ML"},
+    {"resolved": false, "reason": "FanDuel offers 14.5 and 18.5 for this player, not 16.5"}
+  ],
+  "meta": {"eventId": 35826592, "book": "fanduel"}
+}

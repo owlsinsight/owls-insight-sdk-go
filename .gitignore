@@ -1,0 +1,7 @@
+/coverage.out
+*.test
+/doctidy
+node_modules/
+
+# Local notes for coding agents; not published.
+CLAUDE.md
