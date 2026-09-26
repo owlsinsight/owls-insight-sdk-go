@@ -4,6 +4,15 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.1.1] - 2026-09-26
+
+### Deprecated
+
+- This module path is deprecated. The SDK moved to
+  `github.com/owlsinsight/owls-insight-sdk-go`; switch with
+  `go get github.com/owlsinsight/owls-insight-sdk-go@latest` and update the import.
+  The code is otherwise identical to 0.1.0.
+
 ## [0.1.0] - 2026-09-26
 
 ### Added
