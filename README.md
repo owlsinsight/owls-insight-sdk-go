@@ -1,14 +1,11 @@
 # owls-insight-sdk-go
 
-> **Moved:** this module is now `github.com/owlsinsight/owls-insight-sdk-go`.
-> Run `go get github.com/owlsinsight/owls-insight-sdk-go@latest` and update your imports.
-
 The Go client for the [Owls Insight](https://owlsinsight.com) sports odds API: REST
 endpoints, history pagers, and a WebSocket stream that keeps your subscription across
 reconnects.
 
 ```
-go get github.com/Davidgsilva/owls-insight-sdk-go@v0.1.0
+go get github.com/owlsinsight/owls-insight-sdk-go@latest
 ```
 
 Requires Go 1.23 or later. One dependency: `github.com/coder/websocket`.
@@ -27,7 +24,7 @@ import (
 	"log"
 	"os"
 
-	owls "github.com/Davidgsilva/owls-insight-sdk-go"
+	owls "github.com/owlsinsight/owls-insight-sdk-go"
 )
 
 func main() {

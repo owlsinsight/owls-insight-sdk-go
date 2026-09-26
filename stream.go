@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Davidgsilva/owls-insight-sdk-go/internal/sio"
+	"github.com/owlsinsight/owls-insight-sdk-go/internal/sio"
 )
 
 // timing is every delay of the connection policy. Tests shrink it.

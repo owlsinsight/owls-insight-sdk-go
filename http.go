@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Davidgsilva/owls-insight-sdk-go/internal/lenient"
+	"github.com/owlsinsight/owls-insight-sdk-go/internal/lenient"
 )
 
 // isHistoryPath reports whether a request goes through the history gate.

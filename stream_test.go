@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Davidgsilva/owls-insight-sdk-go/internal/sio"
+	"github.com/owlsinsight/owls-insight-sdk-go/internal/sio"
 )
 
 // Every behaviour below has a CONTROL: a run of the same check that must come out

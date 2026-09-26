@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	owls "github.com/Davidgsilva/owls-insight-sdk-go"
+	owls "github.com/owlsinsight/owls-insight-sdk-go"
 )
 
 func ExampleNewClient() {
