@@ -9763,6 +9763,10 @@
       },
       "SplitsBookEntry": {
         "properties": {
+          "as_of": {
+            "description": "ISO 8601 time this book's figures were read. The books are read on different schedules,\nso two books on one game can show different times. DraftKings figures run until kickoff;\nthe last pre-game DraftKings figures stay up to 4 hours after kickoff with that read's `as_of`.\nAbsent on API versions before v2.388.0.",
+            "type": "string"
+          },
           "book": {
             "type": "string"
           },
@@ -9862,13 +9866,15 @@
       "SplitsGame": {
         "properties": {
           "away_team": {
+            "description": "Away team name as /api/v1/{sport}/odds gives it (since API v2.388.0).",
             "type": "string"
           },
           "event_id": {
-            "description": "Upstream game code (e.g. \"20260622MLB00030\"). Stable per game; not correlated with /odds event IDs.",
+            "description": "Our event id: the `eventId` /api/v1/{sport}/odds gives the same game, formatted\n{sport}:{Away}@{Home}-{YYYYMMDD} (e.g. \"nfl:Carolina Panthers@Cleveland Browns-20260927\"),\nso splits join to odds on it. The date is the game's UTC start date, except MLB games starting\nfrom 2026-10-11T10:00Z, which carry the US Eastern date (as on /odds). A game not on /odds gets\nan id built the same way from its scheduled start. Both games of a doubleheader share one\n`event_id`, as on /odds. Before API v2.388.0 (2026-09-27) this was an upstream game code\n(e.g. \"20260622MLB00030\") not correlated with /odds.",
             "type": "string"
           },
           "home_team": {
+            "description": "Home team name as /api/v1/{sport}/odds gives it (since API v2.388.0).",
             "type": "string"
           },
           "splits": {
@@ -9902,17 +9908,18 @@
                 "type": "number"
               },
               "as_of": {
-                "description": "ISO time the board being served was retrieved from the upstream. Since API v2.362.0.",
+                "description": "ISO time of the OLDEST of the books' latest reads behind the board being served; each entry\nin `splits` carries its own `as_of`. Since API v2.362.0 (before v2.388.0: when the whole\nboard was retrieved).",
                 "type": "string"
               },
               "books": {
+                "description": "The books on the board. It can be `[\"draftkings\"]` alone.",
                 "items": {
                   "type": "string"
                 },
                 "type": "array"
               },
               "partial_reason": {
-                "description": "Only when `status` is 'partial': 'upstream_limited' = the upstream withheld games;\n'book_unavailable' = one book's page could not be fetched or read (that book is missing from `books`);\n'upstream_paused' = no board could be fetched and none from the last 12 hours is available (`data` is empty).",
+                "description": "Only when `status` is 'partial': 'upstream_limited' = the Circa figures were withheld;\n'book_unavailable' = one book has no recent read (that book is missing from `books`);\n'upstream_paused' = no board at all is available (`data` is empty).",
                 "type": "string",
                 "x-extensible-enum": [
                   "book_unavailable",
@@ -9921,11 +9928,11 @@
                 ]
               },
               "source": {
-                "description": "Always 'circa_dk': the Circa Sports + DraftKings splits book set.",
+                "description": "A fixed legacy value, 'circa_dk', whichever books are on the board. Read `books` for the books.",
                 "type": "string"
               },
               "status": {
-                "description": "'ok' = the full board was retrieved. 'stale' = the most recent full board (at most\n12 hours old, see `as_of` / `age_seconds`) is being served because the upstream is\ntemporarily unavailable. 'partial' = the upstream withheld games or one book's fetch\nfailed this cycle, so `data` may be a subset (typically a single game).\nAbsent on API versions before v2.346.0; 'stale' since v2.362.0.",
+                "description": "'ok' = every book on offer has a recent read. 'partial' = one book does not, so `data` may\nbe a subset (see `partial_reason`). 'stale' = no book has a recent read and the last full\nboard (at most 12 hours old, see `as_of` / `age_seconds`) is being served.\nAbsent on API versions before v2.346.0; 'stale' since v2.362.0.",
                 "type": "string",
                 "x-extensible-enum": [
                   "ok",
@@ -14794,7 +14801,7 @@
     },
     "/api/v1/{sport}/splits": {
       "get": {
-        "description": "Returns betting splits for a sport: handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of each game, per book, from Circa Sports and DraftKings.\n\nEvery published split is passed through, including games that are live or recently finished.\n\nA market a book has not published for a game is absent from that game rather than reported as zero.\n\nmeta.status is \"ok\" when the full board was retrieved, \"stale\" when the most recent full board (at most 12 hours old) is being served because the upstream is temporarily unavailable, and \"partial\" when the upstream withheld games or one book failed this cycle, in which case data may be a subset. meta.partial_reason then says which: \"upstream_limited\", \"book_unavailable\" (that book's page could not be fetched or read; it is also absent from meta.books) or \"upstream_paused\" (no board could be fetched and none from the last 12 hours is available).\n\nmeta.as_of is the time the board being served was retrieved from the upstream. On a stale board meta.age_seconds is also present, so a consumer can decide whether a board that old is usable.",
+        "description": "Returns betting splits for a sport: handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of each game, per book, from DraftKings and, while it is offered, Circa Sports.\n\nevent_id is the eventId /api/v1/{sport}/odds gives the same game ({sport}:{Away}@{Home}-{YYYYMMDD}), and home_team and away_team are the /odds team names, so splits join to odds on event_id. The date is the game's UTC start date, except MLB games starting from 2026-10-11T10:00Z, which carry the US Eastern date, as on /odds. A game not on /odds gets an id built the same way from its scheduled start. Both games of a doubleheader share one event_id, as on /odds.\n\nEach entry in splits carries as_of, when that book's figures were read. The books are read on different schedules, so two books on one game can show different times. DraftKings figures run until kickoff; the last pre-game DraftKings figures stay up to 4 hours after kickoff with the as_of of that read.\n\nA market a book has not published for a game is absent from that game rather than reported as zero.\n\nmeta.books lists the books on the board; it can be [\"draftkings\"] alone. meta.source is a fixed legacy value (\"circa_dk\"); read meta.books for the books. meta.as_of is the oldest of the books' latest reads.\n\nmeta.status is \"ok\" when every book on offer has a recent read, \"partial\" when one does not (data may then be a subset) and \"stale\" when none does and the last full board, at most 12 hours old, is served instead; meta.age_seconds is then present, so a consumer can decide whether a board that old is usable. meta.partial_reason says which: \"upstream_limited\" (the Circa figures were withheld), \"book_unavailable\" (one book has no recent read; it is absent from meta.books) or \"upstream_paused\" (no board at all is available).",
         "operationId": "getSplits",
         "parameters": [
           {
@@ -14827,7 +14834,7 @@
             "description": "OK"
           }
         },
-        "summary": "Returns betting splits for a sport: handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of each game, per book, from Circa Sports and DraftKings.",
+        "summary": "Returns betting splits for a sport: handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of each game, per book, from DraftKings and, while it is offered, Circa Sports.",
         "tags": [
           "Betting splits"
         ],

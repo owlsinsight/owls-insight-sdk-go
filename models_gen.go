@@ -4436,6 +4436,11 @@ type SoccerScoreDetail struct {
 
 // SplitsBookEntry defines model for SplitsBookEntry.
 type SplitsBookEntry struct {
+	// AsOf ISO 8601 time this book's figures were read. The books are read on different schedules,
+	// so two books on one game can show different times. DraftKings figures run until kickoff;
+	// the last pre-game DraftKings figures stay up to 4 hours after kickoff with that read's `as_of`.
+	// Absent on API versions before v2.388.0.
+	AsOf      *string `json:"as_of,omitempty"`
 	Book      *string `json:"book,omitempty"`
 	Moneyline *struct {
 		AwayBetsPct   *float64 `json:"away_bets_pct,omitempty"`
@@ -4465,10 +4470,19 @@ type SplitsBookEntry struct {
 
 // SplitsGame defines model for SplitsGame.
 type SplitsGame struct {
+	// AwayTeam Away team name as /api/v1/{sport}/odds gives it (since API v2.388.0).
 	AwayTeam *string `json:"away_team,omitempty"`
 
-	// EventID Upstream game code (e.g. "20260622MLB00030"). Stable per game; not correlated with /odds event IDs.
-	EventID  *string           `json:"event_id,omitempty"`
+	// EventID Our event id: the `eventId` /api/v1/{sport}/odds gives the same game, formatted
+	// {sport}:{Away}@{Home}-{YYYYMMDD} (e.g. "nfl:Carolina Panthers@Cleveland Browns-20260927"),
+	// so splits join to odds on it. The date is the game's UTC start date, except MLB games starting
+	// from 2026-10-11T10:00Z, which carry the US Eastern date (as on /odds). A game not on /odds gets
+	// an id built the same way from its scheduled start. Both games of a doubleheader share one
+	// `event_id`, as on /odds. Before API v2.388.0 (2026-09-27) this was an upstream game code
+	// (e.g. "20260622MLB00030") not correlated with /odds.
+	EventID *string `json:"event_id,omitempty"`
+
+	// HomeTeam Home team name as /api/v1/{sport}/odds gives it (since API v2.388.0).
 	HomeTeam *string           `json:"home_team,omitempty"`
 	Splits   []SplitsBookEntry `json:"splits,omitempty"`
 }
@@ -4480,22 +4494,25 @@ type SplitsResponse struct {
 		// AgeSeconds Only when `status` is 'stale': how old the served board is, in seconds.
 		AgeSeconds *float64 `json:"age_seconds,omitempty"`
 
-		// AsOf ISO time the board being served was retrieved from the upstream. Since API v2.362.0.
-		AsOf  *string  `json:"as_of,omitempty"`
+		// AsOf ISO time of the OLDEST of the books' latest reads behind the board being served; each entry
+		// in `splits` carries its own `as_of`. Since API v2.362.0 (before v2.388.0: when the whole
+		// board was retrieved).
+		AsOf *string `json:"as_of,omitempty"`
+
+		// Books The books on the board. It can be `["draftkings"]` alone.
 		Books []string `json:"books,omitempty"`
 
-		// PartialReason Only when `status` is 'partial': 'upstream_limited' = the upstream withheld games;
-		// 'book_unavailable' = one book's page could not be fetched or read (that book is missing from `books`);
-		// 'upstream_paused' = no board could be fetched and none from the last 12 hours is available (`data` is empty).
+		// PartialReason Only when `status` is 'partial': 'upstream_limited' = the Circa figures were withheld;
+		// 'book_unavailable' = one book has no recent read (that book is missing from `books`);
+		// 'upstream_paused' = no board at all is available (`data` is empty).
 		PartialReason *string `json:"partial_reason,omitempty"`
 
-		// Source Always 'circa_dk': the Circa Sports + DraftKings splits book set.
+		// Source A fixed legacy value, 'circa_dk', whichever books are on the board. Read `books` for the books.
 		Source *string `json:"source,omitempty"`
 
-		// Status 'ok' = the full board was retrieved. 'stale' = the most recent full board (at most
-		// 12 hours old, see `as_of` / `age_seconds`) is being served because the upstream is
-		// temporarily unavailable. 'partial' = the upstream withheld games or one book's fetch
-		// failed this cycle, so `data` may be a subset (typically a single game).
+		// Status 'ok' = every book on offer has a recent read. 'partial' = one book does not, so `data` may
+		// be a subset (see `partial_reason`). 'stale' = no book has a recent read and the last full
+		// board (at most 12 hours old, see `as_of` / `age_seconds`) is being served.
 		// Absent on API versions before v2.346.0; 'stale' since v2.362.0.
 		Status *string `json:"status,omitempty"`
 
