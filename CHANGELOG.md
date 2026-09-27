@@ -4,19 +4,6 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
-## [Unreleased]
-
-### Added
-
-- `SplitsBookEntry.AsOf`: when that book's splits figures were read (API v2.388.0 and later).
-
-### Changed
-
-- Splits doc comments follow API v2.388.0: `SplitsGame.EventID` is the `eventId` that
-  `GetOdds` gives the same game and the team names are the /odds names, so splits join to
-  odds on `EventID`; `meta.as_of` is the oldest of the books' latest reads; `meta.source`
-  is a fixed legacy value (read `meta.books`).
-
 ## [0.1.2] - 2026-09-26
 
 ### Changed

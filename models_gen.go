@@ -4434,13 +4434,16 @@ type SoccerScoreDetail struct {
 	} `json:"regulation,omitempty"`
 }
 
-// SplitsBookEntry defines model for SplitsBookEntry.
+// SplitsBookEntry One book's figures for a game. A market the book has not published for the game is absent, not zero.
 type SplitsBookEntry struct {
-	// AsOf ISO 8601 time this book's figures were read. The books are read on different schedules,
-	// so two books on one game can show different times. DraftKings figures run until kickoff;
-	// the last pre-game DraftKings figures stay up to 4 hours after kickoff with that read's `as_of`.
-	// Absent on API versions before v2.388.0.
-	AsOf      *string `json:"as_of,omitempty"`
+	// AsOf ISO 8601 time this book's figures were read. The books are read on different
+	// schedules, so two books on one game can show different times. DraftKings figures
+	// run until kickoff; the last pre-game DraftKings figures stay on the board for up to
+	// 4 hours after kickoff, with the `as_of` of that last read.
+	// Absent on responses from before 2026-09-27.
+	AsOf *string `json:"as_of,omitempty"`
+
+	// Book Book key: 'dk' (DraftKings) or 'circa' (Circa Sports).
 	Book      *string `json:"book,omitempty"`
 	Moneyline *struct {
 		AwayBetsPct   *float64 `json:"away_bets_pct,omitempty"`
@@ -4458,6 +4461,8 @@ type SplitsBookEntry struct {
 		HomeHandlePct *float64 `json:"home_handle_pct,omitempty"`
 		HomeLine      *float64 `json:"home_line,omitempty"`
 	} `json:"spread,omitempty"`
+
+	// Title Display name: 'DraftKings' or 'Circa Sports'.
 	Title *string `json:"title,omitempty"`
 	Total *struct {
 		Line           *float64 `json:"line,omitempty"`
@@ -4470,19 +4475,22 @@ type SplitsBookEntry struct {
 
 // SplitsGame defines model for SplitsGame.
 type SplitsGame struct {
-	// AwayTeam Away team name as /api/v1/{sport}/odds gives it (since API v2.388.0).
+	// AwayTeam The /odds team name (same string as OddsEvent.away_team).
 	AwayTeam *string `json:"away_team,omitempty"`
 
-	// EventID Our event id: the `eventId` /api/v1/{sport}/odds gives the same game, formatted
-	// {sport}:{Away}@{Home}-{YYYYMMDD} (e.g. "nfl:Carolina Panthers@Cleveland Browns-20260927"),
-	// so splits join to odds on it. The date is the game's UTC start date, except MLB games starting
-	// from 2026-10-11T10:00Z, which carry the US Eastern date (as on /odds). A game not on /odds gets
-	// an id built the same way from its scheduled start. Both games of a doubleheader share one
-	// `event_id`, as on /odds. Before API v2.388.0 (2026-09-27) this was an upstream game code
-	// (e.g. "20260622MLB00030") not correlated with /odds.
+	// EventID Our event id: the OddsEvent.eventId that `/api/v1/{sport}/odds` gives the
+	// same game, `{sport}:{Away}@{Home}-{YYYYMMDD}` (e.g.
+	// "nfl:Carolina Panthers@Cleveland Browns-20260927"), so splits join to odds on it.
+	// The date is the game's UTC start date, except MLB games starting from
+	// 2026-10-11T10:00Z, which carry the US Eastern date (as on /odds). A game not on
+	// /odds gets an id built the same way from its scheduled start. Both games of a
+	// doubleheader share one `event_id`, as on /odds.
+	//
+	// Before 2026-09-27 this was an upstream game code (e.g. "20260622MLB00030") that did
+	// not match /odds.
 	EventID *string `json:"event_id,omitempty"`
 
-	// HomeTeam Home team name as /api/v1/{sport}/odds gives it (since API v2.388.0).
+	// HomeTeam The /odds team name (same string as OddsEvent.home_team).
 	HomeTeam *string           `json:"home_team,omitempty"`
 	Splits   []SplitsBookEntry `json:"splits,omitempty"`
 }
@@ -4494,25 +4502,30 @@ type SplitsResponse struct {
 		// AgeSeconds Only when `status` is 'stale': how old the served board is, in seconds.
 		AgeSeconds *float64 `json:"age_seconds,omitempty"`
 
-		// AsOf ISO time of the OLDEST of the books' latest reads behind the board being served; each entry
-		// in `splits` carries its own `as_of`. Since API v2.362.0 (before v2.388.0: when the whole
-		// board was retrieved).
+		// AsOf ISO time of the OLDEST of the books' latest reads behind this board, so it never
+		// overstates freshness. Each split also carries its own SplitsBookEntry.as_of;
+		// a DraftKings split kept after kickoff has an older one than this.
+		// Since API v2.362.0.
 		AsOf *string `json:"as_of,omitempty"`
 
-		// Books The books on the board. It can be `["draftkings"]` alone.
+		// Books The books on this board: 'draftkings' and, while it is offered, 'circa'. Can be
+		// `['draftkings']` alone. (Each split's own `book` key is 'dk' or 'circa'.)
 		Books []string `json:"books,omitempty"`
 
 		// PartialReason Only when `status` is 'partial': 'upstream_limited' = the Circa figures were withheld;
 		// 'book_unavailable' = one book has no recent read (that book is missing from `books`);
-		// 'upstream_paused' = no board at all is available (`data` is empty).
+		// 'upstream_paused' = no board at all is available: no book could be read and no board
+		// from the last 12 hours exists (`data` is empty).
 		PartialReason *string `json:"partial_reason,omitempty"`
 
-		// Source A fixed legacy value, 'circa_dk', whichever books are on the board. Read `books` for the books.
+		// Source A fixed legacy value, 'circa_dk', whatever books are on the board. Do not read
+		// the book set from it: use `books`.
 		Source *string `json:"source,omitempty"`
 
-		// Status 'ok' = every book on offer has a recent read. 'partial' = one book does not, so `data` may
-		// be a subset (see `partial_reason`). 'stale' = no book has a recent read and the last full
-		// board (at most 12 hours old, see `as_of` / `age_seconds`) is being served.
+		// Status 'ok' = every book on offer has a recent read. 'partial' = one does not (see
+		// `partial_reason`), so `data` may be a subset. 'stale' = no book has a recent read,
+		// and the last full board (at most 12 hours old, see `as_of` / `age_seconds`) is
+		// served instead.
 		// Absent on API versions before v2.346.0; 'stale' since v2.362.0.
 		Status *string `json:"status,omitempty"`
 
