@@ -45,6 +45,7 @@ type manifest struct {
 var endpointsWithoutSDKName = map[string]string{
 	"v1.sport.injuries":     "GetInjuries",      // the manifest lacks its sdk name
 	"v1.history.splits":     "GetHistorySplits", // the manifest lacks its sdk name
+	"v1.schedule":           "GetDaySchedule",   // the manifest lacks its sdk name
 	"v2.book.sport":         "GetV2",
 	"v2.book.sport.leagues": "GetV2Leagues",
 	"v1.docs.meta":          "",

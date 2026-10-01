@@ -53,6 +53,15 @@ The esports keys (`cs2`, `lol`, `valorant`, `dota2`) have their own real-time me
 is a Pinnacle matchup exactly as Pinnacle sent it (`json.RawMessage`). `GetRealtime`
 refuses those keys.
 
+`GetDaySchedule` returns every game of a calendar day across sports (NFL, college
+football, MLB, NBA, WNBA, NHL, tennis, soccer and UFC): start time, status, score and
+clock, both sides and Kalshi win prices. The zero `DayScheduleParams` asks for today in
+America/New_York; set `Date` (YYYY-MM-DD), `TZ` (an IANA zone), `Days` (1 to 10) and
+`Sports` to change that. `EventID` on a game is its `eventId` on `GetOdds`, or nil when
+the game was not found there, and `Meta.Status` (`ok`, `partial`, `stale` or `no-data`)
+says whether the answer is complete and fresh. `GetSchedule(ctx, sport)` is the older
+per-sport list of upcoming games, unchanged.
+
 ### Options
 
 | Option | Default | |
@@ -186,7 +195,10 @@ are nil when absent, and enums are plain strings, so a new value never breaks de
 Unknown fields are ignored. A value whose JSON type does not match its field is left
 unset instead of failing the call. Union fields, fields whose type varies (a number or
 a string, such as `Outcome.SelectionID`) and raw book data are `json.RawMessage`.
-`owls.Ptr(v)` builds a pointer for the optional inputs.
+`owls.Ptr(v)` builds a pointer for the optional inputs. The models of `GetDaySchedule`
+(`DayScheduleResponse`, `DayScheduleGame`, `DayScheduleCompetitor` and the other
+`DaySchedule*` types) are written by hand, as the generator will produce them, until
+the vendored spec describes that endpoint.
 
 `owls.Decode[T](raw)` decodes any payload the same way, for example a WebSocket event:
 `n, err := owls.Decode[owls.ServerNotice](raw)`.
@@ -314,6 +326,7 @@ running, and do not restart it in a tight loop.
 | `getOneXBetSoccer` | `GetOneXBetSoccer(ctx)` | `GET /api/v1/1xbet/soccer` |
 | `getProphetxOdds` | `GetProphetxOdds(ctx, ProphetXOddsParams)` | `GET /api/v1/prophetx/odds` |
 | `getSchedule` | `GetSchedule(ctx, sport)` | `GET /api/v1/{sport}/schedule` |
+| `getDaySchedule` | `GetDaySchedule(ctx, DayScheduleParams)` | `GET /api/v1/schedule` |
 | `getResults` | `GetResults(ctx, sport)` | `GET /api/v1/{sport}/results` |
 | `getSplits` | `GetSplits(ctx, sport)` | `GET /api/v1/{sport}/splits` |
 | `getScores` | `GetScores(ctx, sport)` | `GET /api/v1/scores/live` (sport `""`), `GET /api/v1/{sport}/scores/live` |

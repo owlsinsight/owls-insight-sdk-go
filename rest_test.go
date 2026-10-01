@@ -171,6 +171,13 @@ func TestRequestPaths(t *testing.T) {
 			_, err := c.GetHistorySplits(ctx, HistorySplitsParams{EventID: "nfl:Dallas Cowboys@Green Bay Packers-20261004", Book: "betmgm", Offset: 100})
 			return err
 		}, "/api/v1/history/splits?book=betmgm&eventId=nfl%3ADallas+Cowboys%40Green+Bay+Packers-20261004&offset=100"},
+		// The multi-sport day schedule: the zero params send nothing; sports are one comma list under "sport".
+		{func() error { _, err := c.GetDaySchedule(ctx, DayScheduleParams{}); return err }, "/api/v1/schedule"},
+		{func() error {
+			_, err := c.GetDaySchedule(ctx, DayScheduleParams{Date: "2026-10-04", TZ: "America/Los_Angeles", Days: 3, Sports: []string{"nfl", "ncaaf"}})
+			return err
+		}, "/api/v1/schedule?date=2026-10-04&days=3&sport=nfl%2Cncaaf&tz=America%2FLos_Angeles"},
+		{func() error { _, err := c.GetSchedule(ctx, "nfl"); return err }, "/api/v1/nfl/schedule"},
 		{func() error { _, err := c.GetScores(ctx, ""); return err }, "/api/v1/scores/live"},
 		{func() error { _, err := c.GetScores(ctx, "mlb"); return err }, "/api/v1/mlb/scores/live"},
 		{func() error {
@@ -921,6 +928,131 @@ func TestHistorySplits(t *testing.T) {
 		c := testClient(t, api.URL, WithRetry(RetryPolicy{MaxRetries: 1}))
 		if res, err := c.GetHistorySplits(context.Background(), HistorySplitsParams{EventID: "e"}); err != nil || !*res.Success || api.count() != 2 {
 			t.Fatalf("%+v %v after %d requests", res, err, api.count())
+		}
+	})
+}
+
+func TestDaySchedule(t *testing.T) {
+	t.Run("games of every shape", func(t *testing.T) {
+		api := newFakeAPI(t, ok(fixture(t, "day-schedule.json")))
+		res, err := testClient(t, api.URL).GetDaySchedule(context.Background(), DayScheduleParams{TZ: "America/New_York"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r := api.req(0); r.Path != "/api/v1/schedule" || r.Query != "tz=America%2FNew_York" || isHistoryPath(r.Path) {
+			t.Errorf("requested %s?%s", r.Path, r.Query)
+		}
+		if !*res.Success || *res.Date != "2026-10-01" || *res.Days != 1 || *res.Tz != "America/New_York" ||
+			len(res.Sports) != 9 || res.Sports[8] != "ufc" || *res.Count != 4 || len(res.Games) != 4 {
+			t.Fatalf("decoded %+v", res)
+		}
+		m := res.Meta
+		if *m.Source != "kalshi" || *m.Status != "ok" || *m.CacheTimestamp != "2026-10-01T18:59:40.400Z" ||
+			*m.AgeSeconds != 40 || *m.LiveAgeSeconds != 11 || *m.Timestamp != "2026-10-01T19:00:20.114Z" {
+			t.Errorf("meta %+v", m)
+		}
+		if *m.BuildWindow.From != "2026-09-28T00:00:00.000Z" || *m.BuildWindow.To != "2026-10-10T00:00:00.000Z" ||
+			*m.Window.Start != "2026-10-01T04:00:00.000Z" || *m.Window.End != "2026-10-02T04:00:00.000Z" {
+			t.Errorf("windows %+v %+v", m.BuildWindow, m.Window)
+		}
+
+		// A soccer game won on penalties: level scores, a winner, closed markets.
+		final := res.Games[0]
+		if *final.ID != "71be7f1a-8847-4189-85e0-c692f4f2199e" || *final.Sport != "soccer" || *final.Status != "final" ||
+			*final.StatusDetail != "FT, pens 5-4" || final.Competition != nil || final.Round != nil || final.DrawPrice != nil ||
+			*final.EventID != "soccer:Ecuador@Japan-20261001" || *final.Volume != 0 {
+			t.Errorf("final %+v", final)
+		}
+		away, home := final.Competitors[0], final.Competitors[1]
+		if *away.Side != "away" || *away.Code != "ECU" || *away.Score != 0 || *away.Winner || away.WinPrice != nil ||
+			*home.Side != "home" || *home.Name != "Japan" || !*home.Winner || home.Sets != nil {
+			t.Errorf("final sides %+v %+v", away, home)
+		}
+		if *final.StartCheck.Sportsbooks != "missing" || *final.StartCheck.Flashscore != "agree" || final.StartCheck.DiffersByMinutes != nil {
+			t.Errorf("startCheck %+v", final.StartCheck)
+		}
+
+		// Tennis in play: no side, a score in sets, a competition and a round.
+		tennis := res.Games[1]
+		first, second := tennis.Competitors[0], tennis.Competitors[1]
+		if *tennis.Competition != "ATP Challenger Columbus" || *tennis.Round != "Round Of 16" || *tennis.StatusDetail != "Set 2" ||
+			*tennis.LiveUpdatedAt != "2026-10-01T19:00:08.997Z" || first.Side != nil || first.Winner != nil ||
+			len(first.Sets) != 2 || first.Sets[0] != 6 || *first.Score != 1 || *first.WinPrice != 0.68 ||
+			*second.Short != "C. Smith" || second.Sets[1] != 5 {
+			t.Errorf("tennis %+v %+v %+v", tennis, first, second)
+		}
+
+		if soccer := res.Games[2]; *soccer.DrawPrice != 0.26 || *soccer.Competitors[0].WinPrice != 0.52 || *soccer.League != "UEFA Nations League" {
+			t.Errorf("soccer in play %+v", soccer)
+		}
+
+		// Not started: no score, no live data yet, the /odds eventId to join on.
+		nfl := res.Games[3]
+		if *nfl.Status != "scheduled" || nfl.StatusDetail != nil || nfl.LiveUpdatedAt != nil || nfl.Competitors[0].Score != nil ||
+			*nfl.Competitors[0].Name != "Pittsburgh Steelers" || *nfl.Competitors[1].Short != "Browns" ||
+			*nfl.EventID != "nfl:Pittsburgh Steelers@Cleveland Browns-20261002" || *nfl.KalshiEventTicker != "KXNFLGAME-26OCT01PITCLE" ||
+			*nfl.StartTime != "2026-10-02T00:15:00.000Z" || *nfl.Volume != 1963946 {
+			t.Errorf("nfl %+v", nfl)
+		}
+		// CONTROL: a 0 the API sent is kept as a 0, so the nil scores above mean absent.
+		if final.Competitors[0].Score == nil || nfl.Competitors[0].Score != nil {
+			t.Errorf("control: scores %v / %v", final.Competitors[0].Score, nfl.Competitors[0].Score)
+		}
+
+		// The exported names are the ones the spec generates (and the JS and Python
+		// SDKs use): a spec vendoring that would rename one stops compiling here.
+		var (
+			_ []DayScheduleGame            = res.Games
+			_ []DayScheduleCompetitor      = final.Competitors
+			_ *DayScheduleMeta             = res.Meta
+			_ *DayScheduleBuildWindow      = m.BuildWindow
+			_ *DayScheduleWindow           = m.Window
+			_ *DayScheduleStartCheck       = final.StartCheck
+			_ *DayScheduleStatus           = final.Status
+			_ *DayScheduleStartCheckResult = final.StartCheck.Flashscore
+		)
+	})
+	t.Run("a start time that differs, no data and unknown fields", func(t *testing.T) {
+		const body = `{"success": true, "date": "2026-10-20", "days": 2, "tz": "Europe/London", "sports": ["ufc"], "count": 1,
+			"games": [{"id": "g1", "sport": "ufc", "status": "time_tbd", "competitors": [{"side": null, "name": "A"}, {"side": null, "name": "B"}],
+				"startCheck": {"sportsbooks": "differs", "flashscore": "missing", "differsByMinutes": 30, "sportsbooksMinutes": 30, "flashscoreMinutes": null},
+				"newGameField": {"x": 1}}],
+			"meta": {"source": "kalshi", "status": "no-data", "cacheTimestamp": null, "ageSeconds": null, "liveAgeSeconds": null,
+				"buildWindow": null, "window": {"start": "2026-10-19T23:00:00.000Z", "end": "2026-10-21T23:00:00.000Z"}, "newMetaField": true}}`
+		api := newFakeAPI(t, ok(body))
+		res, err := testClient(t, api.URL).GetDaySchedule(context.Background(),
+			DayScheduleParams{Date: "2026-10-20", TZ: "Europe/London", Days: 2, Sports: []string{"ufc"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q, _ := url.ParseQuery(api.req(0).Query); q.Get("date") != "2026-10-20" || q.Get("tz") != "Europe/London" ||
+			q.Get("days") != "2" || q.Get("sport") != "ufc" || len(q) != 4 {
+			t.Errorf("query %s", api.req(0).Query)
+		}
+		sc := res.Games[0].StartCheck
+		if *sc.Sportsbooks != "differs" || *sc.DiffersByMinutes != 30 || *sc.SportsbooksMinutes != 30 || sc.FlashscoreMinutes != nil {
+			t.Errorf("startCheck %+v", sc)
+		}
+		if *res.Games[0].Status != "time_tbd" || len(res.Games[0].Competitors) != 2 || res.Games[0].Competitors[1].Side != nil {
+			t.Errorf("game %+v", res.Games[0])
+		}
+		m := res.Meta
+		if *m.Status != "no-data" || m.CacheTimestamp != nil || m.AgeSeconds != nil || m.LiveAgeSeconds != nil ||
+			m.BuildWindow != nil || *m.Window.Start != "2026-10-19T23:00:00.000Z" {
+			t.Errorf("meta %+v", m)
+		}
+	})
+	t.Run("a bad query is an APIError", func(t *testing.T) {
+		api := newFakeAPI(t, func(*http.Request, int) (int, http.Header, string) {
+			return 400, nil, `{"success":false,"error":"Unknown sport \"cricket\". Valid: nfl, ncaaf, mlb, nba, wnba, nhl, tennis, soccer, ufc."}`
+		})
+		_, err := testClient(t, api.URL).GetDaySchedule(context.Background(), DayScheduleParams{Sports: []string{"cricket"}})
+		var ae *APIError
+		if !errors.As(err, &ae) || ae.Status != 400 || !strings.Contains(ae.Message, "Unknown sport") {
+			t.Fatalf("err %v (%+v)", err, ae)
+		}
+		if api.req(0).Query != "sport=cricket" {
+			t.Errorf("query %s", api.req(0).Query)
 		}
 	})
 }

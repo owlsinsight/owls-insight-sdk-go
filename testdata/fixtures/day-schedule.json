@@ -1,0 +1,104 @@
+{
+  "success": true,
+  "date": "2026-10-01",
+  "days": 1,
+  "tz": "America/New_York",
+  "sports": ["nfl", "ncaaf", "mlb", "nba", "wnba", "nhl", "tennis", "soccer", "ufc"],
+  "count": 4,
+  "games": [
+    {
+      "id": "71be7f1a-8847-4189-85e0-c692f4f2199e",
+      "sport": "soccer",
+      "league": "Intl Friendlies",
+      "competition": null,
+      "round": null,
+      "startTime": "2026-10-01T10:10:00.000Z",
+      "status": "final",
+      "statusDetail": "FT, pens 5-4",
+      "competitors": [
+        { "side": "away", "name": "Ecuador", "short": "Ecuador", "code": "ECU", "score": 0, "winner": false, "winPrice": null },
+        { "side": "home", "name": "Japan", "short": "Japan", "code": "JPN", "score": 0, "winner": true, "winPrice": null }
+      ],
+      "drawPrice": null,
+      "kalshiEventTicker": "KXINTLFRIENDLYGAME-26OCT01JPNECU",
+      "startCheck": { "sportsbooks": "missing", "flashscore": "agree", "differsByMinutes": null, "sportsbooksMinutes": null, "flashscoreMinutes": null },
+      "eventId": "soccer:Ecuador@Japan-20261001",
+      "liveUpdatedAt": "2026-10-01T12:19:29.167Z",
+      "volume": 0,
+      "updatedAt": "2026-10-01T19:00:08.997Z"
+    },
+    {
+      "id": "0a8646a6-1dfc-41e7-8055-499023ac4ad2",
+      "sport": "tennis",
+      "league": "ATP Challenger",
+      "competition": "ATP Challenger Columbus",
+      "round": "Round Of 16",
+      "startTime": "2026-10-01T17:30:00.000Z",
+      "status": "in_progress",
+      "statusDetail": "Set 2",
+      "competitors": [
+        { "side": null, "name": "Aidan Mayo", "short": "A. Mayo", "code": "MAY", "score": 1, "sets": [6, 5], "winner": null, "winPrice": 0.68 },
+        { "side": null, "name": "Colton Smith", "short": "C. Smith", "code": "SMI", "score": 0, "sets": [2, 5], "winner": null, "winPrice": 0.34 }
+      ],
+      "drawPrice": null,
+      "kalshiEventTicker": "KXATPCHALLENGERMATCH-26OCT01MAYSMI",
+      "startCheck": { "sportsbooks": "agree", "flashscore": "missing", "differsByMinutes": null, "sportsbooksMinutes": null, "flashscoreMinutes": null },
+      "eventId": "tennis:Colton Smith@Aidan Mayo-20261001",
+      "liveUpdatedAt": "2026-10-01T19:00:08.997Z",
+      "volume": 2932161,
+      "updatedAt": "2026-10-01T19:00:08.997Z"
+    },
+    {
+      "id": "e8a7becb-dae7-4153-8ef4-5b24f1ad9186",
+      "sport": "soccer",
+      "league": "UEFA Nations League",
+      "competition": null,
+      "round": null,
+      "startTime": "2026-10-01T18:45:00.000Z",
+      "status": "in_progress",
+      "statusDetail": "11'",
+      "competitors": [
+        { "side": "away", "name": "Portugal", "short": "Portugal", "code": "POR", "score": 0, "winner": null, "winPrice": 0.52 },
+        { "side": "home", "name": "Denmark", "short": "Denmark", "code": "DEN", "score": 0, "winner": null, "winPrice": 0.24 }
+      ],
+      "drawPrice": 0.26,
+      "kalshiEventTicker": "KXUEFANLGAME-26OCT01DENPOR",
+      "startCheck": { "sportsbooks": "agree", "flashscore": "missing", "differsByMinutes": null, "sportsbooksMinutes": null, "flashscoreMinutes": null },
+      "eventId": "soccer:Portugal@Denmark-20261001",
+      "liveUpdatedAt": "2026-10-01T19:00:08.997Z",
+      "volume": 2295281,
+      "updatedAt": "2026-10-01T19:00:08.997Z"
+    },
+    {
+      "id": "22531f75-13ec-47a0-9d00-f98a95141498",
+      "sport": "nfl",
+      "league": "NFL",
+      "competition": null,
+      "round": null,
+      "startTime": "2026-10-02T00:15:00.000Z",
+      "status": "scheduled",
+      "statusDetail": null,
+      "competitors": [
+        { "side": "away", "name": "Pittsburgh Steelers", "short": "Steelers", "code": "PIT", "score": null, "winner": null, "winPrice": 0.58 },
+        { "side": "home", "name": "Cleveland Browns", "short": "Browns", "code": "CLE", "score": null, "winner": null, "winPrice": 0.43 }
+      ],
+      "drawPrice": null,
+      "kalshiEventTicker": "KXNFLGAME-26OCT01PITCLE",
+      "startCheck": { "sportsbooks": "agree", "flashscore": "missing", "differsByMinutes": null, "sportsbooksMinutes": null, "flashscoreMinutes": null },
+      "eventId": "nfl:Pittsburgh Steelers@Cleveland Browns-20261002",
+      "liveUpdatedAt": null,
+      "volume": 1963946,
+      "updatedAt": "2026-10-01T18:59:40.400Z"
+    }
+  ],
+  "meta": {
+    "source": "kalshi",
+    "status": "ok",
+    "cacheTimestamp": "2026-10-01T18:59:40.400Z",
+    "ageSeconds": 40,
+    "liveAgeSeconds": 11,
+    "buildWindow": { "from": "2026-09-28T00:00:00.000Z", "to": "2026-10-10T00:00:00.000Z" },
+    "window": { "start": "2026-10-01T04:00:00.000Z", "end": "2026-10-02T04:00:00.000Z" },
+    "timestamp": "2026-10-01T19:00:20.114Z"
+  }
+}

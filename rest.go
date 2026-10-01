@@ -115,6 +115,20 @@ func (c *Client) GetSchedule(ctx context.Context, sport string) (*ScheduleRespon
 	return getInto[ScheduleResponse](ctx, c, "/api/v1/"+esc(sport)+"/schedule", nil)
 }
 
+// GetDaySchedule returns every game of a calendar day in a time zone, across
+// sports: start time, status, score and clock, both sides and Kalshi win prices.
+// The zero DayScheduleParams asks for today in America/New_York, every sport;
+// Days extends the range up to 10 days. Meta.Status says whether the answer is
+// complete and fresh ('ok', 'partial', 'stale' or 'no-data').
+func (c *Client) GetDaySchedule(ctx context.Context, p DayScheduleParams) (*DayScheduleResponse, error) {
+	q := url.Values{}
+	setStr(q, "date", p.Date)
+	setStr(q, "tz", p.TZ)
+	setInt(q, "days", p.Days)
+	setList(q, "sport", p.Sports)
+	return getInto[DayScheduleResponse](ctx, c, "/api/v1/schedule", q)
+}
+
 // GetResults returns today's completed games for a sport.
 func (c *Client) GetResults(ctx context.Context, sport string) (*ResultsResponse, error) {
 	return getInto[ResultsResponse](ctx, c, "/api/v1/"+esc(sport)+"/results", nil)

@@ -79,6 +79,22 @@ type EVParams struct {
 	Book string
 }
 
+// DayScheduleParams selects GetDaySchedule. Every field is optional: the zero
+// value asks for today's games of every sport in America/New_York.
+type DayScheduleParams struct {
+	// Date is the first calendar day, YYYY-MM-DD in TZ. Default: today in TZ.
+	Date string
+	// TZ is the IANA time zone that defines the day, such as America/Los_Angeles.
+	// Default: America/New_York. An unknown zone is a 400.
+	TZ string
+	// Days is the number of days from Date, 1 to 10. Default: 1.
+	Days int
+	// Sports narrows the schedule to these sports: nfl, ncaaf, mlb, nba, wnba,
+	// nhl, tennis, soccer, ufc. Default: all. An unknown sport is a 400 that lists
+	// the supported ones.
+	Sports []string
+}
+
 // PropsParams filters GetProps and GetBookProps (Books is read by GetProps only).
 type PropsParams struct {
 	GameID   string
