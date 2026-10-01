@@ -123,6 +123,14 @@ for snap, err := range c.IterHistoryOdds(ctx, owls.HistoryOddsParams{EventID: id
 stop after a short page, and retry a 429 or 503 up to 3 times per page by default
 (`PageOptions`).
 
+`GetHistorySplits` returns how a game's betting splits moved: each reading of a book's
+handle and ticket percentages, with the line or price at that moment, oldest first.
+Ask for one game by `EventID` (the `eventId` from `GetOdds`), or for a sport by `Sport`
+and `StartDate` over at most 7 days, and page with `Limit` (at most 500) and `Offset`.
+A market missing from a row was not quoted at that read, and a percentage missing from
+a market is nil, not 0: BetMGM (`betmgm`) publishes ticket percentages only, on the live
+board (`GetSplits`) and in the history alike.
+
 ### v2 books
 
 Every v2 book goes through two methods. `Data` is the book's own JSON, exactly as it
@@ -141,13 +149,15 @@ for marketID, raw := range markets {
 }
 ```
 
-A new v2 book needs no SDK release. `owls.V2EventName(book)` gives its WebSocket event
-(`<book>-v2-update`, except BetOnline's `betonline-realtime`). Every v2 event decodes
-into `owls.V2Update`. Books differ in what they send, so `Markets` (a list of
-`{marketId, hash, kind, data}` or a count), `Timestamp` (epoch milliseconds or an ISO
-string), `Events`, `Data`, `Raw` and the fields only some books send (`Count`,
-`TotalCount`, `Leagues`, `Heartbeat`, `MatchupIds`, `RemovedIds`, `RemovedMatchupIds`,
-`RemovedGhids`) stay `json.RawMessage`.
+A new v2 book needs no SDK release; pass its key as the URL has it, including one that
+starts with a digit (`4casters`, `888sport`). `owls.V2EventName(book)` gives its
+WebSocket event (`<book>-v2-update`, except BetOnline's `betonline-realtime`). Some
+books are REST only and send no event: 888sport, bookmaker, bovada, hardrock, novig,
+stake, thescore and underdog. Every v2 event decodes into `owls.V2Update`. Books differ
+in what they send, so `Markets` (a list of `{marketId, hash, kind, data}` or a count),
+`Timestamp` (epoch milliseconds or an ISO string), `Events`, `Data`, `Raw` and the
+fields only some books send (`Count`, `TotalCount`, `Leagues`, `Heartbeat`,
+`MatchupIds`, `RemovedIds`, `RemovedMatchupIds`, `RemovedGhids`) stay `json.RawMessage`.
 
 ### Same game parlays
 
@@ -176,7 +186,9 @@ are nil when absent, and enums are plain strings, so a new value never breaks de
 Unknown fields are ignored. A value whose JSON type does not match its field is left
 unset instead of failing the call. Union fields, fields whose type varies (a number or
 a string, such as `Outcome.SelectionID`) and raw book data are `json.RawMessage`.
-`owls.Ptr(v)` builds a pointer for the optional inputs.
+`owls.Ptr(v)` builds a pointer for the optional inputs. The models of `GetHistorySplits`
+(`HistorySplitsResponse`, `SplitsHistoryRow`) are written by hand with the same
+conventions until the spec describes that endpoint.
 
 `owls.Decode[T](raw)` decodes any payload the same way, for example a WebSocket event:
 `n, err := owls.Decode[owls.ServerNotice](raw)`.
@@ -337,6 +349,7 @@ running, and do not restart it in a tight loop.
 | `getClosingOdds` | `GetClosingOdds(ctx, *ClosingOddsParams)` | `GET /api/v1/history/closing-odds` |
 | `getHistoricalPlayerProps` | `GetHistoricalPlayerProps(ctx, *HistoricalPlayerPropsParams)` | `GET /api/v1/history/player-props` |
 | `getPublicBetting` | `GetPublicBetting(ctx, *PublicBettingParams)` | `GET /api/v1/history/public-betting` |
+| `getHistorySplits` | `GetHistorySplits(ctx, HistorySplitsParams)` | `GET /api/v1/history/splits` |
 | `getCS2Matches` | `GetCS2Matches(ctx, *CS2MatchesParams)` | `GET /api/v1/history/cs2/matches` |
 | `getCS2Match` | `GetCS2Match(ctx, matchID)` | `GET /api/v1/history/cs2/matches/{matchId}` |
 | `getCS2Players` | `GetCS2Players(ctx, CS2PlayersParams)` | `GET /api/v1/history/cs2/players` |

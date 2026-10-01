@@ -440,6 +440,23 @@ func (c *Client) GetPublicBetting(ctx context.Context, p *PublicBettingParams) (
 	return getInto[PublicBettingResponse](ctx, c, "/api/v1/history/public-betting", q)
 }
 
+// GetHistorySplits returns one page of the movement history of betting splits
+// (MVP and above): each book's handle and ticket percentages on a game's spread,
+// total and moneyline, with the line or price shown, recorded whenever they
+// changed, oldest first. Ask for one game by EventID, or for a sport by Sport and
+// StartDate; page with Limit and Offset until Pagination.HasMore is false.
+func (c *Client) GetHistorySplits(ctx context.Context, p HistorySplitsParams) (*HistorySplitsResponse, error) {
+	q := url.Values{}
+	setStr(q, "eventId", p.EventID)
+	setStr(q, "sport", p.Sport)
+	setStr(q, "book", p.Book)
+	setStr(q, "startDate", p.StartDate)
+	setStr(q, "endDate", p.EndDate)
+	setInt(q, "limit", p.Limit)
+	setInt(q, "offset", p.Offset)
+	return getInto[HistorySplitsResponse](ctx, c, "/api/v1/history/splits", q)
+}
+
 // GetCS2Matches searches archived CS2 matches.
 func (c *Client) GetCS2Matches(ctx context.Context, p *CS2MatchesParams) (*CS2MatchesResponse, error) {
 	q := url.Values{}

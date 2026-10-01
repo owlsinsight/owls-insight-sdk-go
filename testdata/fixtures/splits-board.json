@@ -1,0 +1,29 @@
+{
+  "sport": "nfl",
+  "data": [
+    {
+      "event_id": "nfl:Dallas Cowboys@Green Bay Packers-20261004",
+      "home_team": "Green Bay Packers",
+      "away_team": "Dallas Cowboys",
+      "splits": [
+        {
+          "book": "dk",
+          "title": "DraftKings",
+          "as_of": "2026-09-30T18:00:00.000Z",
+          "spread": {"away_line": 3.5, "home_line": -3.5, "away_handle_pct": 41, "home_handle_pct": 59, "away_bets_pct": 47, "home_bets_pct": 53},
+          "total": {"line": 47.5, "over_handle_pct": 62, "under_handle_pct": 38, "over_bets_pct": 70, "under_bets_pct": 30},
+          "moneyline": {"away_price": 150, "home_price": -175, "away_handle_pct": 22, "home_handle_pct": 78, "away_bets_pct": 35, "home_bets_pct": 65}
+        },
+        {
+          "book": "betmgm",
+          "title": "BetMGM",
+          "as_of": "2026-09-30T17:58:00.000Z",
+          "spread": {"away_line": 3.5, "home_line": -3.5, "away_bets_pct": 44, "home_bets_pct": 56},
+          "total": {"line": 47.5, "over_bets_pct": 61, "under_bets_pct": 39},
+          "moneyline": {"away_price": 150, "home_price": -175, "away_bets_pct": 30, "home_bets_pct": 70}
+        }
+      ]
+    }
+  ],
+  "meta": {"source": "circa_dk", "books": ["draftkings", "circa", "betmgm"], "total_games": 1, "status": "ok", "as_of": "2026-09-30T17:58:00.000Z"}
+}

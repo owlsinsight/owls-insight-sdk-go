@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -157,6 +158,19 @@ func TestRequestPaths(t *testing.T) {
 		{func() error { _, err := c.GetV2(ctx, "fanduel", "soccer", "epl"); return err }, "/api/v2/fanduel/soccer?league=epl"},
 		{func() error { _, err := c.GetV2(ctx, "4casters", "nba", ""); return err }, "/api/v2/4casters/nba"},
 		{func() error { _, err := c.GetV2Leagues(ctx, "draftkings", "soccer"); return err }, "/api/v2/draftkings/soccer/leagues"},
+		// 888sport: a book key that starts with a digit, single-league and multi-league sports.
+		{func() error { _, err := c.GetV2(ctx, "888sport", "nfl", ""); return err }, "/api/v2/888sport/nfl"},
+		{func() error { _, err := c.GetV2(ctx, "888sport", "soccer", "england-premier-league"); return err },
+			"/api/v2/888sport/soccer?league=england-premier-league"},
+		{func() error { _, err := c.GetV2Leagues(ctx, "888sport", "soccer"); return err }, "/api/v2/888sport/soccer/leagues"},
+		{func() error {
+			_, err := c.GetHistorySplits(ctx, HistorySplitsParams{Sport: "nfl", StartDate: "2026-09-29", EndDate: "2026-09-30", Limit: 5})
+			return err
+		}, "/api/v1/history/splits?endDate=2026-09-30&limit=5&sport=nfl&startDate=2026-09-29"},
+		{func() error {
+			_, err := c.GetHistorySplits(ctx, HistorySplitsParams{EventID: "nfl:Dallas Cowboys@Green Bay Packers-20261004", Book: "betmgm", Offset: 100})
+			return err
+		}, "/api/v1/history/splits?book=betmgm&eventId=nfl%3ADallas+Cowboys%40Green+Bay+Packers-20261004&offset=100"},
 		{func() error { _, err := c.GetScores(ctx, ""); return err }, "/api/v1/scores/live"},
 		{func() error { _, err := c.GetScores(ctx, "mlb"); return err }, "/api/v1/mlb/scores/live"},
 		{func() error {
@@ -790,6 +804,191 @@ func TestIterHistoryStopsAndOptions(t *testing.T) {
 			t.Fatalf("%d errors, %d rows, %d requests", errs, rows, api.count())
 		}
 	})
+}
+
+func TestHistorySplits(t *testing.T) {
+	t.Run("rows with absent markets and fields", func(t *testing.T) {
+		api := newFakeAPI(t, ok(fixture(t, "history-splits.json")))
+		res, err := testClient(t, api.URL).GetHistorySplits(context.Background(),
+			HistorySplitsParams{Sport: "nfl", StartDate: "2026-09-29", EndDate: "2026-09-30", Limit: 5})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !isHistoryPath(api.req(0).Path) {
+			t.Errorf("%s does not go through the history gate", api.req(0).Path)
+		}
+		d := res.Data
+		if !*res.Success || d == nil || *d.Sport != "nfl" || d.EventID != nil || len(d.Splits) != 3 {
+			t.Fatalf("decoded %+v / %+v", res, d)
+		}
+		if *d.Window.Start != "2026-09-29" || *d.Window.End != "2026-09-30" ||
+			*d.Pagination.Total != 3 || *d.Pagination.Limit != 5 || *d.Pagination.HasMore {
+			t.Errorf("window %+v pagination %+v", d.Window, d.Pagination)
+		}
+
+		dk := d.Splits[0]
+		if *dk.Book != "dk" || *dk.Title != "DraftKings" || *dk.RecordedAt != "2026-09-29T14:00:00.000Z" ||
+			*dk.EventID != "nfl:Dallas Cowboys@Green Bay Packers-20261004" || *dk.Sport != "nfl" {
+			t.Errorf("dk row %+v", dk)
+		}
+		if *dk.Spread.AwayLine != 3.5 || *dk.Spread.HomeHandlePct != 59 || *dk.Total.Line != 47.5 ||
+			*dk.Total.UnderBetsPct != 30 || *dk.Moneyline.HomePrice != -175 || *dk.Moneyline.AwayHandlePct != 22 {
+			t.Errorf("dk markets %+v %+v %+v", dk.Spread, dk.Total, dk.Moneyline)
+		}
+
+		// BetMGM publishes tickets only: no handle fields, and no total at that read.
+		mgm := d.Splits[1]
+		if *mgm.Book != "betmgm" || *mgm.Title != "BetMGM" || mgm.Total != nil {
+			t.Errorf("betmgm row %+v", mgm)
+		}
+		if mgm.Spread.AwayHandlePct != nil || mgm.Spread.HomeHandlePct != nil ||
+			mgm.Moneyline.AwayHandlePct != nil || mgm.Moneyline.HomeHandlePct != nil {
+			t.Errorf("betmgm handle fields were invented: %+v %+v", mgm.Spread, mgm.Moneyline)
+		}
+		if *mgm.Spread.AwayBetsPct != 44 || *mgm.Spread.HomeBetsPct != 56 || *mgm.Moneyline.HomeBetsPct != 100 {
+			t.Errorf("betmgm ticket fields %+v %+v", mgm.Spread, mgm.Moneyline)
+		}
+		// CONTROL: a 0 the API sent is kept as a 0, so nil above means absent, not zero.
+		if mgm.Moneyline.AwayBetsPct == nil || *mgm.Moneyline.AwayBetsPct != 0 {
+			t.Errorf("an explicit 0 was lost: %v", mgm.Moneyline.AwayBetsPct)
+		}
+
+		// A row with one market, and only some of its fields.
+		circa := d.Splits[2]
+		if circa.Spread != nil || circa.Moneyline != nil || *circa.Total.Line != 47 || *circa.Total.OverHandlePct != 55 ||
+			circa.Total.UnderHandlePct != nil || circa.Total.OverBetsPct != nil || circa.Total.UnderBetsPct != nil {
+			t.Errorf("circa row %+v total %+v", circa, circa.Total)
+		}
+	})
+	t.Run("an eventId query echoes the id and has no window", func(t *testing.T) {
+		const id = "nfl:Dallas Cowboys@Green Bay Packers-20261004"
+		api := newFakeAPI(t, ok(`{"success": true, "data": {"eventId": "`+id+`", "splits": [],
+			"pagination": {"total": 0, "limit": 100, "offset": 0, "hasMore": false}}}`))
+		res, err := testClient(t, api.URL).GetHistorySplits(context.Background(), HistorySplitsParams{EventID: id})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q, _ := url.ParseQuery(api.req(0).Query); q.Get("eventId") != id || len(q) != 1 {
+			t.Errorf("query %s", api.req(0).Query)
+		}
+		if *res.Data.EventID != id || res.Data.Sport != nil || res.Data.Window != nil || len(res.Data.Splits) != 0 {
+			t.Errorf("data %+v", res.Data)
+		}
+	})
+	t.Run("refusals are APIErrors", func(t *testing.T) {
+		cases := []struct {
+			status   int
+			header   http.Header
+			body     string
+			sentinel error
+			code     string
+			retry    time.Duration
+		}{
+			{429, http.Header{"Retry-After": {"4"}},
+				`{"success":false,"retryAfterSeconds":4,"scope":"history","tier":"mvp","error":"History concurrency limit exceeded","code":"HISTORY_CONCURRENCY","limit":3,"current":3}`,
+				ErrRateLimited, "HISTORY_CONCURRENCY", 4 * time.Second},
+			{503, http.Header{"Retry-After": {"2"}},
+				`{"success":false,"error":"Temporarily unavailable: rate limit system","retryAfterSeconds":2}`,
+				ErrServiceBusy, "SERVICE_BUSY", 2 * time.Second},
+			{403, nil, `{"error":"Upgrade required","message":"Historical betting splits require an MVP subscription.","requiredTier":"mvp"}`,
+				ErrForbidden, "FORBIDDEN", 0},
+			{400, nil, `{"success":false,"error":"Querying by sport alone is too broad. Add startDate to narrow the query."}`,
+				nil, "", 0},
+		}
+		for _, tc := range cases {
+			api := newFakeAPI(t, func(*http.Request, int) (int, http.Header, string) { return tc.status, tc.header, tc.body })
+			_, err := testClient(t, api.URL).GetHistorySplits(context.Background(), HistorySplitsParams{Sport: "nfl"})
+			var ae *APIError
+			if !errors.As(err, &ae) || ae.Status != tc.status || ae.Code != tc.code || ae.RetryAfter != tc.retry {
+				t.Errorf("%d: err %v (%+v)", tc.status, err, ae)
+				continue
+			}
+			if tc.sentinel != nil && !errors.Is(err, tc.sentinel) {
+				t.Errorf("%d: errors.Is(%v) = false", tc.status, tc.sentinel)
+			}
+			if tc.status == 400 && !strings.Contains(ae.Message, "too broad") {
+				t.Errorf("400 message %q", ae.Message)
+			}
+		}
+	})
+	t.Run("WithRetry retries a history 429 after Retry-After", func(t *testing.T) {
+		api := newFakeAPI(t, func(_ *http.Request, n int) (int, http.Header, string) {
+			if n == 1 {
+				return 429, http.Header{"Retry-After": {"0.01"}}, `{"code":"HISTORY_CONCURRENCY"}`
+			}
+			return 200, nil, `{"success": true, "data": {"splits": []}}`
+		})
+		c := testClient(t, api.URL, WithRetry(RetryPolicy{MaxRetries: 1}))
+		if res, err := c.GetHistorySplits(context.Background(), HistorySplitsParams{EventID: "e"}); err != nil || !*res.Success || api.count() != 2 {
+			t.Fatalf("%+v %v after %d requests", res, err, api.count())
+		}
+	})
+}
+
+func TestSplitsBetMGMTicketsOnly(t *testing.T) {
+	res, err := testClient(t, newFakeAPI(t, ok(fixture(t, "splits-board.json"))).URL).GetSplits(context.Background(), "nfl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Data) != 1 || len(res.Data[0].Splits) != 2 || len(res.Meta.Books) != 3 || res.Meta.Books[2] != "betmgm" || *res.Meta.Status != "ok" {
+		t.Fatalf("decoded %+v / %+v", res.Data, res.Meta)
+	}
+	dk, mgm := res.Data[0].Splits[0], res.Data[0].Splits[1]
+	if *mgm.Book != "betmgm" || *mgm.Title != "BetMGM" || *mgm.AsOf != "2026-09-30T17:58:00.000Z" {
+		t.Errorf("betmgm entry %+v", mgm)
+	}
+	if mgm.Spread.AwayHandlePct != nil || mgm.Spread.HomeHandlePct != nil || mgm.Total.OverHandlePct != nil ||
+		mgm.Total.UnderHandlePct != nil || mgm.Moneyline.AwayHandlePct != nil || mgm.Moneyline.HomeHandlePct != nil {
+		t.Errorf("betmgm handle fields were invented: %+v %+v %+v", mgm.Spread, mgm.Total, mgm.Moneyline)
+	}
+	if *mgm.Spread.AwayBetsPct != 44 || *mgm.Total.OverBetsPct != 61 || *mgm.Total.Line != 47.5 || *mgm.Moneyline.HomeBetsPct != 70 {
+		t.Errorf("betmgm ticket fields %+v %+v %+v", mgm.Spread, mgm.Total, mgm.Moneyline)
+	}
+	// CONTROL: the DraftKings entry next to it does carry handle percentages.
+	if dk.Spread.AwayHandlePct == nil || *dk.Spread.AwayHandlePct != 41 || dk.Total.OverHandlePct == nil || dk.Moneyline.HomeHandlePct == nil {
+		t.Errorf("control: dk handle fields %+v %+v %+v", dk.Spread, dk.Total, dk.Moneyline)
+	}
+}
+
+func TestV2EightEightEightSport(t *testing.T) {
+	// 888sport keys data by its own event id; each value is the event as 888sport sent it.
+	const event = `{"id": 1025011234, "name": "Dallas Cowboys @ Green Bay Packers", "start_time": "2026-10-04T20:25:00Z",
+		"markets": [{"name": "Money Line", "selections": [{"name": "Dallas Cowboys", "decimal_price": 2.5, "fraction_price": "6/4"}]}]}`
+	board := `{"success": true, "sport": "nfl", "league": "nfl", "marketCount": 1, "etag": "\"e1\"",
+		"data": {"1025011234": ` + event + `},
+		"meta": {"source": "888sport-v2", "cached": true, "status": "stale", "ageSeconds": 151, "cacheTimestamp": "2026-09-30T18:00:00.000Z", "timestamp": "2026-09-30T18:02:31.000Z"}}`
+	api := newFakeAPI(t, ok(board))
+	res, err := testClient(t, api.URL).GetV2(context.Background(), "888sport", "nfl", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if api.req(0).Path != "/api/v2/888sport/nfl" || api.req(0).Query != "" {
+		t.Errorf("requested %s?%s", api.req(0).Path, api.req(0).Query)
+	}
+	var events map[string]json.RawMessage
+	if err := json.Unmarshal(*res.Data, &events); err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || string(events["1025011234"]) != event {
+		t.Errorf("data = %s, want the event verbatim under its id", *res.Data)
+	}
+	if *res.Meta.Source != "888sport-v2" || *res.Meta.Status != "stale" || *res.Meta.AgeSeconds != 151 || *res.Etag != `"e1"` {
+		t.Errorf("envelope %+v / %+v", res, res.Meta)
+	}
+
+	leagues := `{"success": true, "sport": "soccer", "leagueCount": 2,
+		"leagues": [{"leagueKey": "england-premier-league", "leagueName": "Premier League", "marketCount": 10, "updatedAt": 1759255351000},
+			{"leagueKey": "spain-la-liga", "leagueName": "La Liga", "marketCount": 9, "updatedAt": 1759255351000}],
+		"meta": {"source": "888sport-v2"}}`
+	api = newFakeAPI(t, ok(leagues))
+	idx, err := testClient(t, api.URL).GetV2Leagues(context.Background(), "888sport", "soccer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if api.req(0).Path != "/api/v2/888sport/soccer/leagues" || *idx.LeagueCount != 2 || len(idx.Leagues) != 2 ||
+		*idx.Leagues[0].LeagueKey != "england-premier-league" || *idx.Leagues[1].MarketCount != 9 {
+		t.Errorf("leagues %+v from %s", idx, api.req(0).Path)
+	}
 }
 
 func TestLenientDecoding(t *testing.T) {

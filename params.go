@@ -284,6 +284,26 @@ type PublicBettingParams struct {
 	Offset    int
 }
 
+// HistorySplitsParams selects GetHistorySplits: one game by EventID, or a sport's
+// games by Sport and StartDate over a window of at most 7 days.
+type HistorySplitsParams struct {
+	// EventID is the game's eventId on GetOdds (the EventID of a SplitsGame).
+	EventID string
+	// Sport is required without EventID: nfl, ncaaf, mlb, nba, nhl, ncaab or wnba.
+	Sport string
+	// Book is a book key as on the live splits: dk, circa or betmgm.
+	Book string
+	// StartDate (YYYY-MM-DD, UTC, on the time each reading was recorded) is
+	// required with Sport.
+	StartDate string
+	// EndDate (YYYY-MM-DD, UTC) is inclusive. With Sport the window is at most 7
+	// days and defaults to 7 days from StartDate.
+	EndDate string
+	// Limit is the rows per page: default 100, at most 500.
+	Limit  int
+	Offset int
+}
+
 // CS2MatchesParams filters GetCS2Matches.
 type CS2MatchesParams struct {
 	Team      string
