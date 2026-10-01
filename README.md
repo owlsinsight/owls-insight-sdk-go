@@ -195,10 +195,7 @@ are nil when absent, and enums are plain strings, so a new value never breaks de
 Unknown fields are ignored. A value whose JSON type does not match its field is left
 unset instead of failing the call. Union fields, fields whose type varies (a number or
 a string, such as `Outcome.SelectionID`) and raw book data are `json.RawMessage`.
-`owls.Ptr(v)` builds a pointer for the optional inputs. The models of `GetDaySchedule`
-(`DayScheduleResponse`, `DayScheduleGame`, `DayScheduleCompetitor` and the other
-`DaySchedule*` types) are written by hand, as the generator will produce them, until
-the vendored spec describes that endpoint.
+`owls.Ptr(v)` builds a pointer for the optional inputs.
 
 `owls.Decode[T](raw)` decodes any payload the same way, for example a WebSocket event:
 `n, err := owls.Decode[owls.ServerNotice](raw)`.
