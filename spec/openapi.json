@@ -11915,7 +11915,7 @@
   "info": {
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
-    "version": "0.70.0",
+    "version": "0.71.0",
     "x-owls-manifest-commit": "6fe0944a"
   },
   "openapi": "3.1.0",
