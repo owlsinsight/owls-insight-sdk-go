@@ -4,6 +4,41 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.2.0] - 2026-10-01
+
+### Added
+
+- `GetHistorySplits` for `GET /api/v1/history/splits` (MVP and above): how a game's
+  betting splits moved. Each row is one recorded reading of a book's handle and ticket
+  percentages on the spread, total and moneyline, with the line or price at that moment,
+  oldest first. Ask for one game by `EventID` (the `eventId` from `GetOdds`), or for a
+  sport by `Sport` and `StartDate` over at most 7 days; filter by `Book` and page with
+  `Limit` (at most 500) and `Offset`. Like the other history methods it counts against
+  the client-side history gate and uses the opt-in 429/503 retry. New types:
+  `HistorySplitsParams`, `HistorySplitsResponse` and `SplitsHistoryRow`.
+- `SplitsBookEntry.AsOf`: when that book's splits figures were read. The books are read
+  on different schedules, so two books on one game can show different times. Absent on
+  responses from before 2026-09-27.
+- 888sport, a new v2 book, works through `GetV2(ctx, "888sport", sport, league)` and
+  `GetV2Leagues` (soccer and tennis need a league). It is REST only and sends no
+  WebSocket event. No new method was needed: v2 book keys that start with a digit
+  (`4casters`, `888sport`) pass as the URL has them. It is now covered by tests, and
+  the README lists the REST-only v2 books.
+- BetMGM on the splits board: `GetSplits` can return `betmgm` entries (since
+  2026-09-29). BetMGM publishes ticket percentages only, so those entries have their
+  bets fields and nil handle fields, never 0. Treat any splits field as possibly absent.
+
+### Changed
+
+- Splits doc comments follow the API since 2026-09-27: `SplitsGame.EventID` is the
+  `eventId` that `GetOdds` gives the same game (before, it was an upstream game code
+  that did not match /odds), and `AwayTeam` and `HomeTeam` are the /odds team names, so
+  splits join to odds on `EventID`. `SplitsResponse.Meta.AsOf` is the oldest of the
+  books' latest reads, `Meta.Books` lists the books on the board (it can be DraftKings
+  alone), and `Meta.Source` is a fixed legacy value: read the book set from `Meta.Books`.
+  `Meta.Status` and `Meta.PartialReason` now describe each book's latest read rather
+  than one fetch of the whole board.
+
 ## [0.1.2] - 2026-09-26
 
 ### Changed
