@@ -1700,6 +1700,31 @@ type HistoryPropsResponse struct {
 	Success *bool `json:"success,omitempty"`
 }
 
+// HistorySplitsResponse Response for GET /api/v1/history/splits. Rows are oldest first.
+type HistorySplitsResponse struct {
+	Data *struct {
+		// EventID Echoed when the request named an eventId.
+		EventID    *string `json:"eventId,omitempty"`
+		Pagination *struct {
+			HasMore *bool    `json:"hasMore,omitempty"`
+			Limit   *float64 `json:"limit,omitempty"`
+			Offset  *float64 `json:"offset,omitempty"`
+			Total   *float64 `json:"total,omitempty"`
+		} `json:"pagination,omitempty"`
+		Splits []SplitsHistoryRow `json:"splits,omitempty"`
+
+		// Sport Echoed when the request named a sport.
+		Sport *string `json:"sport,omitempty"`
+
+		// Window The UTC date window served (both ends inclusive), on a query by sport only.
+		Window *struct {
+			End   *string `json:"end,omitempty"`
+			Start *string `json:"start,omitempty"`
+		} `json:"window,omitempty"`
+	} `json:"data,omitempty"`
+	Success *bool `json:"success,omitempty"`
+}
+
 // HistoryStatsResponse defines model for HistoryStatsResponse.
 type HistoryStatsResponse struct {
 	Data *struct {
@@ -4434,7 +4459,10 @@ type SoccerScoreDetail struct {
 	} `json:"regulation,omitempty"`
 }
 
-// SplitsBookEntry One book's figures for a game. A market the book has not published for the game is absent, not zero.
+// SplitsBookEntry One book's figures for a game. A market the book has not published for the game is
+// absent, not zero, and so is any percentage a book does not publish: BetMGM publishes
+// ticket percentages only, so a `betmgm` entry carries the `*_bets_pct` fields and no
+// `*_handle_pct` fields. Treat every field below `book`/`title` as possibly absent.
 type SplitsBookEntry struct {
 	// AsOf ISO 8601 time this book's figures were read. The books are read on different
 	// schedules, so two books on one game can show different times. DraftKings figures
@@ -4443,7 +4471,8 @@ type SplitsBookEntry struct {
 	// Absent on responses from before 2026-09-27.
 	AsOf *string `json:"as_of,omitempty"`
 
-	// Book Book key: 'dk' (DraftKings) or 'circa' (Circa Sports).
+	// Book Book key: 'dk' (DraftKings), 'betmgm' (BetMGM, tickets only, since 2026-09-29) or
+	// 'circa' (Circa Sports). Other keys may appear as books are added.
 	Book      *string `json:"book,omitempty"`
 	Moneyline *struct {
 		AwayBetsPct   *float64 `json:"away_bets_pct,omitempty"`
@@ -4462,7 +4491,7 @@ type SplitsBookEntry struct {
 		HomeLine      *float64 `json:"home_line,omitempty"`
 	} `json:"spread,omitempty"`
 
-	// Title Display name: 'DraftKings' or 'Circa Sports'.
+	// Title Display name: 'DraftKings', 'BetMGM' or 'Circa Sports'.
 	Title *string `json:"title,omitempty"`
 	Total *struct {
 		Line           *float64 `json:"line,omitempty"`
@@ -4495,6 +4524,52 @@ type SplitsGame struct {
 	Splits   []SplitsBookEntry `json:"splits,omitempty"`
 }
 
+// SplitsHistoryRow One recorded reading of one book's splits for one game. Same shape as a
+// SplitsBookEntry on the live board, plus the game's `event_id` and `sport`, with
+// `recorded_at` where the live board has `as_of`. A row is written when the book's
+// figures (percentages, line or price) change, and again after 24 hours without a
+// change, so consecutive rows can carry the same figures.
+//
+// A market absent from a row was not quoted at that read, and a percentage absent from
+// a market is not zero (BetMGM rows carry ticket percentages only).
+type SplitsHistoryRow struct {
+	// Book Book key: 'dk', 'circa' or 'betmgm'.
+	Book *string `json:"book,omitempty"`
+
+	// EventID The game's /odds eventId, the same as SplitsGame.event_id.
+	EventID   *string `json:"event_id,omitempty"`
+	Moneyline *struct {
+		AwayBetsPct   *float64 `json:"away_bets_pct,omitempty"`
+		AwayHandlePct *float64 `json:"away_handle_pct,omitempty"`
+		AwayPrice     *float64 `json:"away_price,omitempty"`
+		HomeBetsPct   *float64 `json:"home_bets_pct,omitempty"`
+		HomeHandlePct *float64 `json:"home_handle_pct,omitempty"`
+		HomePrice     *float64 `json:"home_price,omitempty"`
+	} `json:"moneyline,omitempty"`
+
+	// RecordedAt ISO 8601 time this reading was recorded.
+	RecordedAt *string `json:"recorded_at,omitempty"`
+	Sport      *string `json:"sport,omitempty"`
+	Spread     *struct {
+		AwayBetsPct   *float64 `json:"away_bets_pct,omitempty"`
+		AwayHandlePct *float64 `json:"away_handle_pct,omitempty"`
+		AwayLine      *float64 `json:"away_line,omitempty"`
+		HomeBetsPct   *float64 `json:"home_bets_pct,omitempty"`
+		HomeHandlePct *float64 `json:"home_handle_pct,omitempty"`
+		HomeLine      *float64 `json:"home_line,omitempty"`
+	} `json:"spread,omitempty"`
+
+	// Title Display name: 'DraftKings', 'Circa Sports' or 'BetMGM'.
+	Title *string `json:"title,omitempty"`
+	Total *struct {
+		Line           *float64 `json:"line,omitempty"`
+		OverBetsPct    *float64 `json:"over_bets_pct,omitempty"`
+		OverHandlePct  *float64 `json:"over_handle_pct,omitempty"`
+		UnderBetsPct   *float64 `json:"under_bets_pct,omitempty"`
+		UnderHandlePct *float64 `json:"under_handle_pct,omitempty"`
+	} `json:"total,omitempty"`
+}
+
 // SplitsResponse defines model for SplitsResponse.
 type SplitsResponse struct {
 	Data []SplitsGame `json:"data,omitempty"`
@@ -4508,8 +4583,9 @@ type SplitsResponse struct {
 		// Since API v2.362.0.
 		AsOf *string `json:"as_of,omitempty"`
 
-		// Books The books on this board: 'draftkings' and, while it is offered, 'circa'. Can be
-		// `['draftkings']` alone. (Each split's own `book` key is 'dk' or 'circa'.)
+		// Books The books on this board: 'draftkings', 'betmgm' and, while it is offered, 'circa'.
+		// Can be `['draftkings']` alone. (Each split's own `book` key is 'dk', 'betmgm' or
+		// 'circa'.) Read the book set from here, never from a fixed list: books are added.
 		Books []string `json:"books,omitempty"`
 
 		// PartialReason Only when `status` is 'partial': 'upstream_limited' = the Circa figures were withheld;

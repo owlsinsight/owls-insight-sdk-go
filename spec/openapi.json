@@ -3842,6 +3842,84 @@
           "data"
         ]
       },
+      "HistorySplitsResponse": {
+        "description": "Response for GET /api/v1/history/splits. Rows are oldest first.",
+        "properties": {
+          "data": {
+            "properties": {
+              "eventId": {
+                "description": "Echoed when the request named an eventId.",
+                "type": "string"
+              },
+              "pagination": {
+                "properties": {
+                  "hasMore": {
+                    "type": "boolean"
+                  },
+                  "limit": {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  "offset": {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  "total": {
+                    "format": "double",
+                    "type": "number"
+                  }
+                },
+                "type": "object",
+                "x-owls-required": [
+                  "total",
+                  "limit",
+                  "offset",
+                  "hasMore"
+                ]
+              },
+              "splits": {
+                "items": {
+                  "$ref": "#/components/schemas/SplitsHistoryRow"
+                },
+                "type": "array"
+              },
+              "sport": {
+                "description": "Echoed when the request named a sport.",
+                "type": "string"
+              },
+              "window": {
+                "description": "The UTC date window served (both ends inclusive), on a query by sport only.",
+                "properties": {
+                  "end": {
+                    "type": "string"
+                  },
+                  "start": {
+                    "type": "string"
+                  }
+                },
+                "type": "object",
+                "x-owls-required": [
+                  "start",
+                  "end"
+                ]
+              }
+            },
+            "type": "object",
+            "x-owls-required": [
+              "splits",
+              "pagination"
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success",
+          "data"
+        ]
+      },
       "HistoryStatsResponse": {
         "properties": {
           "data": {
@@ -9762,14 +9840,14 @@
         "type": "object"
       },
       "SplitsBookEntry": {
-        "description": "One book's figures for a game. A market the book has not published for the game is absent, not zero.",
+        "description": "One book's figures for a game. A market the book has not published for the game is\nabsent, not zero, and so is any percentage a book does not publish: BetMGM publishes\nticket percentages only, so a `betmgm` entry carries the `*_bets_pct` fields and no\n`*_handle_pct` fields. Treat every field below `book`/`title` as possibly absent.",
         "properties": {
           "as_of": {
             "description": "ISO 8601 time this book's figures were read. The books are read on different\nschedules, so two books on one game can show different times. DraftKings figures\nrun until kickoff; the last pre-game DraftKings figures stay on the board for up to\n4 hours after kickoff, with the `as_of` of that last read.\nAbsent on responses from before 2026-09-27.",
             "type": "string"
           },
           "book": {
-            "description": "Book key: 'dk' (DraftKings) or 'circa' (Circa Sports).",
+            "description": "Book key: 'dk' (DraftKings), 'betmgm' (BetMGM, tickets only, since 2026-09-29) or\n'circa' (Circa Sports). Other keys may appear as books are added.",
             "type": "string"
           },
           "moneyline": {
@@ -9831,7 +9909,7 @@
             "type": "object"
           },
           "title": {
-            "description": "Display name: 'DraftKings' or 'Circa Sports'.",
+            "description": "Display name: 'DraftKings', 'BetMGM' or 'Circa Sports'.",
             "type": "string"
           },
           "total": {
@@ -9895,6 +9973,121 @@
           "splits"
         ]
       },
+      "SplitsHistoryRow": {
+        "description": "One recorded reading of one book's splits for one game. Same shape as a\n{@link SplitsBookEntry} on the live board, plus the game's `event_id` and `sport`, with\n`recorded_at` where the live board has `as_of`. A row is written when the book's\nfigures (percentages, line or price) change, and again after 24 hours without a\nchange, so consecutive rows can carry the same figures.\n\nA market absent from a row was not quoted at that read, and a percentage absent from\na market is not zero (BetMGM rows carry ticket percentages only).",
+        "properties": {
+          "book": {
+            "description": "Book key: 'dk', 'circa' or 'betmgm'.",
+            "type": "string"
+          },
+          "event_id": {
+            "description": "The game's /odds eventId, the same as {@link SplitsGame.event_id}.",
+            "type": "string"
+          },
+          "moneyline": {
+            "properties": {
+              "away_bets_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "away_handle_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "away_price": {
+                "format": "double",
+                "type": "number"
+              },
+              "home_bets_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "home_handle_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "home_price": {
+                "format": "double",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "recorded_at": {
+            "description": "ISO 8601 time this reading was recorded.",
+            "type": "string"
+          },
+          "sport": {
+            "type": "string"
+          },
+          "spread": {
+            "properties": {
+              "away_bets_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "away_handle_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "away_line": {
+                "format": "double",
+                "type": "number"
+              },
+              "home_bets_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "home_handle_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "home_line": {
+                "format": "double",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "title": {
+            "description": "Display name: 'DraftKings', 'Circa Sports' or 'BetMGM'.",
+            "type": "string"
+          },
+          "total": {
+            "properties": {
+              "line": {
+                "format": "double",
+                "type": "number"
+              },
+              "over_bets_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "over_handle_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "under_bets_pct": {
+                "format": "double",
+                "type": "number"
+              },
+              "under_handle_pct": {
+                "format": "double",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "event_id",
+          "sport",
+          "book",
+          "title",
+          "recorded_at"
+        ]
+      },
       "SplitsResponse": {
         "properties": {
           "data": {
@@ -9915,7 +10108,7 @@
                 "type": "string"
               },
               "books": {
-                "description": "The books on this board: 'draftkings' and, while it is offered, 'circa'. Can be\n`['draftkings']` alone. (Each split's own `book` key is 'dk' or 'circa'.)",
+                "description": "The books on this board: 'draftkings', 'betmgm' and, while it is offered, 'circa'.\nCan be `['draftkings']` alone. (Each split's own `book` key is 'dk', 'betmgm' or\n'circa'.) Read the book set from here, never from a fixed list: books are added.",
                 "items": {
                   "type": "string"
                 },
@@ -11303,7 +11496,7 @@
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
     "version": "0.69.0",
-    "x-owls-manifest-commit": "5ac0cb7f"
+    "x-owls-manifest-commit": "a5b18f78"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -11444,7 +11637,7 @@
     },
     "/api/v1/history/closing-odds": {
       "get": {
-        "description": "Returns historical closing odds per sportsbook: moneyline, spread and total at close for archived games, with the provenance of each row.\n\nEither eventId or sport is required, and sport alone is rejected as too broad: add startDate, book, source or season.\n\nRows from different sources coexist for the same event and book and are not interchangeable: published-close is the book's final published closing price, live-derived is the last snapshot captured (only as close to the close as capture ran), and archive-1, archive-2 and archive-3 are third-party historical archives kept distinct because several can coexist for one event and book.\n\nThree-way moneylines carry a draw key; two-outcome sports omit the key entirely rather than sending null.\n\nPass the event's eventId field, the {sport}:{away}@{home}-{YYYYMMDD} form. The numeric id field beside it is the sportsbook's own and returns 400 here rather than an empty result. The date in eventId is the UTC start date, except for MLB games starting from 2026-10-11T10:00Z, which carry the US Eastern date; earlier MLB games keep the UTC date. Before that change, an MLB game starting at 8 PM ET or later and the next day's game between the same teams could share one eventId. NBA and NHL stay UTC-dated. NBA has about one pair of games a season sharing an eventId. NHL has about one pair a season of the same teams on one date, home and away swapped: two eventIds, but the /api/v1/history endpoints match both orderings, so each id returns both games' rows.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.",
+        "description": "Returns historical closing odds per sportsbook: moneyline, spread and total at close for archived games, with the provenance of each row.\n\nEither eventId or sport is required, and sport alone is rejected as too broad: add startDate, book, source or season.\n\nRows from different sources coexist for the same event and book and are not interchangeable: published-close is the book's final published closing price, live-derived is the last snapshot captured at or before the start time (only as close to the close as capture ran) and exists only for games with a known start time from 2026-09-16, and archive-1, archive-2 and archive-3 are third-party historical archives kept distinct because several can coexist for one event and book.\n\nThree-way moneylines carry a draw key; two-outcome sports omit the key entirely rather than sending null.\n\nPass the event's eventId field, the {sport}:{away}@{home}-{YYYYMMDD} form. The numeric id field beside it is the sportsbook's own and returns 400 here rather than an empty result. The date in eventId is the UTC start date, except for MLB games starting from 2026-10-11T10:00Z, which carry the US Eastern date; earlier MLB games keep the UTC date. Before that change, an MLB game starting at 8 PM ET or later and the next day's game between the same teams could share one eventId. NBA and NHL stay UTC-dated. NBA has about one pair of games a season sharing an eventId. NHL has about one pair a season of the same teams on one date, home and away swapped: two eventIds, but the /api/v1/history endpoints match both orderings, so each id returns both games' rows.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.",
         "operationId": "getClosingOdds",
         "parameters": [
           {
@@ -11871,7 +12064,7 @@
     },
     "/api/v1/history/games": {
       "get": {
-        "description": "Lists archived games with scores and the number of odds, props and player-stat rows held for each.\n\nAt least one of sport, season, team or startDate is required.\n\ncommenceTime is the scheduled start in UTC. It is present for games archived since it began to be recorded and absent otherwise. To keep only pre-game odds, take the /history/odds rows whose recordedAt is before it.\n\nhomeScore and awayScore are present when the final score was captured at archive, absent otherwise; periodScores, when present, lists each period by label (Q1, OT1, or the inning or period number) with both sides.\n\nhomeTeamId and awayTeamId are the same stable roster ids as home_team_id and away_team_id on the odds endpoints, derived from the archived names; absent when a name is not on our roster.\n\noddsSnapshots counts every stored row, including rows /history/odds filters out for unusable prices, so it can exceed what that endpoint returns.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.",
+        "description": "Lists archived games with scores and the number of odds, props and player-stat rows held for each.\n\nAt least one of sport, season, team or startDate is required.\n\ncommenceTime is the scheduled start in UTC. Present when recorded; /history/odds rows with recordedAt before it are pre-game.\n\nhomeScore and awayScore are present when the final score was captured at archive, absent otherwise; periodScores, when present, lists each period by label (Q1, OT1, or the inning or period number) with both sides.\n\nhomeTeamId and awayTeamId are the roster ids the odds endpoints use (home_team_id, away_team_id); absent when a name is not on our roster.\n\noddsSnapshots counts every stored row, including rows /history/odds filters out for unusable prices, so it can exceed what that endpoint returns.\n\nplayerStats: rows on /history/stats. gradedResults (live-archived games): graded results on /api/v1/{sport}/props/results?game_id=.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.",
         "operationId": "getHistoryGames",
         "parameters": [
           {
@@ -12531,6 +12724,88 @@
         ],
         "x-owls-access": "MVP and above",
         "x-owls-sdk-method": "getPublicBetting"
+      }
+    },
+    "/api/v1/history/splits": {
+      "get": {
+        "description": "Returns the movement history of betting splits: the recorded readings of the handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of a game, per book, with the line or price shown at that moment.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.\n\nRows have the shape of the entries on /api/v1/{sport}/splits, oldest first, with recorded_at where the live board has as_of; a row is written when a book's figures (percentages, line or price) change, and again after 24 hours without a change, so consecutive rows for a game and book can carry the same figures. Either eventId or sport is required; with sport, startDate is required and the window is at most 7 days.\n\nA market absent from a row was not quoted at that read; a percentage absent from a market (some books publish tickets only) is not zero.",
+        "operationId": "getHistorySplits",
+        "parameters": [
+          {
+            "description": "Game identifier: the eventId of the game on /api/v1/{sport}/odds (the event_id on /api/v1/{sport}/splits). Optional when sport plus startDate is given.",
+            "in": "query",
+            "name": "eventId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required when eventId is omitted. One of the splits sports (nfl, ncaaf, mlb, nba, nhl, ncaab, wnba).",
+            "in": "query",
+            "name": "sport",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Book key as on the live splits (dk, circa, betmgm). Optional.",
+            "in": "query",
+            "name": "book",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD (UTC), on the time each movement was recorded. Required with sport.",
+            "in": "query",
+            "name": "startDate",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD (UTC), inclusive. With sport the window is at most 7 days and defaults to 7 days from startDate.",
+            "in": "query",
+            "name": "endDate",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Rows per page, max 500, default 100.",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of rows to skip, for pagination.",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistorySplitsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Returns the movement history of betting splits: the recorded readings of the handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of a game, per book, with the line or price shown at that moment.",
+        "tags": [
+          "Historical data"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "getHistorySplits"
       }
     },
     "/api/v1/history/stats": {
@@ -13455,7 +13730,7 @@
             }
           },
           {
-            "description": "Filter by player name (partial, case-insensitive match).",
+            "description": "Filter by player name: a partial match that ignores case, accents and apostrophes, reads other punctuation as a space and joins initials, so RJ Harvey finds R. J Harvey.",
             "in": "query",
             "name": "player",
             "schema": {
@@ -13615,7 +13890,7 @@
             }
           },
           {
-            "description": "Filter by player name (partial, case-insensitive match).",
+            "description": "Filter by player name: a partial match that ignores case, accents and apostrophes, reads other punctuation as a space and joins initials, so RJ Harvey finds R. J Harvey.",
             "in": "query",
             "name": "player",
             "schema": {
@@ -13950,7 +14225,7 @@
             }
           },
           {
-            "description": "Restrict to one player (case-insensitive substring match on the stored name).",
+            "description": "Restrict to one player: a partial match on the stored name, with the same case, accent and punctuation rules as /props.",
             "in": "query",
             "name": "player",
             "schema": {
@@ -14197,7 +14472,7 @@
             }
           },
           {
-            "description": "Filter by player name (partial, case-insensitive match).",
+            "description": "Filter by player name: a partial match that ignores case, accents and apostrophes, reads other punctuation as a space and joins initials, so RJ Harvey finds R. J Harvey.",
             "in": "query",
             "name": "player",
             "schema": {
@@ -14552,7 +14827,8 @@
                 "nhl",
                 "soccer",
                 "table_tennis",
-                "tennis"
+                "tennis",
+                "wnba"
               ]
             }
           }
@@ -14599,7 +14875,8 @@
                 "nhl",
                 "soccer",
                 "table_tennis",
-                "tennis"
+                "tennis",
+                "wnba"
               ]
             }
           }
@@ -14804,7 +15081,7 @@
     },
     "/api/v1/{sport}/splits": {
       "get": {
-        "description": "Returns betting splits for a sport: handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of each game, per book, from DraftKings and, while it is offered, Circa Sports.\n\nevent_id is the eventId /api/v1/{sport}/odds gives the same game ({sport}:{Away}@{Home}-{YYYYMMDD}), and home_team and away_team are the /odds team names, so splits join to odds on event_id. A game not on /odds gets an id built the same way from its scheduled start. Both games of a doubleheader share one event_id, as on /odds.\n\nEach entry in splits carries as_of, when that book's figures were read. The books are read on different schedules, so two books on one game can show different times.\n\nDraftKings figures run until kickoff. After kickoff the last pre-game DraftKings figures stay on the board for up to 4 hours, with the as_of of that last read.\n\nA market a book has not published for a game is absent from that game rather than reported as zero.\n\nmeta.books lists the books on the board. meta.as_of is the oldest of their latest reads; a split kept after kickoff carries its own, older as_of. meta.source is a fixed value; read meta.books for the books.\n\nmeta.status is \"ok\" when every book has a recent read, \"partial\" when one does not (data may then be a subset) and \"stale\" when no book has one and the last full board, at most 12 hours old, is served instead; meta.age_seconds is then present. meta.partial_reason says which: \"book_unavailable\" (that book's figures could not be read; it is absent from meta.books), \"upstream_limited\" (the Circa figures were withheld) or \"upstream_paused\" (no book could be read and no board from the last 12 hours is available).",
+        "description": "Returns betting splits for a sport: handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of each game, per book, from DraftKings, BetMGM (tickets only) and Circa Sports.\n\nevent_id is the eventId /api/v1/{sport}/odds gives the same game ({sport}:{Away}@{Home}-{YYYYMMDD}), and home_team and away_team are the /odds team names, so splits join to odds on event_id. A game not on /odds gets an id built the same way from its scheduled start. Both games of a doubleheader share one event_id, as on /odds.\n\nEach entry in splits carries as_of, when that book's figures were read. The books are read on different schedules, so two books on one game can show different times.\n\nDraftKings figures run until kickoff. After kickoff the last pre-game DraftKings figures stay on the board for up to 4 hours, with the as_of of that last read.\n\nA market a book has not published for a game is absent from that game rather than reported as zero.\n\nmeta.books lists the books on the board. meta.as_of is the oldest of their latest reads; a split kept after kickoff carries its own, older as_of. meta.source is a fixed value; read meta.books for the books.\n\nmeta.status is \"ok\" when every book has a recent read, \"partial\" when one does not (data may then be a subset) and \"stale\" when no book has one and the last full board, at most 12 hours old, is served instead; meta.age_seconds is then present. meta.partial_reason says which: \"book_unavailable\" (that book's figures could not be read; it is absent from meta.books), \"upstream_limited\" (the Circa figures were withheld) or \"upstream_paused\" (no book could be read and no board from the last 12 hours is available).\n\nBetMGM publishes ticket percentages only, so its entries (book betmgm) carry the bets fields and no handle fields; a percentage absent from any book is not zero.",
         "operationId": "getSplits",
         "parameters": [
           {
@@ -14837,7 +15114,7 @@
             "description": "OK"
           }
         },
-        "summary": "Returns betting splits for a sport: handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of each game, per book, from DraftKings and, while it is offered, Circa Sports.",
+        "summary": "Returns betting splits for a sport: handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of each game, per book, from DraftKings, BetMGM (tickets only) and Circa Sports.",
         "tags": [
           "Betting splits"
         ],
@@ -15501,6 +15778,7 @@
               "type": "string",
               "x-extensible-enum": [
                 "4casters",
+                "888sport",
                 "ballybet",
                 "bet105",
                 "bet365",
@@ -15576,6 +15854,7 @@
               "type": "string",
               "x-extensible-enum": [
                 "4casters",
+                "888sport",
                 "ballybet",
                 "bet105",
                 "bet365",
@@ -15702,6 +15981,21 @@
         "wnba"
       ],
       "wsEvent": "4casters-v2-update"
+    },
+    {
+      "book": "888sport",
+      "sports": [
+        "mlb",
+        "nba",
+        "ncaab",
+        "ncaaf",
+        "nfl",
+        "nhl",
+        "soccer",
+        "tennis",
+        "wnba"
+      ],
+      "wsEvent": null
     },
     {
       "book": "ballybet",
