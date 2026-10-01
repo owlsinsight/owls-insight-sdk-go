@@ -4,6 +4,35 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.3.0] - 2026-10-01
+
+### Added
+
+- `GetDaySchedule` for `GET /api/v1/schedule` (every paying tier): every game of a
+  calendar day in a time zone, across NFL, college football, MLB, NBA, WNBA, NHL,
+  tennis, soccer and UFC. Each game has its start time, status, score and clock, both
+  sides, Kalshi win prices (and the draw price on soccer), the `eventId` that `GetOdds`
+  gives it when the game was found there (else nil), and its start time checked against
+  other sources. `DayScheduleParams` takes `Date` (YYYY-MM-DD in `TZ`, default today
+  there), `TZ` (an IANA zone, default America/New_York), `Days` (1 to 10, default 1)
+  and `Sports` (default every sport); the zero value sends no query. `Meta.Status`
+  (`ok`, `partial`, `stale` or `no-data`) says whether the answer is complete and
+  fresh. New types: `DayScheduleParams`, `DayScheduleResponse`, `DayScheduleGame`,
+  `DayScheduleCompetitor`, `DayScheduleMeta`, `DayScheduleStartCheck`,
+  `DayScheduleWindow` and `DayScheduleBuildWindow`, with `DayScheduleStatus` and
+  `DayScheduleStartCheckResult` as string aliases. `GetSchedule(ctx, sport)`, the
+  per-sport list of upcoming games, is unchanged.
+- The generated v2 subscription models follow the API description:
+  `Bet365V2BookSubscription` has an `Nfl` field and `BetOnlineV2BookSubscription` an
+  `Ncaaf` field. Nothing else needed to change for them: `Subscription.V2`, `GetV2` and
+  `GetV2Leagues` take the book and sport as strings.
+
+### Changed
+
+- The models are regenerated from the current API description (`spec/openapi.json`
+  and `spec/ws.json`), which brings the day schedule types and the two subscription
+  fields above.
+
 ## [0.2.0] - 2026-10-01
 
 ### Added
