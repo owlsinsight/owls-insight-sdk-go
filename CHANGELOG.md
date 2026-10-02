@@ -4,6 +4,41 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.4.0] - 2026-10-02
+
+### Added
+
+- `EVParams.Venues`: `GetEV` sends `venues=true` when it is set, and the API then also
+  lists Kalshi and Polymarket, their trading fee included in the EV. `EVParams.Book`
+  takes `kalshi` or `polymarket` with it. Sportsbooks and Novig are listed either way.
+- Optional fields of the EV answer (`GET /api/v1/{sport}/ev`), generated from the API
+  description:
+  - `EVOpportunity`: `Kind` (`book` or `venue`; Novig, Kalshi and Polymarket are
+    venues), `FairUnadjusted` (the fair before the 1-point margin), `Roi` (`EvPct / 100`,
+    not rounded), `Fee` (a venue's fee per contract in dollars, 0 for a sportsbook),
+    `Tradeable` (clears the markets page trade bar: 2% EV for a sportsbook; 4%, a bid, a
+    spread of 4 cents or less and $50 at the ask for a venue), `Reason` (why not),
+    `Route` (`yes` or `no:<CODE>` on Kalshi and Polymarket), `Size` (dollars at the
+    ask), `Link` (the venue's page) and `QuoteAgeMs` (the price's age in milliseconds
+    when the answer was served, by its own timestamp). Each is nil when the API sends
+    null or leaves it out.
+  - `EVEvent`: `CanonicalEventID` (the stable `{sport}:{away}@{home}-{date}` id the
+    history endpoints take) and `Fair` (new type `EVFair`: `Method` `pinnacle` or
+    `consensus`, `Anchor` `realtime` or `odds`, `Sources`, `Reason`, and `Home`, `Away`
+    and `Draw`, the fair before the margin).
+  - `EVResponse.Meta.Board` (new type `EVBoard`): `BuiltAt`, `AgeMs`, `Stale`, `Venues`
+    and `VenueQuotes`, for the board the answer was read from.
+
+### Changed
+
+- The EV doc comments say how each value is computed (`FairProbability` is the
+  conservative fair, the fair minus 1 percentage point, and `FairPrice`, `EvPct`,
+  `EdgePp` and `KellyFraction` are computed at it), what `BooksInConsensus` counts, and
+  the freshness rules. No existing field changed name or type.
+- The models are regenerated from the current API description (`spec/openapi.json`
+  and `spec/ws.json`). Besides the EV models above, nothing in the generated code
+  changed.
+
 ## [0.3.0] - 2026-10-01
 
 ### Added

@@ -1096,61 +1096,184 @@ type DraftKingsV2BookSubscription struct {
 	Wnba *V2LeagueFilter `json:"wnba,omitempty"`
 }
 
-// EVEvent A game with its de-vigged fair and the +EV opportunities found across books.
+// EVBoard The board an EV response was read from, and how old it is.
+type EVBoard struct {
+	// AgeMs Age of the board when this response was sent, in milliseconds; null when there is no board.
+	AgeMs *float64 `json:"ageMs,omitempty"`
+
+	// BuiltAt When the board was built (ISO 8601); null when there is no board.
+	BuiltAt *string `json:"builtAt,omitempty"`
+
+	// Stale True when there is no board or it is too old: no EV is served from it.
+	Stale *bool `json:"stale,omitempty"`
+
+	// VenueQuotes Whether the board holds Kalshi or Polymarket quotes.
+	VenueQuotes *bool `json:"venueQuotes,omitempty"`
+
+	// Venues Whether this request asked for Kalshi and Polymarket (`venues=true`).
+	Venues *bool `json:"venues,omitempty"`
+}
+
+// EVEvent A game with its fair and the +EV opportunities found across books.
 type EVEvent struct {
-	AwayTeam         *string  `json:"awayTeam,omitempty"`
+	AwayTeam *string `json:"awayTeam,omitempty"`
+
+	// BooksInConsensus Independent price sources behind the event's fair.
 	BooksInConsensus *float64 `json:"booksInConsensus,omitempty"`
-	CommenceTime     *string  `json:"commenceTime,omitempty"`
-	EventID          *string  `json:"eventId,omitempty"`
-	FairProbability  *struct {
+
+	// CanonicalEventID Our stable id of the game, `{sport}:{away}@{home}-{date}`: the `eventId` the odds board and the history endpoints use. Null when unknown.
+	CanonicalEventID *string `json:"canonicalEventId,omitempty"`
+	CommenceTime     *string `json:"commenceTime,omitempty"`
+
+	// EventID The game's `id` on the odds board. The history endpoints take `canonicalEventId` instead.
+	EventID *string `json:"eventId,omitempty"`
+
+	// Fair How an event's fair was formed, and the fair per side before the 1-point margin.
+	// Each side is de-vigged on its own, conservatively, so the sides can sum to slightly
+	// less than 1.
+	Fair *EVFair `json:"fair,omitempty"`
+
+	// FairProbability The conservative fair per side (the fair minus 1 percentage point); null for a side with no fair. The fair before the margin is in `fair`.
+	FairProbability *struct {
 		Away *float64 `json:"away,omitempty"`
 		Draw *float64 `json:"draw,omitempty"`
 		Home *float64 `json:"home,omitempty"`
 	} `json:"fairProbability,omitempty"`
-	HomeTeam      *string         `json:"homeTeam,omitempty"`
-	Market        *string         `json:"market,omitempty"`
+	HomeTeam *string `json:"homeTeam,omitempty"`
+	Market   *string `json:"market,omitempty"`
+
+	// Opportunities Best EV first.
 	Opportunities []EVOpportunity `json:"opportunities,omitempty"`
 	Sport         *string         `json:"sport,omitempty"`
 }
 
-// EVOpportunity One +EV value-bet opportunity: a book offering a price that beats the consensus fair.
+// EVFair How an event's fair was formed, and the fair per side before the 1-point margin.
+// Each side is de-vigged on its own, conservatively, so the sides can sum to slightly
+// less than 1.
+type EVFair struct {
+	// Anchor Which Pinnacle line anchored the fair: the realtime feed or the /odds entry; null when Pinnacle did not.
+	Anchor *string `json:"anchor,omitempty"`
+
+	// Away Fair probability of an away win before the margin; null when there is none.
+	Away *float64 `json:"away,omitempty"`
+
+	// Draw Fair probability of a draw before the margin (three-way markets); null otherwise.
+	Draw *float64 `json:"draw,omitempty"`
+
+	// Home Fair probability of a home win before the margin; null when there is none.
+	Home *float64 `json:"home,omitempty"`
+
+	// Method `pinnacle`: Pinnacle's de-vigged line. `consensus`: no Pinnacle line, so the median
+	// of at least three independent books; only venues are scored against it, never a
+	// sportsbook. Null when there is no fair (`reason` says why).
+	Method *string `json:"method,omitempty"`
+
+	// Reason Why there is no fair, in plain text; null when there is one.
+	Reason *string `json:"reason,omitempty"`
+
+	// Sources Independent price sources behind the event's fair.
+	Sources *float64 `json:"sources,omitempty"`
+}
+
+// EVOpportunity One +EV opportunity: a sportsbook price, or a venue's ask (an exchange such as Novig,
+// and with `venues: true` the prediction markets Kalshi and Polymarket), that beats the
+// fair.
+//
+// The fair is Pinnacle's de-vigged line: the other books do not move it, they only
+// veto a side they disagree with (when Pinnacle has no line, a venue can be scored
+// against a consensus of books instead; see `EVFair.method`). `fairProbability` is the
+// CONSERVATIVE fair, the fair minus 1 percentage point, and `fairPrice`, `evPct`,
+// `edgePp` and `kellyFraction` are all computed at it. The fair before that margin is
+// `fairUnadjusted`.
 type EVOpportunity struct {
+	// Book Sportsbook or venue key. `kalshi` and `polymarket` are listed only with `venues: true`.
 	Book *string `json:"book,omitempty"`
 
-	// BookImplied Implied probability of the book's price (includes its vig).
+	// BookImplied Implied probability of `bookPrice` (a sportsbook's includes its vig; a venue's is its ask).
 	BookImplied *float64 `json:"bookImplied,omitempty"`
 
-	// BookPrice American odds the book is offering.
-	BookPrice        *float64 `json:"bookPrice,omitempty"`
+	// BookPrice American odds of the price: a sportsbook's price, or a venue's ask.
+	BookPrice *float64 `json:"bookPrice,omitempty"`
+
+	// BooksInConsensus Independent price sources behind the fair this price was scored against. A
+	// sportsbook's own feed never counts toward its own fair, so 1 means Pinnacle alone.
 	BooksInConsensus *float64 `json:"booksInConsensus,omitempty"`
 
 	// EdgePp (fairProbability - bookImplied) * 100, in percentage points.
 	EdgePp *float64 `json:"edgePp,omitempty"`
 
-	// EvPct Expected value %: (fairProb * decimalOdds - 1) * 100.
+	// EvPct Expected value %, at `fairProbability`. Sportsbook: `(fairProbability * decimalOdds - 1) * 100`.
+	// Venue, its fee included: `(fairProbability - ask - fee) / (ask + fee) * 100`.
 	EvPct *float64 `json:"evPct,omitempty"`
 
-	// FairPrice American odds corresponding to the fair probability.
+	// FairPrice American odds of `fairProbability` (the break-even price).
 	FairPrice *float64 `json:"fairPrice,omitempty"`
 
-	// FairProbability De-vigged consensus fair probability for this outcome.
+	// FairProbability The conservative fair probability of this outcome: the fair minus 1 percentage point. `fairPrice`, `evPct`, `edgePp` and `kellyFraction` are computed at it.
 	FairProbability *float64 `json:"fairProbability,omitempty"`
 
-	// KellyFraction Full-Kelly bankroll fraction.
+	// FairUnadjusted The fair probability before the 1-point margin: `fairProbability` is this minus 0.01.
+	FairUnadjusted *float64 `json:"fairUnadjusted,omitempty"`
+
+	// Fee The venue's trading fee per contract, in dollars; 0 for a sportsbook.
+	Fee *float64 `json:"fee,omitempty"`
+
+	// KellyFraction Full-Kelly bankroll fraction at `fairProbability`.
 	KellyFraction *float64 `json:"kellyFraction,omitempty"`
-	Market        *string  `json:"market,omitempty"`
-	Side          *string  `json:"side,omitempty"`
-	Team          *string  `json:"team,omitempty"`
+
+	// Kind `book` for a sportsbook, `venue` for an exchange or prediction market (Novig, Kalshi, Polymarket).
+	Kind *string `json:"kind,omitempty"`
+
+	// Link The market's page at the venue; null for a sportsbook.
+	Link   *string `json:"link,omitempty"`
+	Market *string `json:"market,omitempty"`
+
+	// QuoteAgeMs Age of the price when this answer was served, in milliseconds, by its own timestamp; null when unknown.
+	QuoteAgeMs *float64 `json:"quoteAgeMs,omitempty"`
+
+	// Reason Why it is not tradeable, in plain text (such as `EV under 2%`); null when it is.
+	Reason *string `json:"reason,omitempty"`
+
+	// Roi `evPct / 100`, not rounded: EV per dollar staked (sportsbook) or per dollar paid, fee included (venue).
+	Roi *float64 `json:"roi,omitempty"`
+
+	// Route Kalshi and Polymarket: the contract to buy, `yes`, or `no:<CODE>` (NO on the opponent's market). Null otherwise.
+	Route *string `json:"route,omitempty"`
+	Side  *string `json:"side,omitempty"`
+
+	// Size Dollars available at the ask; null when unknown (Polymarket, sportsbooks).
+	Size *float64 `json:"size,omitempty"`
+	Team *string  `json:"team,omitempty"`
+
+	// Tradeable Whether the opportunity clears the markets page trade bar. Sportsbook: EV of at
+	// least 2%. Venue: EV of at least 4%, a bid, a spread of 4 cents or less and at least
+	// $50 at the ask.
+	Tradeable *bool `json:"tradeable,omitempty"`
 }
 
 // EVResponse Response for `GET /api/v1/{sport}/ev` (MVP+). Pre-game value bets only.
+//
+// No opportunity is listed while the odds snapshot behind the answer is over 90
+// seconds old, or for a game that has started. Within that, a sportsbook price must be
+// under 3 minutes old and an exchange quote (Novig by default, Kalshi and Polymarket
+// with `venues: true`) under 2 minutes, each by its own timestamp.
+//
+// The optional fields (`kind`, `fairUnadjusted`, `roi`, `fee`, `tradeable`, `reason`,
+// `route`, `size`, `link` and `quoteAgeMs` on an opportunity, `canonicalEventId` and
+// `fair` on an event, `board` in `meta`) come with `fair_method: "fair_v1"`.
 type EVResponse struct {
 	Data []EVEvent `json:"data,omitempty"`
 	Meta *struct {
-		Book       *string  `json:"book,omitempty"`
-		Events     *float64 `json:"events,omitempty"`
-		FairMethod *string  `json:"fair_method,omitempty"`
-		Freshness  *struct {
+		// Board The board an EV response was read from, and how old it is.
+		Board  *EVBoard `json:"board,omitempty"`
+		Book   *string  `json:"book,omitempty"`
+		Events *float64 `json:"events,omitempty"`
+
+		// FairMethod How the fair is computed: `fair_v1` (Pinnacle's de-vigged line, the other books only veto, a 1-point margin). `consensus_devig_median` is the method it replaced.
+		FairMethod *string `json:"fair_method,omitempty"`
+
+		// Freshness Age of the odds snapshot behind the answer. `ageSeconds` is always a number; `stale` is true when the snapshot is over 90 seconds old or there is no data.
+		Freshness *struct {
 			AgeSeconds *float64 `json:"ageSeconds,omitempty"`
 			Stale      *bool    `json:"stale,omitempty"`
 		} `json:"freshness,omitempty"`
@@ -1161,7 +1284,9 @@ type EVResponse struct {
 		Opportunities *float64 `json:"opportunities,omitempty"`
 		PregameOnly   *bool    `json:"pregame_only,omitempty"`
 		Sport         *string  `json:"sport,omitempty"`
-		Timestamp     *string  `json:"timestamp,omitempty"`
+
+		// Timestamp When the odds snapshot behind the answer was written (ISO 8601); `1970-01-01T00:00:00.000Z` when there is no data at all.
+		Timestamp *string `json:"timestamp,omitempty"`
 	} `json:"meta,omitempty"`
 	Success *bool `json:"success,omitempty"`
 }

@@ -219,6 +219,13 @@ func TestRequestPaths(t *testing.T) {
 			return err
 		}, "/api/odds/history?book=pinnacle&eventId=e&hours=3&market=totals&side=over"},
 		{func() error { _, err := c.GetEsportsRealtime(ctx, "cs2", " BLAST "); return err }, "/api/v1/cs2/realtime?league=BLAST"},
+		// EV: venues=true only when Venues is set; nil params send nothing.
+		{func() error {
+			_, err := c.GetEV(ctx, "nfl", &EVParams{MinEV: 2, Book: "kalshi", Venues: true})
+			return err
+		}, "/api/v1/nfl/ev?book=kalshi&min_ev=2&venues=true"},
+		{func() error { _, err := c.GetEV(ctx, "nfl", &EVParams{Book: "fanduel"}); return err }, "/api/v1/nfl/ev?book=fanduel"},
+		{func() error { _, err := c.GetEV(ctx, "nfl", nil); return err }, "/api/v1/nfl/ev"},
 	}
 	for i, tc := range calls {
 		if err := tc.call(); err != nil {
@@ -1053,6 +1060,108 @@ func TestDaySchedule(t *testing.T) {
 		}
 		if api.req(0).Query != "sport=cricket" {
 			t.Errorf("query %s", api.req(0).Query)
+		}
+	})
+}
+
+// TestEV decodes a Fair v1 answer of GET /api/v1/{sport}/ev (testdata/fixtures/ev-fair-v1.json,
+// shared with the other SDKs: a consensus-fair game with a Polymarket entry, and a
+// Pinnacle-anchored game with Novig, Kalshi, DraftKings and FanDuel entries).
+func TestEV(t *testing.T) {
+	t.Run("Fair v1 fields", func(t *testing.T) {
+		api := newFakeAPI(t, ok(fixture(t, "ev-fair-v1.json")))
+		res, err := testClient(t, api.URL).GetEV(context.Background(), "nfl", &EVParams{Venues: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r := api.req(0); r.Path != "/api/v1/nfl/ev" || r.Query != "venues=true" {
+			t.Errorf("requested %s?%s", r.Path, r.Query)
+		}
+		m := res.Meta
+		if !*res.Success || *m.FairMethod != "fair_v1" || *m.Sport != "nfl" || *m.Events != 2 || *m.Opportunities != 5 ||
+			*m.Freshness.AgeSeconds != 4 || *m.Freshness.Stale || m.Book != nil || *m.Timestamp != "2026-10-02T00:39:01.480Z" {
+			t.Errorf("meta %+v", m)
+		}
+		if b := m.Board; *b.BuiltAt != "2026-10-02T00:39:03.912Z" || *b.AgeMs != 1567 || *b.Stale || !*b.Venues || !*b.VenueQuotes {
+			t.Errorf("board %+v", b)
+		}
+
+		// No Pinnacle line: a consensus fair, and only a prediction market scored against it.
+		consensus := res.Data[0]
+		if f := consensus.Fair; *f.Method != "consensus" || f.Anchor != nil || *f.Sources != 3 || f.Reason != nil ||
+			*f.Home != 0.6012 || *f.Away != 0.3895 || f.Draw != nil {
+			t.Errorf("consensus fair %+v", f)
+		}
+		if *consensus.CanonicalEventID != "nfl:Chicago Bears@Green Bay Packers-20261011" || *consensus.EventID != "1637790121" ||
+			*consensus.FairProbability.Home != 0.5912 || consensus.FairProbability.Draw != nil {
+			t.Errorf("consensus event %+v", consensus)
+		}
+		poly := consensus.Opportunities[0]
+		if *poly.Book != "polymarket" || *poly.Kind != "venue" || *poly.Route != "yes" || poly.Size != nil || *poly.Tradeable ||
+			*poly.Reason != "size unknown" || *poly.Fee != 0.007425 || *poly.QuoteAgeMs != 48210 {
+			t.Errorf("polymarket %+v", poly)
+		}
+
+		// Pinnacle-anchored: Novig (always listed), Kalshi (venues), two sportsbooks, best EV first.
+		anchored := res.Data[1]
+		if f := anchored.Fair; *f.Method != "pinnacle" || *f.Anchor != "realtime" || *f.Sources != 5 || *f.Home != 0.5714 {
+			t.Errorf("pinnacle fair %+v", f)
+		}
+		var books []string
+		for _, o := range anchored.Opportunities {
+			books = append(books, *o.Book)
+		}
+		if strings.Join(books, ",") != "novig,kalshi,draftkings,fanduel" {
+			t.Errorf("opportunities %v", books)
+		}
+		kalshi := anchored.Opportunities[1]
+		if *kalshi.Route != "no:BUF" || *kalshi.Size != 94.905 || !*kalshi.Tradeable || kalshi.Reason != nil ||
+			*kalshi.FairUnadjusted != 0.5714 || *kalshi.FairProbability != 0.5614 || *kalshi.EvPct != 4.45 ||
+			*kalshi.Roi != 0.04454185520361991 || *kalshi.Link != "https://kalshi.com/events/KXNFLGAME-26OCT12BUFLAR" {
+			t.Errorf("kalshi %+v", kalshi)
+		}
+		dk, fd := anchored.Opportunities[2], anchored.Opportunities[3]
+		if *dk.Kind != "book" || *dk.Fee != 0 || dk.Route != nil || dk.Size != nil || dk.Link != nil || !*dk.Tradeable || *dk.EvPct != 2.15 {
+			t.Errorf("draftkings %+v", dk)
+		}
+		if *fd.Tradeable || *fd.Reason != "EV under 2%" {
+			t.Errorf("fanduel %+v", fd)
+		}
+		// A sportsbook's own feed never counts toward the fair it is scored against.
+		if *anchored.BooksInConsensus != 5 || *dk.BooksInConsensus != 4 || *kalshi.BooksInConsensus != 5 {
+			t.Errorf("booksInConsensus event %v draftkings %v kalshi %v", *anchored.BooksInConsensus, *dk.BooksInConsensus, *kalshi.BooksInConsensus)
+		}
+		// CONTROL: a 0 the API sent is kept as a 0 (Fee), so the nil pointers above mean null.
+		if dk.Fee == nil || dk.Size != nil {
+			t.Errorf("control: fee %v size %v", dk.Fee, dk.Size)
+		}
+
+		// The exported names are the ones the spec generates (and the JS and Python
+		// SDKs use): a spec vendoring that would rename one stops compiling here.
+		var (
+			_ *EVBoard        = m.Board
+			_ *EVFair         = anchored.Fair
+			_ []EVOpportunity = anchored.Opportunities
+			_ []EVEvent       = res.Data
+		)
+	})
+	t.Run("an answer without the Fair v1 fields", func(t *testing.T) {
+		const body = `{"success": true, "data": [{"eventId": "e1", "sport": "nfl", "market": "h2h",
+			"fairProbability": {"home": 0.55, "away": 0.45, "draw": null}, "booksInConsensus": 4,
+			"opportunities": [{"book": "fanduel", "side": "home", "bookPrice": 120, "evPct": 3.1}]}],
+			"meta": {"fair_method": "consensus_devig_median", "freshness": {"ageSeconds": 12, "stale": false}}}`
+		api := newFakeAPI(t, ok(body))
+		res, err := testClient(t, api.URL).GetEV(context.Background(), "nfl", &EVParams{Book: "fanduel"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if api.req(0).Query != "book=fanduel" {
+			t.Errorf("query %s", api.req(0).Query)
+		}
+		e, o := res.Data[0], res.Data[0].Opportunities[0]
+		if res.Meta.Board != nil || e.Fair != nil || e.CanonicalEventID != nil || o.Kind != nil || o.Tradeable != nil ||
+			o.FairUnadjusted != nil || *o.EvPct != 3.1 || *res.Meta.FairMethod != "consensus_devig_median" {
+			t.Errorf("decoded %+v / %+v / %+v", res.Meta, e, o)
 		}
 	})
 }

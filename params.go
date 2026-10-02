@@ -75,8 +75,14 @@ func (p *OddsParams) query() url.Values {
 type EVParams struct {
 	// MinEV is the least EV% to include (0 means every positive EV).
 	MinEV float64
-	// Book restricts the result to one sportsbook.
+	// Book restricts the result to one sportsbook key, or to kalshi or polymarket
+	// when Venues is set.
 	Book string
+	// Venues also lists Kalshi and Polymarket, their trading fee included in the EV
+	// (sportsbooks and Novig are always listed). It is sent as venues=true only when
+	// set. The first request for a sport starts their prices, which appear within
+	// about 15 seconds and stay on while you keep asking.
+	Venues bool
 }
 
 // DayScheduleParams selects GetDaySchedule. Every field is optional: the zero

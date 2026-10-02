@@ -87,12 +87,18 @@ func (c *Client) GetPS3838Realtime(ctx context.Context, sport, league string) (*
 	return getInto[RealtimeResponse](ctx, c, "/api/v1/"+esc(sport)+"/ps3838-realtime", leagueQuery(league))
 }
 
-// GetEV returns the positive-EV prices of a sport's upcoming games.
+// GetEV returns the positive-EV prices of a sport's upcoming games (MVP and above):
+// moneyline prices that beat the fair, Pinnacle's de-vigged line, which the other
+// books do not move (they only veto a side they disagree with). EV is computed at the
+// fair minus 1 percentage point (FairProbability); the fair before that margin is
+// FairUnadjusted on each opportunity and Fair on each event. Set Venues to also list
+// Kalshi and Polymarket.
 func (c *Client) GetEV(ctx context.Context, sport string, p *EVParams) (*EVResponse, error) {
 	q := url.Values{}
 	if p != nil {
 		setFloat(q, "min_ev", p.MinEV)
 		setStr(q, "book", p.Book)
+		setTrue(q, "venues", p.Venues)
 	}
 	return getInto[EVResponse](ctx, c, "/api/v1/"+esc(sport)+"/ev", q)
 }

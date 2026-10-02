@@ -2183,23 +2183,77 @@
         },
         "type": "object"
       },
+      "EVBoard": {
+        "description": "The board an EV response was read from, and how old it is.",
+        "properties": {
+          "ageMs": {
+            "description": "Age of the board when this response was sent, in milliseconds; null when there is no board.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "builtAt": {
+            "description": "When the board was built (ISO 8601); null when there is no board.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stale": {
+            "description": "True when there is no board or it is too old: no EV is served from it.",
+            "type": "boolean"
+          },
+          "venueQuotes": {
+            "description": "Whether the board holds Kalshi or Polymarket quotes.",
+            "type": "boolean"
+          },
+          "venues": {
+            "description": "Whether this request asked for Kalshi and Polymarket (`venues=true`).",
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "builtAt",
+          "ageMs",
+          "stale",
+          "venues",
+          "venueQuotes"
+        ]
+      },
       "EVEvent": {
-        "description": "A game with its de-vigged fair and the +EV opportunities found across books.",
+        "description": "A game with its fair and the +EV opportunities found across books.",
         "properties": {
           "awayTeam": {
             "type": "string"
           },
           "booksInConsensus": {
+            "description": "Independent price sources behind the event's fair.",
             "format": "double",
             "type": "number"
+          },
+          "canonicalEventId": {
+            "description": "Our stable id of the game, `{sport}:{away}@{home}-{date}`: the `eventId` the odds board and the history endpoints use. Null when unknown.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "commenceTime": {
             "type": "string"
           },
           "eventId": {
+            "description": "The game's `id` on the odds board. The history endpoints take `canonicalEventId` instead.",
             "type": "string"
           },
+          "fair": {
+            "$ref": "#/components/schemas/EVFair",
+            "description": "How the fair was formed, and the fair per side before the margin."
+          },
           "fairProbability": {
+            "description": "The conservative fair per side (the fair minus 1 percentage point); null for a side with no fair. The fair before the margin is in `fair`.",
             "properties": {
               "away": {
                 "format": "double",
@@ -2240,6 +2294,7 @@
             ]
           },
           "opportunities": {
+            "description": "Best EV first.",
             "items": {
               "$ref": "#/components/schemas/EVOpportunity"
             },
@@ -2262,23 +2317,98 @@
           "opportunities"
         ]
       },
+      "EVFair": {
+        "description": "How an event's fair was formed, and the fair per side before the 1-point margin.\nEach side is de-vigged on its own, conservatively, so the sides can sum to slightly\nless than 1.",
+        "properties": {
+          "anchor": {
+            "description": "Which Pinnacle line anchored the fair: the realtime feed or the /odds entry; null when Pinnacle did not.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "x-extensible-enum": [
+              "odds",
+              "realtime"
+            ]
+          },
+          "away": {
+            "description": "Fair probability of an away win before the margin; null when there is none.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "draw": {
+            "description": "Fair probability of a draw before the margin (three-way markets); null otherwise.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "home": {
+            "description": "Fair probability of a home win before the margin; null when there is none.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "method": {
+            "description": "`pinnacle`: Pinnacle's de-vigged line. `consensus`: no Pinnacle line, so the median\nof at least three independent books; only venues are scored against it, never a\nsportsbook. Null when there is no fair (`reason` says why).",
+            "type": [
+              "string",
+              "null"
+            ],
+            "x-extensible-enum": [
+              "consensus",
+              "pinnacle"
+            ]
+          },
+          "reason": {
+            "description": "Why there is no fair, in plain text; null when there is one.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sources": {
+            "description": "Independent price sources behind the event's fair.",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "method",
+          "anchor",
+          "sources",
+          "reason",
+          "home",
+          "away",
+          "draw"
+        ]
+      },
       "EVOpportunity": {
-        "description": "One +EV value-bet opportunity: a book offering a price that beats the consensus fair.",
+        "description": "One +EV opportunity: a sportsbook price, or a venue's ask (an exchange such as Novig,\nand with `venues: true` the prediction markets Kalshi and Polymarket), that beats the\nfair.\n\nThe fair is Pinnacle's de-vigged line: the other books do not move it, they only\nveto a side they disagree with (when Pinnacle has no line, a venue can be scored\nagainst a consensus of books instead; see `EVFair.method`). `fairProbability` is the\nCONSERVATIVE fair, the fair minus 1 percentage point, and `fairPrice`, `evPct`,\n`edgePp` and `kellyFraction` are all computed at it. The fair before that margin is\n`fairUnadjusted`.",
         "properties": {
           "book": {
+            "description": "Sportsbook or venue key. `kalshi` and `polymarket` are listed only with `venues: true`.",
             "type": "string"
           },
           "bookImplied": {
-            "description": "Implied probability of the book's price (includes its vig).",
+            "description": "Implied probability of `bookPrice` (a sportsbook's includes its vig; a venue's is its ask).",
             "format": "double",
             "type": "number"
           },
           "bookPrice": {
-            "description": "American odds the book is offering.",
+            "description": "American odds of the price: a sportsbook's price, or a venue's ask.",
             "format": "double",
             "type": "number"
           },
           "booksInConsensus": {
+            "description": "Independent price sources behind the fair this price was scored against. A\nsportsbook's own feed never counts toward its own fair, so 1 means Pinnacle alone.",
             "format": "double",
             "type": "number"
           },
@@ -2288,29 +2418,81 @@
             "type": "number"
           },
           "evPct": {
-            "description": "Expected value %: (fairProb * decimalOdds - 1) * 100.",
+            "description": "Expected value %, at `fairProbability`. Sportsbook: `(fairProbability * decimalOdds - 1) * 100`.\nVenue, its fee included: `(fairProbability - ask - fee) / (ask + fee) * 100`.",
             "format": "double",
             "type": "number"
           },
           "fairPrice": {
-            "description": "American odds corresponding to the fair probability.",
+            "description": "American odds of `fairProbability` (the break-even price).",
             "format": "double",
             "type": "number"
           },
           "fairProbability": {
-            "description": "De-vigged consensus fair probability for this outcome.",
+            "description": "The conservative fair probability of this outcome: the fair minus 1 percentage point. `fairPrice`, `evPct`, `edgePp` and `kellyFraction` are computed at it.",
+            "format": "double",
+            "type": "number"
+          },
+          "fairUnadjusted": {
+            "description": "The fair probability before the 1-point margin: `fairProbability` is this minus 0.01.",
+            "format": "double",
+            "type": "number"
+          },
+          "fee": {
+            "description": "The venue's trading fee per contract, in dollars; 0 for a sportsbook.",
             "format": "double",
             "type": "number"
           },
           "kellyFraction": {
-            "description": "Full-Kelly bankroll fraction.",
+            "description": "Full-Kelly bankroll fraction at `fairProbability`.",
             "format": "double",
             "type": "number"
+          },
+          "kind": {
+            "description": "`book` for a sportsbook, `venue` for an exchange or prediction market (Novig, Kalshi, Polymarket).",
+            "type": "string",
+            "x-extensible-enum": [
+              "book",
+              "venue"
+            ]
+          },
+          "link": {
+            "description": "The market's page at the venue; null for a sportsbook.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "market": {
             "type": "string",
             "x-extensible-enum": [
               "h2h"
+            ]
+          },
+          "quoteAgeMs": {
+            "description": "Age of the price when this answer was served, in milliseconds, by its own timestamp; null when unknown.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reason": {
+            "description": "Why it is not tradeable, in plain text (such as `EV under 2%`); null when it is.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roi": {
+            "description": "`evPct / 100`, not rounded: EV per dollar staked (sportsbook) or per dollar paid, fee included (venue).",
+            "format": "double",
+            "type": "number"
+          },
+          "route": {
+            "description": "Kalshi and Polymarket: the contract to buy, `yes`, or `no:<CODE>` (NO on the opponent's market). Null otherwise.",
+            "type": [
+              "string",
+              "null"
             ]
           },
           "side": {
@@ -2321,8 +2503,20 @@
               "home"
             ]
           },
+          "size": {
+            "description": "Dollars available at the ask; null when unknown (Polymarket, sportsbooks).",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "team": {
             "type": "string"
+          },
+          "tradeable": {
+            "description": "Whether the opportunity clears the markets page trade bar. Sportsbook: EV of at\nleast 2%. Venue: EV of at least 4%, a bid, a spread of 4 cents or less and at least\n$50 at the ask.",
+            "type": "boolean"
           }
         },
         "type": "object",
@@ -2342,7 +2536,7 @@
         ]
       },
       "EVResponse": {
-        "description": "Response for `GET /api/v1/{sport}/ev` (MVP+). Pre-game value bets only.",
+        "description": "Response for `GET /api/v1/{sport}/ev` (MVP+). Pre-game value bets only.\n\nNo opportunity is listed while the odds snapshot behind the answer is over 90\nseconds old, or for a game that has started. Within that, a sportsbook price must be\nunder 3 minutes old and an exchange quote (Novig by default, Kalshi and Polymarket\nwith `venues: true`) under 2 minutes, each by its own timestamp.\n\nThe optional fields (`kind`, `fairUnadjusted`, `roi`, `fee`, `tradeable`, `reason`,\n`route`, `size`, `link` and `quoteAgeMs` on an opportunity, `canonicalEventId` and\n`fair` on an event, `board` in `meta`) come with `fair_method: \"fair_v1\"`.",
         "properties": {
           "data": {
             "items": {
@@ -2352,6 +2546,10 @@
           },
           "meta": {
             "properties": {
+              "board": {
+                "$ref": "#/components/schemas/EVBoard",
+                "description": "The board the response was read from. Sent with `fair_method: \"fair_v1\"`."
+              },
               "book": {
                 "type": "string"
               },
@@ -2360,9 +2558,11 @@
                 "type": "number"
               },
               "fair_method": {
+                "description": "How the fair is computed: `fair_v1` (Pinnacle's de-vigged line, the other books only veto, a 1-point margin). `consensus_devig_median` is the method it replaced.",
                 "type": "string"
               },
               "freshness": {
+                "description": "Age of the odds snapshot behind the answer. `ageSeconds` is always a number; `stale` is true when the snapshot is over 90 seconds old or there is no data.",
                 "properties": {
                   "ageSeconds": {
                     "format": "double",
@@ -2409,6 +2609,7 @@
                 "type": "string"
               },
               "timestamp": {
+                "description": "When the odds snapshot behind the answer was written (ISO 8601); `1970-01-01T00:00:00.000Z` when there is no data at all.",
                 "type": "string"
               }
             },
@@ -10582,7 +10783,6 @@
       "Sport": {
         "type": "string",
         "x-extensible-enum": [
-          "basketball",
           "cricket",
           "cs2",
           "darts",
@@ -11915,8 +12115,8 @@
   "info": {
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
-    "version": "0.71.0",
-    "x-owls-manifest-commit": "6fe0944a"
+    "version": "0.72.0",
+    "x-owls-manifest-commit": "208a4efc"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -13690,7 +13890,7 @@
     },
     "/api/v1/{sport}/ev": {
       "get": {
-        "description": "Returns positive expected value opportunities for a sport: for each event, the sportsbooks offering a moneyline price that beats the de-vigged consensus fair price. Reads the same live board as /odds.\n\nMoneyline only and pregame only; meta.market and meta.pregame_only state this on every response.\n\nPrices are American odds (meta.odds_format).",
+        "description": "Returns positive expected value opportunities for a sport: for each event, the sportsbooks offering a moneyline price that beats our fair price. The fair is Pinnacle's de-vigged line; the other books do not move it, they only block a side when they disagree with it by more than 1.5 points. EV is computed at the fair minus a 1-point safety margin, the same math as the public markets page.\n\nfairProbability is the conservative fair: the fair minus 1 point. fairPrice, evPct, edgePp and kellyFraction are all computed at it, so for a sportsbook evPct = (fairProbability x decimal odds - 1) x 100. The fair before that margin is fairUnadjusted on each opportunity and fair.home / fair.away / fair.draw on each event.\n\nEach sportsbook price is scored against a fair that leaves that book's own feed out, so a book never votes on its own price. Sportsbook prices are scored only when Pinnacle prices the game; exchange prices (Novig, and Kalshi and Polymarket with venues=true) can also be scored against the agreement of at least three independent books. booksInConsensus on an opportunity counts the independent sources behind the fair that price was scored against (1 means Pinnacle alone); on an event it counts the sources behind the event's fair.\n\ntradeable is true when the opportunity clears the markets page trade bar (sportsbooks: EV of at least 2%; prediction markets: at least 4%, a bid, a spread of 4 cents or less and at least $50 at the ask); reason says why not. For a prediction market, evPct = (fairProbability - ask - fee) / (ask + fee) x 100.\n\nNo opportunity is listed while the odds snapshot behind the answer is over 90 seconds old, or for a game that has started. Within that, a sportsbook price must be under 3 minutes old and an exchange quote under 2 minutes, each by its own timestamp; quoteAgeMs is its age when the answer was served. meta.freshness and meta.board say how old the data is; with no data at all, meta.timestamp is 1970-01-01T00:00:00.000Z and meta.freshness.stale is true.\n\nMoneyline only and pregame only; meta.market and meta.pregame_only state this on every response.\n\nPrices are American odds (meta.odds_format).",
         "operationId": "getEV",
         "parameters": [
           {
@@ -13726,11 +13926,22 @@
             }
           },
           {
-            "description": "Restrict opportunities to one sportsbook key.",
+            "description": "Restrict opportunities to one sportsbook key (or kalshi / polymarket with venues=true).",
             "in": "query",
             "name": "book",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "description": "true also lists Kalshi and Polymarket buys, with their trading fee included in the EV. The first request for a sport starts their prices; they appear within about 15 seconds and stay on while you keep asking.",
+            "in": "query",
+            "name": "venues",
+            "schema": {
+              "type": "string",
+              "x-extensible-enum": [
+                "true"
+              ]
             }
           }
         ],
@@ -13746,7 +13957,7 @@
             "description": "OK"
           }
         },
-        "summary": "Returns positive expected value opportunities for a sport: for each event, the sportsbooks offering a moneyline price that beats the de-vigged consensus fair price. Reads the same live board as /odds.",
+        "summary": "Returns positive expected value opportunities for a sport: for each event, the sportsbooks offering a moneyline price that beats our fair price. The fair is Pinnacle's de-vigged line; the other books do not move it, they only block a side when they disagree with it by more than 1.5 points. EV is computed at the fair minus a 1-point safety margin, the same math as the public markets page.",
         "tags": [
           "EV / value bets"
         ],
@@ -13766,7 +13977,6 @@
             "schema": {
               "type": "string",
               "x-extensible-enum": [
-                "basketball",
                 "cs2",
                 "dota2",
                 "khl",
@@ -13896,7 +14106,6 @@
             "schema": {
               "type": "string",
               "x-extensible-enum": [
-                "basketball",
                 "cs2",
                 "dota2",
                 "khl",
@@ -14041,7 +14250,6 @@
             "schema": {
               "type": "string",
               "x-extensible-enum": [
-                "basketball",
                 "cs2",
                 "dota2",
                 "khl",
@@ -15612,7 +15820,6 @@
             "schema": {
               "type": "string",
               "x-extensible-enum": [
-                "basketball",
                 "cs2",
                 "dota2",
                 "khl",
@@ -15970,7 +16177,6 @@
             "schema": {
               "type": "string",
               "x-extensible-enum": [
-                "basketball",
                 "cs2",
                 "dota2",
                 "khl",
