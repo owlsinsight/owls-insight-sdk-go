@@ -1757,6 +1757,36 @@
           "retryable"
         ]
       },
+      "CreateWebhookParams": {
+        "properties": {
+          "description": {
+            "description": "Up to 200 characters.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_types": {
+            "description": "One or more event types. A type that is not open yet is refused with a 400 (`event_type_unavailable`).",
+            "items": {
+              "$ref": "#/components/schemas/WebhookSubscribableEventType"
+            },
+            "type": "array"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/WebhookFiltersInput"
+          },
+          "url": {
+            "description": "https on the default port with a public hostname. IP addresses and private or internal hosts are refused.",
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "url",
+          "event_types"
+        ]
+      },
       "DayScheduleBuildWindow": {
         "description": "The days the schedule is built for: three UTC days back to nine ahead.",
         "properties": {
@@ -9427,6 +9457,16 @@
           "events"
         ]
       },
+      "RotateWebhookSecretParams": {
+        "properties": {
+          "expire_previous_after_hours": {
+            "description": "How long the previous secret keeps signing beside the new one: 0 to 168 hours (default 24). 0 retires it at once.",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
       "ScheduleResponse": {
         "description": "Response from GET /{sport}/schedule (upcoming games).",
         "properties": {
@@ -11655,6 +11695,36 @@
         },
         "type": "object"
       },
+      "UpdateWebhookParams": {
+        "properties": {
+          "description": {
+            "description": "Up to 200 characters; an empty string clears it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enabled": {
+            "description": "false stops deliveries and cancels the undelivered ones. true resumes an endpoint\nthat you disabled or that was disabled after failing, and resets its failure count.",
+            "type": "boolean"
+          },
+          "event_types": {
+            "description": "Replaces the list.",
+            "items": {
+              "$ref": "#/components/schemas/WebhookSubscribableEventType"
+            },
+            "type": "array"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/WebhookFiltersInput",
+            "description": "Merged into the stored filters (see WebhookFiltersInput)."
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "V2BookResponse": {
         "description": "Any v2 book's raw board. `data` is keyed by the book's market or event id and holds the book's own JSON. `league` is null on a merged response, which then lists `leagues`.",
         "properties": {
@@ -12102,6 +12172,1559 @@
         "x-owls-required": [
           "message"
         ]
+      },
+      "WebhookCreateResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WebhookEndpointWithSecret",
+            "description": "The endpoint and its signing secret, which is returned here and by rotate-secret only."
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success",
+          "data"
+        ]
+      },
+      "WebhookDeleteResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WebhookDeleted"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success",
+          "data"
+        ]
+      },
+      "WebhookDeleted": {
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "id",
+          "deleted"
+        ]
+      },
+      "WebhookDeliveriesResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookDelivery"
+            },
+            "type": "array"
+          },
+          "has_more": {
+            "description": "True when older deliveries remain: ask for the next page starting after the last `id`.",
+            "type": "boolean"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success",
+          "data",
+          "has_more"
+        ]
+      },
+      "WebhookDelivery": {
+        "description": "One delivery to an endpoint, as the deliveries listing returns it.",
+        "properties": {
+          "attempts": {
+            "format": "double",
+            "type": "number"
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivered_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "description": "The event id (`Owls-Webhook-Id`).",
+            "type": "string"
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_latency_ms": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "last_status_code": {
+            "description": "Your receiver's last HTTP status, or null.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "next_attempt_at": {
+            "description": "When the next attempt is due, while `pending`; otherwise null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurred_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebhookDeliveryPayload"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The exact body sent, or null."
+          },
+          "response_excerpt": {
+            "description": "Up to the first 512 bytes of your receiver's last answer.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/WebhookDeliveryStatus"
+          },
+          "type": {
+            "type": "string",
+            "x-extensible-enum": [
+              "ev.found",
+              "game.final",
+              "game.started",
+              "line.moved",
+              "props.graded",
+              "webhook.test"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "id",
+          "type",
+          "status",
+          "attempts",
+          "next_attempt_at",
+          "expires_at",
+          "last_status_code",
+          "last_error",
+          "last_latency_ms",
+          "response_excerpt",
+          "occurred_at",
+          "created_at",
+          "delivered_at",
+          "payload"
+        ]
+      },
+      "WebhookDeliveryPayload": {
+        "description": "A delivery body as stored, with `data` untyped: its shape depends on `type`.",
+        "properties": {
+          "api_version": {
+            "description": "The payload version.",
+            "type": "string"
+          },
+          "created": {
+            "description": "When the event was created (ISO 8601).",
+            "type": "string"
+          },
+          "data": {},
+          "endpoint_id": {
+            "description": "The endpoint it was sent to, `whk_...`.",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "No delivery is attempted after this (ISO 8601).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "When what it reports happened, as far as is known (ISO 8601).",
+            "type": "string"
+          },
+          "type": {
+            "description": "The event type; a type added later arrives as a string this version does not list.",
+            "type": "string",
+            "x-extensible-enum": [
+              "ev.found",
+              "game.final",
+              "game.started",
+              "line.moved",
+              "props.graded",
+              "webhook.test"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "data",
+          "id",
+          "type",
+          "api_version",
+          "created",
+          "occurred_at",
+          "expires_at",
+          "endpoint_id"
+        ]
+      },
+      "WebhookDeliveryStatus": {
+        "description": "`pending` (queued or between retries), `delivered`, `failed` (retries exhausted),\n`expired` (past `expires_at`), `cancelled` (the endpoint was disabled or deleted) or\n`shadow` (recorded while the event type was held back, never sent).",
+        "type": "string",
+        "x-extensible-enum": [
+          "cancelled",
+          "delivered",
+          "expired",
+          "failed",
+          "pending",
+          "shadow"
+        ]
+      },
+      "WebhookEndpoint": {
+        "description": "A webhook endpoint. It never carries the signing secret: create and rotate-secret return it once.",
+        "properties": {
+          "api_version": {
+            "description": "The payload version this endpoint's deliveries carry.",
+            "type": "string"
+          },
+          "consecutive_failures": {
+            "description": "Failed deliveries in a row.",
+            "format": "double",
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_types": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookSubscribableEventType"
+            },
+            "type": "array"
+          },
+          "failing_since": {
+            "description": "When the current run of failures began (ISO 8601), or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filters": {
+            "$ref": "#/components/schemas/WebhookFilters"
+          },
+          "id": {
+            "description": "The endpoint id, `whk_...`.",
+            "type": "string"
+          },
+          "last_success_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "previous_secret_expires_at": {
+            "description": "While set, deliveries also carry a v1 signature made with the previous secret, until this time (ISO 8601).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "secret_hint": {
+            "description": "The last 4 characters of the current signing secret, to tell secrets apart.",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WebhookEndpointStatus"
+          },
+          "status_reason": {
+            "description": "Why the endpoint is not enabled, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "id",
+          "url",
+          "description",
+          "event_types",
+          "filters",
+          "api_version",
+          "status",
+          "status_reason",
+          "secret_hint",
+          "previous_secret_expires_at",
+          "consecutive_failures",
+          "failing_since",
+          "last_success_at",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "WebhookEndpointStatus": {
+        "description": "`enabled`; `disabled` (by you, or after your receiver answered 410 Gone); or\n`auto_disabled` (after 50 failed deliveries in a row and 3 days without a success). An\nupdate with `enabled` set to true resumes a disabled or auto-disabled endpoint.",
+        "type": "string",
+        "x-extensible-enum": [
+          "auto_disabled",
+          "disabled",
+          "enabled"
+        ]
+      },
+      "WebhookEndpointWithSecret": {
+        "description": "What create returns: the endpoint and its signing secret.",
+        "properties": {
+          "api_version": {
+            "description": "The payload version this endpoint's deliveries carry.",
+            "type": "string"
+          },
+          "consecutive_failures": {
+            "description": "Failed deliveries in a row.",
+            "format": "double",
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_types": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookSubscribableEventType"
+            },
+            "type": "array"
+          },
+          "failing_since": {
+            "description": "When the current run of failures began (ISO 8601), or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filters": {
+            "$ref": "#/components/schemas/WebhookFilters"
+          },
+          "id": {
+            "description": "The endpoint id, `whk_...`.",
+            "type": "string"
+          },
+          "last_success_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "previous_secret_expires_at": {
+            "description": "While set, deliveries also carry a v1 signature made with the previous secret, until this time (ISO 8601).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "secret": {
+            "description": "The signing secret, `whsec_...`. Returned once: store it now.",
+            "type": "string"
+          },
+          "secret_hint": {
+            "description": "The last 4 characters of the current signing secret, to tell secrets apart.",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WebhookEndpointStatus"
+          },
+          "status_reason": {
+            "description": "Why the endpoint is not enabled, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "secret",
+          "id",
+          "url",
+          "description",
+          "event_types",
+          "filters",
+          "api_version",
+          "status",
+          "status_reason",
+          "secret_hint",
+          "previous_secret_expires_at",
+          "consecutive_failures",
+          "failing_since",
+          "last_success_at",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "WebhookEvFoundData": {
+        "description": "`ev.found` data: a price on the EV board became tradeable at or above your `min_ev`.",
+        "properties": {
+          "away_team": {
+            "type": "string"
+          },
+          "board_age_ms": {
+            "description": "The EV board's age in milliseconds when the event was made, or null.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "commence_time": {
+            "description": "The scheduled start (ISO 8601).",
+            "type": "string"
+          },
+          "event_id": {
+            "description": "Our stable id of the game (`{sport}:{away}@{home}-{date}`), the `eventId` the odds board and the history endpoints use; empty when unknown.",
+            "type": "string"
+          },
+          "home_team": {
+            "type": "string"
+          },
+          "league": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "min_ev": {
+            "description": "The endpoint's `min_ev` the price reached.",
+            "format": "double",
+            "type": "number"
+          },
+          "odds_event_id": {
+            "description": "The game's `id` on the odds board: what the EV endpoint returns as `eventId`.",
+            "type": "string"
+          },
+          "signal": {
+            "$ref": "#/components/schemas/WebhookEvSignal"
+          },
+          "sport": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "sport",
+          "league",
+          "event_id",
+          "odds_event_id",
+          "home_team",
+          "away_team",
+          "commence_time",
+          "min_ev",
+          "signal",
+          "board_age_ms"
+        ]
+      },
+      "WebhookEvFoundEvent": {
+        "description": "An `ev.found` delivery.",
+        "properties": {
+          "api_version": {
+            "description": "The payload version.",
+            "type": "string"
+          },
+          "created": {
+            "description": "When the event was created (ISO 8601).",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WebhookEvFoundData"
+          },
+          "endpoint_id": {
+            "description": "The endpoint it was sent to, `whk_...`.",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "No delivery is attempted after this (ISO 8601).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "When what it reports happened, as far as is known (ISO 8601).",
+            "type": "string"
+          },
+          "type": {
+            "description": "The event type; a type added later arrives as a string this version does not list.",
+            "type": "string",
+            "x-extensible-enum": [
+              "ev.found"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "type",
+          "data",
+          "id",
+          "api_version",
+          "created",
+          "occurred_at",
+          "expires_at",
+          "endpoint_id"
+        ]
+      },
+      "WebhookEvFoundFilters": {
+        "description": "`ev.found` filters as stored: every field is set.",
+        "properties": {
+          "kinds": {
+            "description": "The price kinds that fire (default both).",
+            "items": {
+              "$ref": "#/components/schemas/WebhookEvKind"
+            },
+            "type": "array"
+          },
+          "min_ev": {
+            "description": "The least EV that fires, in percent: 1, 2, 3, 5 or 8 (default 3).",
+            "format": "double",
+            "type": "number"
+          },
+          "venues": {
+            "description": "Sportsbook or venue keys; empty (the default) means every one the EV board scores.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "min_ev",
+          "kinds",
+          "venues"
+        ]
+      },
+      "WebhookEvFoundFiltersInput": {
+        "description": "`ev.found` filters as sent: an omitted field keeps its default (create) or its stored value (update).",
+        "properties": {
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookEvKind"
+            },
+            "type": "array"
+          },
+          "min_ev": {
+            "description": "1, 2, 3, 5 or 8 percent.",
+            "format": "double",
+            "type": "number"
+          },
+          "venues": {
+            "description": "Keys the EV board scores; a key that can never produce an event is refused with a 400.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "WebhookEvKind": {
+        "description": "`ev.found` price kinds: `book` (a sportsbook) or `venue` (an exchange or prediction market).",
+        "type": "string",
+        "x-extensible-enum": [
+          "book",
+          "venue"
+        ]
+      },
+      "WebhookEvSignal": {
+        "description": "The price behind an `ev.found` event, scored like the EV endpoint scores it.",
+        "properties": {
+          "ev": {
+            "description": "The EV in dollars: per $1 staked at a sportsbook, per contract at a venue. Null when it is not scored.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ev_percent": {
+            "description": "The EV in percent of the amount at risk, rounded to 2 decimals.",
+            "format": "double",
+            "type": "number"
+          },
+          "fair_low": {
+            "description": "The conservative fair (the fair less 1 percentage point) the EV is scored against, or null.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "fair_probability": {
+            "description": "The fair probability of this side, or null.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "fee": {
+            "description": "A venue's taker fee per contract, in dollars; 0 for a sportsbook.",
+            "format": "double",
+            "type": "number"
+          },
+          "implied_probability": {
+            "description": "The implied probability of `price`.",
+            "format": "double",
+            "type": "number"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WebhookEvKind"
+          },
+          "link": {
+            "description": "The venue's page for the market, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price": {
+            "description": "American odds of the price you pay (a venue's ask).",
+            "format": "double",
+            "type": "number"
+          },
+          "quote_age_ms": {
+            "description": "The price's age in milliseconds when the EV board was built, or null.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "route": {
+            "description": "A venue's route: `yes`, or `no:<CODE>` (buy NO on the opponent's market); null for a sportsbook.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "side": {
+            "type": "string",
+            "x-extensible-enum": [
+              "away",
+              "draw",
+              "home"
+            ]
+          },
+          "size": {
+            "description": "Dollars available at `price`, or null when unknown.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "team": {
+            "type": "string"
+          },
+          "venue": {
+            "description": "The sportsbook or venue key.",
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "kind",
+          "venue",
+          "side",
+          "team",
+          "price",
+          "implied_probability",
+          "fair_probability",
+          "fair_low",
+          "ev_percent",
+          "ev",
+          "fee",
+          "route",
+          "size",
+          "link",
+          "quote_age_ms"
+        ]
+      },
+      "WebhookEventType": {
+        "description": "Every event type a delivery can carry: the subscribable ones and `webhook.test` (sent only on request, by the test call).",
+        "type": "string",
+        "x-extensible-enum": [
+          "ev.found",
+          "game.final",
+          "game.started",
+          "line.moved",
+          "props.graded",
+          "webhook.test"
+        ]
+      },
+      "WebhookFilters": {
+        "description": "An endpoint's filters as stored: the API fills in every default.",
+        "properties": {
+          "ev_found": {
+            "$ref": "#/components/schemas/WebhookEvFoundFilters"
+          },
+          "line_moved": {
+            "$ref": "#/components/schemas/WebhookLineMovedFilters"
+          },
+          "sports": {
+            "description": "Sport keys; empty (the default) means every sport each subscribed event type covers.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "sports",
+          "line_moved",
+          "ev_found"
+        ]
+      },
+      "WebhookFiltersInput": {
+        "description": "Filters as sent. On create, an omitted field takes its default. On update they merge\ninto the stored filters: a section you send (`line_moved`, `ev_found`) changes only the\nfields you send, and `sports` replaces the list (`[]` means every covered sport). A sport\nthat one of the endpoint's event types does not cover is refused with a 400\n(`sport_not_covered`).",
+        "properties": {
+          "ev_found": {
+            "$ref": "#/components/schemas/WebhookEvFoundFiltersInput"
+          },
+          "line_moved": {
+            "$ref": "#/components/schemas/WebhookLineMovedFiltersInput"
+          },
+          "sports": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "WebhookGameData": {
+        "description": "`game.started` and `game.final` data.",
+        "properties": {
+          "away_team": {
+            "type": "string"
+          },
+          "event_id": {
+            "description": "The game's id in the live scores.",
+            "type": "string"
+          },
+          "home_team": {
+            "type": "string"
+          },
+          "league": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebhookGameScore"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the scores show none."
+          },
+          "sport": {
+            "type": "string"
+          },
+          "start_time": {
+            "description": "The start time (ISO 8601), or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/WebhookGameStatus"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "sport",
+          "event_id",
+          "league",
+          "home_team",
+          "away_team",
+          "start_time",
+          "status",
+          "score"
+        ]
+      },
+      "WebhookGameFinalEvent": {
+        "description": "A `game.final` delivery.",
+        "properties": {
+          "api_version": {
+            "description": "The payload version.",
+            "type": "string"
+          },
+          "created": {
+            "description": "When the event was created (ISO 8601).",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WebhookGameData"
+          },
+          "endpoint_id": {
+            "description": "The endpoint it was sent to, `whk_...`.",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "No delivery is attempted after this (ISO 8601).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "When what it reports happened, as far as is known (ISO 8601).",
+            "type": "string"
+          },
+          "type": {
+            "description": "The event type; a type added later arrives as a string this version does not list.",
+            "type": "string",
+            "x-extensible-enum": [
+              "game.final"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "type",
+          "data",
+          "id",
+          "api_version",
+          "created",
+          "occurred_at",
+          "expires_at",
+          "endpoint_id"
+        ]
+      },
+      "WebhookGameScore": {
+        "description": "A game's score. For tennis, sets won.",
+        "properties": {
+          "away": {
+            "format": "double",
+            "type": "number"
+          },
+          "home": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "home",
+          "away"
+        ]
+      },
+      "WebhookGameStartedEvent": {
+        "description": "A `game.started` delivery.",
+        "properties": {
+          "api_version": {
+            "description": "The payload version.",
+            "type": "string"
+          },
+          "created": {
+            "description": "When the event was created (ISO 8601).",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WebhookGameData"
+          },
+          "endpoint_id": {
+            "description": "The endpoint it was sent to, `whk_...`.",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "No delivery is attempted after this (ISO 8601).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "When what it reports happened, as far as is known (ISO 8601).",
+            "type": "string"
+          },
+          "type": {
+            "description": "The event type; a type added later arrives as a string this version does not list.",
+            "type": "string",
+            "x-extensible-enum": [
+              "game.started"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "type",
+          "data",
+          "id",
+          "api_version",
+          "created",
+          "occurred_at",
+          "expires_at",
+          "endpoint_id"
+        ]
+      },
+      "WebhookGameStatus": {
+        "description": "A game's status as the live scores show it.",
+        "properties": {
+          "detail": {
+            "description": "Its detail text, such as the clock or the result.",
+            "type": "string"
+          },
+          "state": {
+            "description": "The scores feed's state, such as `in` or `post`.",
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "state",
+          "detail"
+        ]
+      },
+      "WebhookLineMarket": {
+        "description": "The markets `line.moved` watches.",
+        "type": "string",
+        "x-extensible-enum": [
+          "moneyline",
+          "spread",
+          "total"
+        ]
+      },
+      "WebhookLineMovedData": {
+        "description": "`line.moved` data: Pinnacle's main moneyline, spread or total for a game that has not\nstarted moved by at least your step since the last `line.moved` you were sent for that\nmarket, so small moves add up.",
+        "properties": {
+          "away_team": {
+            "description": "Empty when unknown.",
+            "type": "string"
+          },
+          "book": {
+            "type": "string",
+            "x-extensible-enum": [
+              "pinnacle"
+            ]
+          },
+          "commence_time": {
+            "description": "The scheduled start (ISO 8601); empty when unknown.",
+            "type": "string"
+          },
+          "current": {
+            "$ref": "#/components/schemas/WebhookLineSides",
+            "description": "The market now."
+          },
+          "event_id": {
+            "description": "Our stable id of the game (`{sport}:{away}@{home}-{date}`), the `eventId` the odds board and the history endpoints use. Empty when unknown.",
+            "type": "string"
+          },
+          "home_team": {
+            "description": "Empty when unknown.",
+            "type": "string"
+          },
+          "league": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "market": {
+            "$ref": "#/components/schemas/WebhookLineMarket"
+          },
+          "max_probability_change_pp": {
+            "description": "The largest change of a side's implied probability from `previous`, in percentage points.",
+            "format": "double",
+            "type": "number"
+          },
+          "point_change": {
+            "description": "The change of the line (the home spread, or the total) from `previous`; 0 on a moneyline.",
+            "format": "double",
+            "type": "number"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/WebhookLineSides",
+            "description": "The market as of the last `line.moved` sent for it (or as first seen)."
+          },
+          "reason": {
+            "description": "`price`: a side's implied probability moved by at least `price_step_pp` at the same line. `point`: the line moved by at least `point_step`.",
+            "type": "string",
+            "x-extensible-enum": [
+              "point",
+              "price"
+            ]
+          },
+          "source_event_id": {
+            "description": "The book's own id for the event.",
+            "type": "string"
+          },
+          "sport": {
+            "type": "string"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/WebhookLineMovedThresholds"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "sport",
+          "league",
+          "event_id",
+          "source_event_id",
+          "home_team",
+          "away_team",
+          "commence_time",
+          "book",
+          "market",
+          "reason",
+          "previous",
+          "current",
+          "max_probability_change_pp",
+          "point_change",
+          "thresholds"
+        ]
+      },
+      "WebhookLineMovedEvent": {
+        "description": "A `line.moved` delivery.",
+        "properties": {
+          "api_version": {
+            "description": "The payload version.",
+            "type": "string"
+          },
+          "created": {
+            "description": "When the event was created (ISO 8601).",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WebhookLineMovedData"
+          },
+          "endpoint_id": {
+            "description": "The endpoint it was sent to, `whk_...`.",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "No delivery is attempted after this (ISO 8601).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "When what it reports happened, as far as is known (ISO 8601).",
+            "type": "string"
+          },
+          "type": {
+            "description": "The event type; a type added later arrives as a string this version does not list.",
+            "type": "string",
+            "x-extensible-enum": [
+              "line.moved"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "type",
+          "data",
+          "id",
+          "api_version",
+          "created",
+          "occurred_at",
+          "expires_at",
+          "endpoint_id"
+        ]
+      },
+      "WebhookLineMovedFilters": {
+        "description": "`line.moved` filters as stored: every field is set.",
+        "properties": {
+          "markets": {
+            "description": "The markets watched (default all three).",
+            "items": {
+              "$ref": "#/components/schemas/WebhookLineMarket"
+            },
+            "type": "array"
+          },
+          "point_step": {
+            "description": "The spread or total line move that fires: 0.5, 1, 1.5, 2 or 3 (default 1).",
+            "format": "double",
+            "type": "number"
+          },
+          "price_step_pp": {
+            "description": "The implied-probability move that fires, in percentage points: 0.5, 1, 2, 3 or 5 (default 2).",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "price_step_pp",
+          "point_step",
+          "markets"
+        ]
+      },
+      "WebhookLineMovedFiltersInput": {
+        "description": "`line.moved` filters as sent: an omitted field keeps its default (create) or its stored value (update).",
+        "properties": {
+          "markets": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookLineMarket"
+            },
+            "type": "array"
+          },
+          "point_step": {
+            "description": "0.5, 1, 1.5, 2 or 3.",
+            "format": "double",
+            "type": "number"
+          },
+          "price_step_pp": {
+            "description": "0.5, 1, 2, 3 or 5 percentage points.",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "WebhookLineMovedThresholds": {
+        "description": "The endpoint's `line.moved` steps the move cleared.",
+        "properties": {
+          "point_step": {
+            "format": "double",
+            "type": "number"
+          },
+          "price_step_pp": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "price_step_pp",
+          "point_step"
+        ]
+      },
+      "WebhookLineSide": {
+        "description": "One side of a `line.moved` market.",
+        "properties": {
+          "point": {
+            "description": "The line: this side's spread, or the total. Absent on a moneyline.",
+            "format": "double",
+            "type": "number"
+          },
+          "price": {
+            "description": "American odds.",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "price"
+        ]
+      },
+      "WebhookLineSides": {
+        "description": "The sides of a `line.moved` market: `home`, `away` and, on a three-way market, `draw`\n(moneyline); `home` and `away` (spread); `over` and `under` (total).",
+        "properties": {
+          "away": {
+            "$ref": "#/components/schemas/WebhookLineSide"
+          },
+          "draw": {
+            "$ref": "#/components/schemas/WebhookLineSide"
+          },
+          "home": {
+            "$ref": "#/components/schemas/WebhookLineSide"
+          },
+          "over": {
+            "$ref": "#/components/schemas/WebhookLineSide"
+          },
+          "under": {
+            "$ref": "#/components/schemas/WebhookLineSide"
+          }
+        },
+        "type": "object"
+      },
+      "WebhookListMeta": {
+        "properties": {
+          "count": {
+            "format": "double",
+            "type": "number"
+          },
+          "limit": {
+            "description": "How many endpoints your plan allows.",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "count",
+          "limit"
+        ]
+      },
+      "WebhookListResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookEndpoint"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/WebhookListMeta"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success",
+          "data",
+          "meta"
+        ]
+      },
+      "WebhookPropsGradedData": {
+        "description": "`props.graded` data: the first player prop results of a game are confirmed (`complete: false`), or all of them are (`complete: true`).",
+        "properties": {
+          "complete": {
+            "description": "True when every result of the game is confirmed.",
+            "type": "boolean"
+          },
+          "confirmed_count": {
+            "format": "double",
+            "type": "number"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "game_date": {
+            "description": "The game's date (YYYY-MM-DD), or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pending_count": {
+            "format": "double",
+            "type": "number"
+          },
+          "results_path": {
+            "description": "The path of the graded results (a GET with your key, Rookie and above), such as `/api/v1/mlb/props/results?game_id=...`.",
+            "type": "string"
+          },
+          "sport": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "sport",
+          "event_id",
+          "game_date",
+          "complete",
+          "confirmed_count",
+          "pending_count",
+          "results_path"
+        ]
+      },
+      "WebhookPropsGradedEvent": {
+        "description": "A `props.graded` delivery.",
+        "properties": {
+          "api_version": {
+            "description": "The payload version.",
+            "type": "string"
+          },
+          "created": {
+            "description": "When the event was created (ISO 8601).",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WebhookPropsGradedData"
+          },
+          "endpoint_id": {
+            "description": "The endpoint it was sent to, `whk_...`.",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "No delivery is attempted after this (ISO 8601).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "When what it reports happened, as far as is known (ISO 8601).",
+            "type": "string"
+          },
+          "type": {
+            "description": "The event type; a type added later arrives as a string this version does not list.",
+            "type": "string",
+            "x-extensible-enum": [
+              "props.graded"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "type",
+          "data",
+          "id",
+          "api_version",
+          "created",
+          "occurred_at",
+          "expires_at",
+          "endpoint_id"
+        ]
+      },
+      "WebhookResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WebhookEndpoint"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success",
+          "data"
+        ]
+      },
+      "WebhookRotateSecretResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WebhookRotatedSecret"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success",
+          "data"
+        ]
+      },
+      "WebhookRotatedSecret": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "previous_secret_expires_at": {
+            "description": "Until when the previous secret keeps signing (ISO 8601), or null when it was retired at once.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "secret": {
+            "description": "The new signing secret, `whsec_...`. Returned once: store it now.",
+            "type": "string"
+          },
+          "secret_hint": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "id",
+          "secret",
+          "secret_hint",
+          "previous_secret_expires_at"
+        ]
+      },
+      "WebhookSubscribableEventType": {
+        "description": "Event types an endpoint can subscribe to.",
+        "type": "string",
+        "x-extensible-enum": [
+          "ev.found",
+          "game.final",
+          "game.started",
+          "line.moved",
+          "props.graded"
+        ]
+      },
+      "WebhookTestData": {
+        "description": "`webhook.test` data.",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "message"
+        ]
+      },
+      "WebhookTestEvent": {
+        "description": "A `webhook.test` delivery (sent on request, by the test call).",
+        "properties": {
+          "api_version": {
+            "description": "The payload version.",
+            "type": "string"
+          },
+          "created": {
+            "description": "When the event was created (ISO 8601).",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WebhookTestData"
+          },
+          "endpoint_id": {
+            "description": "The endpoint it was sent to, `whk_...`.",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "No delivery is attempted after this (ISO 8601).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "When what it reports happened, as far as is known (ISO 8601).",
+            "type": "string"
+          },
+          "type": {
+            "description": "The event type; a type added later arrives as a string this version does not list.",
+            "type": "string",
+            "x-extensible-enum": [
+              "webhook.test"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "type",
+          "data",
+          "id",
+          "api_version",
+          "created",
+          "occurred_at",
+          "expires_at",
+          "endpoint_id"
+        ]
+      },
+      "WebhookTestQueued": {
+        "properties": {
+          "id": {
+            "description": "The test event's id: find it in the endpoint's deliveries.",
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "x-extensible-enum": [
+              "pending"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "x-extensible-enum": [
+              "webhook.test"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "id",
+          "type",
+          "status"
+        ]
+      },
+      "WebhookTestResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WebhookTestQueued"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success",
+          "data"
+        ]
       }
     },
     "securitySchemes": {
@@ -12115,7 +13738,7 @@
   "info": {
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
-    "version": "0.72.0",
+    "version": "0.73.0",
     "x-owls-manifest-commit": "208a4efc"
   },
   "openapi": "3.1.0",
@@ -16647,6 +18270,368 @@
       "name": "Team normalization"
     }
   ],
+  "webhooks": {
+    "ev.found": {
+      "post": {
+        "description": "`ev.found` data: a price on the EV board became tradeable at or above your `min_ev`.",
+        "parameters": [
+          {
+            "description": "t=<unix seconds>,v1=<hex HMAC-SHA256 of t, a period and the raw body, keyed with the whole signing secret as UTF-8>. During a secret rotation a second v1 is added; accept a match with either. Reject a t more than 5 minutes from your clock.",
+            "in": "header",
+            "name": "Owls-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event id (evt_...), identical on every retry: dedupe on it.",
+            "in": "header",
+            "name": "Owls-Webhook-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event type.",
+            "in": "header",
+            "name": "Owls-Event-Type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 for the first attempt, then 2, 3 and so on.",
+            "in": "header",
+            "name": "Owls-Delivery-Attempt",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookEvFoundEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "description": "Any 2xx within 10 seconds acknowledges the delivery. 410 Gone disables the endpoint. Anything else, a redirect included, is a failure: line.moved and ev.found are retried after about 5, 20 and 60 seconds, the other types up to 8 times over about a day, and nothing is sent after the event's expires_at."
+          }
+        },
+        "security": [],
+        "summary": "ev.found"
+      }
+    },
+    "game.final": {
+      "post": {
+        "description": "`game.started` and `game.final` data.",
+        "parameters": [
+          {
+            "description": "t=<unix seconds>,v1=<hex HMAC-SHA256 of t, a period and the raw body, keyed with the whole signing secret as UTF-8>. During a secret rotation a second v1 is added; accept a match with either. Reject a t more than 5 minutes from your clock.",
+            "in": "header",
+            "name": "Owls-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event id (evt_...), identical on every retry: dedupe on it.",
+            "in": "header",
+            "name": "Owls-Webhook-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event type.",
+            "in": "header",
+            "name": "Owls-Event-Type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 for the first attempt, then 2, 3 and so on.",
+            "in": "header",
+            "name": "Owls-Delivery-Attempt",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookGameFinalEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "description": "Any 2xx within 10 seconds acknowledges the delivery. 410 Gone disables the endpoint. Anything else, a redirect included, is a failure: line.moved and ev.found are retried after about 5, 20 and 60 seconds, the other types up to 8 times over about a day, and nothing is sent after the event's expires_at."
+          }
+        },
+        "security": [],
+        "summary": "game.final"
+      }
+    },
+    "game.started": {
+      "post": {
+        "description": "`game.started` and `game.final` data.",
+        "parameters": [
+          {
+            "description": "t=<unix seconds>,v1=<hex HMAC-SHA256 of t, a period and the raw body, keyed with the whole signing secret as UTF-8>. During a secret rotation a second v1 is added; accept a match with either. Reject a t more than 5 minutes from your clock.",
+            "in": "header",
+            "name": "Owls-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event id (evt_...), identical on every retry: dedupe on it.",
+            "in": "header",
+            "name": "Owls-Webhook-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event type.",
+            "in": "header",
+            "name": "Owls-Event-Type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 for the first attempt, then 2, 3 and so on.",
+            "in": "header",
+            "name": "Owls-Delivery-Attempt",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookGameStartedEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "description": "Any 2xx within 10 seconds acknowledges the delivery. 410 Gone disables the endpoint. Anything else, a redirect included, is a failure: line.moved and ev.found are retried after about 5, 20 and 60 seconds, the other types up to 8 times over about a day, and nothing is sent after the event's expires_at."
+          }
+        },
+        "security": [],
+        "summary": "game.started"
+      }
+    },
+    "line.moved": {
+      "post": {
+        "description": "`line.moved` data: Pinnacle's main moneyline, spread or total for a game that has not\nstarted moved by at least your step since the last `line.moved` you were sent for that\nmarket, so small moves add up.",
+        "parameters": [
+          {
+            "description": "t=<unix seconds>,v1=<hex HMAC-SHA256 of t, a period and the raw body, keyed with the whole signing secret as UTF-8>. During a secret rotation a second v1 is added; accept a match with either. Reject a t more than 5 minutes from your clock.",
+            "in": "header",
+            "name": "Owls-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event id (evt_...), identical on every retry: dedupe on it.",
+            "in": "header",
+            "name": "Owls-Webhook-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event type.",
+            "in": "header",
+            "name": "Owls-Event-Type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 for the first attempt, then 2, 3 and so on.",
+            "in": "header",
+            "name": "Owls-Delivery-Attempt",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookLineMovedEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "description": "Any 2xx within 10 seconds acknowledges the delivery. 410 Gone disables the endpoint. Anything else, a redirect included, is a failure: line.moved and ev.found are retried after about 5, 20 and 60 seconds, the other types up to 8 times over about a day, and nothing is sent after the event's expires_at."
+          }
+        },
+        "security": [],
+        "summary": "line.moved"
+      }
+    },
+    "props.graded": {
+      "post": {
+        "description": "`props.graded` data: the first player prop results of a game are confirmed (`complete: false`), or all of them are (`complete: true`).",
+        "parameters": [
+          {
+            "description": "t=<unix seconds>,v1=<hex HMAC-SHA256 of t, a period and the raw body, keyed with the whole signing secret as UTF-8>. During a secret rotation a second v1 is added; accept a match with either. Reject a t more than 5 minutes from your clock.",
+            "in": "header",
+            "name": "Owls-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event id (evt_...), identical on every retry: dedupe on it.",
+            "in": "header",
+            "name": "Owls-Webhook-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event type.",
+            "in": "header",
+            "name": "Owls-Event-Type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 for the first attempt, then 2, 3 and so on.",
+            "in": "header",
+            "name": "Owls-Delivery-Attempt",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookPropsGradedEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "description": "Any 2xx within 10 seconds acknowledges the delivery. 410 Gone disables the endpoint. Anything else, a redirect included, is a failure: line.moved and ev.found are retried after about 5, 20 and 60 seconds, the other types up to 8 times over about a day, and nothing is sent after the event's expires_at."
+          }
+        },
+        "security": [],
+        "summary": "props.graded"
+      }
+    },
+    "webhook.test": {
+      "post": {
+        "description": "`webhook.test` data.",
+        "parameters": [
+          {
+            "description": "t=<unix seconds>,v1=<hex HMAC-SHA256 of t, a period and the raw body, keyed with the whole signing secret as UTF-8>. During a secret rotation a second v1 is added; accept a match with either. Reject a t more than 5 minutes from your clock.",
+            "in": "header",
+            "name": "Owls-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event id (evt_...), identical on every retry: dedupe on it.",
+            "in": "header",
+            "name": "Owls-Webhook-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The event type.",
+            "in": "header",
+            "name": "Owls-Event-Type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 for the first attempt, then 2, 3 and so on.",
+            "in": "header",
+            "name": "Owls-Delivery-Attempt",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookTestEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "description": "Any 2xx within 10 seconds acknowledges the delivery. 410 Gone disables the endpoint. Anything else, a redirect included, is a failure: line.moved and ev.found are retried after about 5, 20 and 60 seconds, the other types up to 8 times over about a day, and nothing is sent after the event's expires_at."
+          }
+        },
+        "security": [],
+        "summary": "webhook.test"
+      }
+    }
+  },
   "x-owls-v2-books": [
     {
       "book": "4casters",

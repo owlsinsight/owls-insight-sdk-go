@@ -1,0 +1,237 @@
+{
+  "description": "One delivery body per webhook event type, an endpoint and a delivery, built with the API's own payload builders. Shared by every Owls Insight SDK.",
+  "events": [
+    {
+      "id": "evt_ag2c6auwug3tmthuyamtlhkyps",
+      "type": "line.moved",
+      "api_version": "2026-10-01",
+      "created": "2026-10-02T17:00:01.000Z",
+      "occurred_at": "2026-10-02T17:00:00.000Z",
+      "expires_at": "2026-10-02T17:05:00.000Z",
+      "endpoint_id": "whk_aaaaaaaaaaaaaaaaaaaaaaaa",
+      "data": {
+        "sport": "nba",
+        "league": "NBA",
+        "event_id": "nba:Boston Celtics@New York Knicks-20261002",
+        "source_event_id": "1600000000",
+        "home_team": "New York Knicks",
+        "away_team": "Boston Celtics",
+        "commence_time": "2026-10-02T23:30:00.000Z",
+        "book": "pinnacle",
+        "market": "spread",
+        "reason": "point",
+        "previous": {
+          "home": {
+            "price": -110,
+            "point": -3.5
+          },
+          "away": {
+            "price": -110,
+            "point": 3.5
+          }
+        },
+        "current": {
+          "home": {
+            "price": -108,
+            "point": -4.5
+          },
+          "away": {
+            "price": -112,
+            "point": 4.5
+          }
+        },
+        "max_probability_change_pp": 0.48,
+        "point_change": -1,
+        "thresholds": {
+          "price_step_pp": 2,
+          "point_step": 1
+        }
+      }
+    },
+    {
+      "id": "evt_trq5sof7u6ivjztowknepud2a6",
+      "type": "ev.found",
+      "api_version": "2026-10-01",
+      "created": "2026-10-02T17:00:01.000Z",
+      "occurred_at": "2026-10-02T17:00:00.000Z",
+      "expires_at": "2026-10-02T17:02:00.000Z",
+      "endpoint_id": "whk_aaaaaaaaaaaaaaaaaaaaaaaa",
+      "data": {
+        "sport": "nba",
+        "league": "NBA",
+        "event_id": "nba:Boston Celtics@New York Knicks-20261002",
+        "odds_event_id": "1600000000",
+        "home_team": "New York Knicks",
+        "away_team": "Boston Celtics",
+        "commence_time": "2026-10-02T23:30:00.000Z",
+        "min_ev": 3,
+        "signal": {
+          "kind": "book",
+          "venue": "fanduel",
+          "side": "home",
+          "team": "New York Knicks",
+          "price": 120,
+          "implied_probability": 0.4545,
+          "fair_probability": 0.49,
+          "fair_low": 0.48,
+          "ev_percent": 5.6,
+          "ev": 0.056,
+          "fee": 0,
+          "route": null,
+          "size": null,
+          "link": null,
+          "quote_age_ms": 4200
+        },
+        "board_age_ms": 1800
+      }
+    },
+    {
+      "id": "evt_4t5dl3dkhdbv6q2bhmz726vxj4",
+      "type": "game.started",
+      "api_version": "2026-10-01",
+      "created": "2026-10-02T17:00:01.000Z",
+      "occurred_at": "2026-10-02T17:00:00.000Z",
+      "expires_at": "2026-10-02T19:00:00.000Z",
+      "endpoint_id": "whk_aaaaaaaaaaaaaaaaaaaaaaaa",
+      "data": {
+        "sport": "nhl",
+        "event_id": "nhl:Boston Bruins@Toronto Maple Leafs-20261002",
+        "league": "NHL",
+        "home_team": "Toronto Maple Leafs",
+        "away_team": "Boston Bruins",
+        "start_time": "2026-10-02T23:00:00.000Z",
+        "status": {
+          "state": "in",
+          "detail": "1st 19:42"
+        },
+        "score": {
+          "home": 0,
+          "away": 0
+        }
+      }
+    },
+    {
+      "id": "evt_3dpr5dirksptmcxotpuzurpzrd",
+      "type": "game.final",
+      "api_version": "2026-10-01",
+      "created": "2026-10-02T17:00:01.000Z",
+      "occurred_at": "2026-10-02T17:00:00.000Z",
+      "expires_at": "2026-10-03T17:00:00.000Z",
+      "endpoint_id": "whk_aaaaaaaaaaaaaaaaaaaaaaaa",
+      "data": {
+        "sport": "nhl",
+        "event_id": "nhl:Boston Bruins@Toronto Maple Leafs-20261002",
+        "league": "NHL",
+        "home_team": "Toronto Maple Leafs",
+        "away_team": "Boston Bruins",
+        "start_time": "2026-10-02T23:00:00.000Z",
+        "status": {
+          "state": "post",
+          "detail": "Final"
+        },
+        "score": {
+          "home": 4,
+          "away": 2
+        }
+      }
+    },
+    {
+      "id": "evt_d7i2bvicxdgdqd5nscxab3y4n2",
+      "type": "props.graded",
+      "api_version": "2026-10-01",
+      "created": "2026-10-02T17:00:01.000Z",
+      "occurred_at": "2026-10-02T17:00:00.000Z",
+      "expires_at": "2026-10-03T17:00:00.000Z",
+      "endpoint_id": "whk_aaaaaaaaaaaaaaaaaaaaaaaa",
+      "data": {
+        "sport": "mlb",
+        "event_id": "mlb:New York Yankees@Boston Red Sox-20261002",
+        "game_date": "2026-10-02",
+        "complete": true,
+        "confirmed_count": 42,
+        "pending_count": 0,
+        "results_path": "/api/v1/mlb/props/results?game_id=mlb%3ANew%20York%20Yankees%40Boston%20Red%20Sox-20261002"
+      }
+    },
+    {
+      "id": "evt_f7cj2t3rclyiu44thy2qis6wxj",
+      "type": "webhook.test",
+      "api_version": "2026-10-01",
+      "created": "2026-10-02T17:00:01.000Z",
+      "occurred_at": "2026-10-02T17:00:00.000Z",
+      "expires_at": "2026-10-02T18:00:00.000Z",
+      "endpoint_id": "whk_aaaaaaaaaaaaaaaaaaaaaaaa",
+      "data": {
+        "message": "Test event from Owls Insight. Verify the Owls-Signature header with your signing secret."
+      }
+    }
+  ],
+  "endpoint": {
+    "id": "whk_aaaaaaaaaaaaaaaaaaaaaaaa",
+    "url": "https://hooks.example.com/owls",
+    "description": "fixture",
+    "event_types": [
+      "game.final",
+      "line.moved"
+    ],
+    "filters": {
+      "sports": [
+        "nba"
+      ],
+      "line_moved": {
+        "price_step_pp": 2,
+        "point_step": 1,
+        "markets": [
+          "moneyline",
+          "spread",
+          "total"
+        ]
+      },
+      "ev_found": {
+        "min_ev": 3,
+        "kinds": [
+          "book",
+          "venue"
+        ],
+        "venues": []
+      }
+    },
+    "api_version": "2026-10-01",
+    "status": "enabled",
+    "status_reason": null,
+    "secret_hint": "abcd",
+    "previous_secret_expires_at": "2099-01-01T00:00:00.000Z",
+    "consecutive_failures": 0,
+    "failing_since": null,
+    "last_success_at": "2026-10-02T16:59:00.000Z",
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "updated_at": "2026-10-02T00:00:00.000Z"
+  },
+  "delivery": {
+    "id": "evt_f7cj2t3rclyiu44thy2qis6wxj",
+    "type": "webhook.test",
+    "status": "delivered",
+    "attempts": 1,
+    "next_attempt_at": null,
+    "expires_at": "2026-10-02T18:00:00.000Z",
+    "last_status_code": 200,
+    "last_error": null,
+    "last_latency_ms": 87,
+    "response_excerpt": "{\"ok\":true}",
+    "occurred_at": "2026-10-02T17:00:00.000Z",
+    "created_at": "2026-10-02T17:00:01.000Z",
+    "delivered_at": "2026-10-02T17:00:02.000Z",
+    "payload": {
+      "id": "evt_f7cj2t3rclyiu44thy2qis6wxj",
+      "type": "webhook.test",
+      "api_version": "2026-10-01",
+      "created": "2026-10-02T17:00:01.000Z",
+      "occurred_at": "2026-10-02T17:00:00.000Z",
+      "expires_at": "2026-10-02T18:00:00.000Z",
+      "endpoint_id": "whk_aaaaaaaaaaaaaaaaaaaaaaaa",
+      "data": {
+        "message": "Test event from Owls Insight. Verify the Owls-Signature header with your signing secret."
+      }
+    }
+  }
+}

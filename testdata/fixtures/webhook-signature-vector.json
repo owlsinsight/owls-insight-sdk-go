@@ -1,0 +1,11 @@
+{
+  "description": "Owls Insight webhook signature known-answer vector. HMAC-SHA256 keyed with the UTF-8 bytes of the whole secret (whsec_ included), over the ASCII timestamp, a period, and the raw UTF-8 body bytes. Shared by the API and every SDK.",
+  "secret": "whsec_b3dscy1pbnNpZ2h0IHdlYmhvb2sgc2lnbmluZyB2ZWM",
+  "previous_secret": "whsec_cHJldmlvdXMgc2VjcmV0IGZvciB0aGUgcm90YXRpb24",
+  "timestamp": 1767225600,
+  "payload": "{\"id\":\"evt_aaaaaaaaaaaaaaaaaaaaaaaaaa\",\"type\":\"webhook.test\",\"api_version\":\"2026-10-01\",\"data\":{\"message\":\"café ✓\"}}",
+  "header": "t=1767225600,v1=f5b35d107193da943904fce8d56e1b5475ce20dcb421dcacf0cd0a200db40f35",
+  "header_rotation": "t=1767225600,v1=f5b35d107193da943904fce8d56e1b5475ce20dcb421dcacf0cd0a200db40f35,v1=fd39c64d77663b4845395dd76e9029bede6da26f61f2157c3c7d4643067a8737",
+  "expected_v1": "f5b35d107193da943904fce8d56e1b5475ce20dcb421dcacf0cd0a200db40f35",
+  "expected_v1_previous": "fd39c64d77663b4845395dd76e9029bede6da26f61f2157c3c7d4643067a8737"
+}

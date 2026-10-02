@@ -207,6 +207,14 @@ var handWrittenInputs = map[string]string{
 	"PropsSubscribeOptions": "PropsFilter",
 	"SgpBuildParams":        "SgpBuildParams",
 	"SgpLeg":                "SgpLeg",
+	// Webhook request bodies (webhooks.go): value fields, and nil kept apart from an
+	// empty list where the API reads [] as "all".
+	"CreateWebhookParams":          "CreateWebhookParams",
+	"UpdateWebhookParams":          "UpdateWebhookParams",
+	"RotateWebhookSecretParams":    "RotateWebhookSecretParams",
+	"WebhookFiltersInput":          "WebhookFiltersInput",
+	"WebhookLineMovedFiltersInput": "WebhookLineMovedFiltersInput",
+	"WebhookEvFoundFiltersInput":   "WebhookEvFoundFiltersInput",
 }
 
 // modelDrift returns the spec schemas with no generated type (the hand-written
@@ -325,6 +333,30 @@ func mergedBranches(spec *openAPI, name string) []string {
 	return branches
 }
 
+// successSchema is the schema of an operation's 200 response, or of its only 2xx
+// response when it has no 200 (a create answers 201, a queued test 202).
+func successSchema(responses map[string]struct {
+	Content map[string]struct {
+		Schema json.RawMessage `json:"schema"`
+	} `json:"content"`
+}) json.RawMessage {
+	if r, ok := responses["200"]; ok {
+		return r.Content["application/json"].Schema
+	}
+	var only json.RawMessage
+	n := 0
+	for code, r := range responses {
+		if len(code) == 3 && code[0] == '2' {
+			only = r.Content["application/json"].Schema
+			n++
+		}
+	}
+	if n != 1 {
+		return nil
+	}
+	return only
+}
+
 func responseTypeMismatches(spec *openAPI) []string {
 	var out []string
 	ct := reflect.TypeOf(&Client{})
@@ -356,7 +388,7 @@ func responseTypeMismatches(spec *openAPI) []string {
 			if name == "" {
 				name = op.OperationID
 			}
-			check(verb+" "+path, name, op.Responses["200"].Content["application/json"].Schema)
+			check(verb+" "+path, name, successSchema(op.Responses))
 			for _, alt := range op.Alternates {
 				check(verb+" "+path+" (alternate)", alt.SDKMethod, alt.Schema)
 			}
@@ -380,6 +412,13 @@ func TestResponseTypesMatchTheSpec(t *testing.T) {
 		"responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/RealtimeResponse"}}}}}}}}}`), &fake)
 	if bad := responseTypeMismatches(&fake); len(bad) != 1 {
 		t.Fatalf("control: %v", bad)
+	}
+	// CONTROL: a 201-only operation (a create) is checked too.
+	fake = openAPI{}
+	_ = json.Unmarshal([]byte(`{"paths": {"/x": {"post": {"x-owls-sdk-method": "getOdds",
+		"responses": {"201": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/RealtimeResponse"}}}}}}}}}`), &fake)
+	if bad := responseTypeMismatches(&fake); len(bad) != 1 {
+		t.Fatalf("control (201): %v", bad)
 	}
 	// CONTROL: an alternate response is checked against its own method.
 	fake = openAPI{}

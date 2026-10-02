@@ -108,8 +108,8 @@ Only 429 and 503 on GET requests are retried. The client waits for `Retry-After`
 (seconds or an HTTP date) when the server sends one, and gives up instead when it is
 longer than `MaxRetryAfter` (120 s). Without the header it backs off from `BaseDelay`
 (2 s), doubling up to `MaxDelay` (30 s), with full jitter. A 429 is never retried once
-the monthly quota is used up (`X-RateLimit-Remaining-Month: 0`), and a POST is never
-retried.
+the monthly quota is used up (`X-RateLimit-Remaining-Month: 0`), and a POST, PATCH or
+DELETE is never retried.
 
 ### History
 
@@ -185,6 +185,85 @@ A 422 that reports unresolved legs or a refused slip is returned, not an error: 
 `res.Success` and `res.ReasonCode`. A 503 with `Code == owls.SgpNoPriceCode` means no
 usable price came back; wait `RetryAfter` (2 s when the server sends no header).
 `BuildSgp` is never retried.
+
+### Webhooks
+
+Webhooks are in beta. MVP and Hall of Fame plans can register HTTPS endpoints that
+receive signed POSTs (MVP 3 endpoints, Hall of Fame 10): `line.moved` (Pinnacle's main
+moneyline, spread or total for a game that has not started moved by at least your
+step), `ev.found` (a price on the EV board became tradeable at or above your `min_ev`),
+`game.started`, `game.final` (never for a postponed or cancelled game) and
+`props.graded`. Each type covers its own sports; a sport an event type does not cover
+is refused with a 400 (`sport_not_covered`), and so is an event type that is not open
+yet (`event_type_unavailable`).
+
+```go
+created, err := c.CreateWebhook(ctx, owls.CreateWebhookParams{
+	URL:        "https://example.com/owls",
+	EventTypes: []string{owls.WebhookEventLineMoved, owls.WebhookEventEvFound},
+	Filters: &owls.WebhookFiltersInput{
+		Sports:    []string{"nba", "nhl"},
+		LineMoved: &owls.WebhookLineMovedFiltersInput{PriceStepPp: 2, PointStep: 1},
+		EvFound:   &owls.WebhookEvFoundFiltersInput{MinEv: 3},
+	},
+})
+if err != nil {
+	log.Fatal(err)
+}
+secret := *created.Data.Secret // returned ONCE: store it
+id := *created.Data.ID
+
+_, _ = c.TestWebhook(ctx, id) // a signed webhook.test event
+_, _ = c.ListWebhookDeliveries(ctx, id, &owls.WebhookDeliveriesParams{Limit: 10})
+_, _ = c.UpdateWebhook(ctx, id, owls.UpdateWebhookParams{Enabled: owls.Ptr(false)})
+rotated, _ := c.RotateWebhookSecret(ctx, id, &owls.RotateWebhookSecretParams{ExpirePreviousAfterHours: owls.Ptr(24.0)})
+saveSecret(id, *rotated.Data.Secret) // also returned ONCE; the old secret keeps signing for 24 hours
+_, _ = c.DeleteWebhook(ctx, id)
+```
+
+The calls that change something are never retried. If one times out, list your
+endpoints before creating again; rotate the secret of an endpoint whose secret you
+never saw. Verify every delivery against the raw body, then dedupe on the event id
+(delivery is at least once and unordered):
+
+```go
+http.HandleFunc("/owls", func(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	if err != nil || !owls.VerifyWebhookSignature(body, r.Header.Get(owls.WebhookSignatureHeader), secret) {
+		http.Error(w, "bad signature", http.StatusBadRequest)
+		return
+	}
+	ev, err := owls.ParseWebhookEvent(body)
+	if err != nil {
+		http.Error(w, "bad body", http.StatusBadRequest)
+		return
+	}
+	if alreadyHandled(ev.EventID()) {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	switch ev := ev.(type) {
+	case *owls.WebhookLineMovedEvent:
+		log.Println(*ev.Data.Market, *ev.Data.Reason)
+	case *owls.WebhookEvFoundEvent:
+		log.Println(*ev.Data.Signal.Venue, *ev.Data.Signal.EvPercent)
+	}
+	w.WriteHeader(http.StatusOK) // any 2xx within 10 s acknowledges it
+})
+```
+
+Answer with any 2xx within 10 seconds. 410 Gone disables the endpoint. Anything else,
+a redirect included, is a failure: `line.moved` and `ev.found` are retried after about
+5, 20 and 60 seconds, the other types up to 8 times over about a day, and nothing is
+sent after the event's `expires_at`.
+
+`Owls-Signature` is `t=<unix seconds>,v1=<hex HMAC-SHA256(secret, t + "." + raw body)>`,
+keyed with the whole secret (`whsec_` included). During a secret rotation it carries a
+v1 for each live secret, and either one verifies. `VerifyWebhookSignature` rejects a `t`
+more than 5 minutes from your clock; `VerifyWebhookSignatureAt` takes the tolerance
+and the clock. `ParseWebhookEvent` returns an `owls.WebhookEvent` (`EventID`,
+`EventType`) holding the model of the event's type, or a `*owls.WebhookDeliveryPayload`
+(with `Data` left raw) for a type this version does not know.
 
 ### Models
 
@@ -369,6 +448,15 @@ running, and do not restart it in a tight loop.
 | `get<Book>V2Leagues` | `GetV2Leagues(ctx, book, sport)` | `GET /api/v2/{book}/{sport}/leagues` |
 | `getSgpEvents` | `GetSgpEvents(ctx, sport, book)` | `GET /api/v1/{sport}/sgp/events` |
 | `buildSgp` | `BuildSgp(ctx, sport, SgpBuildParams)` | `POST /api/v1/{sport}/sgp/build` |
+| `createWebhook` | `CreateWebhook(ctx, CreateWebhookParams)` | `POST /api/v1/webhooks` |
+| `listWebhooks` | `ListWebhooks(ctx)` | `GET /api/v1/webhooks` |
+| `getWebhook` | `GetWebhook(ctx, id)` | `GET /api/v1/webhooks/{id}` |
+| `updateWebhook` | `UpdateWebhook(ctx, id, UpdateWebhookParams)` | `PATCH /api/v1/webhooks/{id}` |
+| `deleteWebhook` | `DeleteWebhook(ctx, id)` | `DELETE /api/v1/webhooks/{id}` |
+| `testWebhook` | `TestWebhook(ctx, id)` | `POST /api/v1/webhooks/{id}/test` |
+| `rotateWebhookSecret` | `RotateWebhookSecret(ctx, id, *RotateWebhookSecretParams)` | `POST /api/v1/webhooks/{id}/rotate-secret` |
+| `listWebhookDeliveries` | `ListWebhookDeliveries(ctx, id, *WebhookDeliveriesParams)` | `GET /api/v1/webhooks/{id}/deliveries` |
+| `verifyWebhookSignature` | `VerifyWebhookSignature(payload, header, secret)` | checks a delivery's `Owls-Signature` |
 
 Three methods answer with one of several shapes and return a small result struct with
 exactly one field set: `GetScores` (`All` or `Sport`), `GetBookProps` (`Props`, or

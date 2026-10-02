@@ -5551,3 +5551,649 @@ type WSError struct {
 	Code    *string `json:"code,omitempty"`
 	Message *string `json:"message,omitempty"`
 }
+
+// WebhookCreateResponse defines model for WebhookCreateResponse.
+type WebhookCreateResponse struct {
+	// Data What create returns: the endpoint and its signing secret.
+	Data    *WebhookEndpointWithSecret `json:"data,omitempty"`
+	Success *bool                      `json:"success,omitempty"`
+}
+
+// WebhookDeleteResponse defines model for WebhookDeleteResponse.
+type WebhookDeleteResponse struct {
+	Data    *WebhookDeleted `json:"data,omitempty"`
+	Success *bool           `json:"success,omitempty"`
+}
+
+// WebhookDeleted defines model for WebhookDeleted.
+type WebhookDeleted struct {
+	Deleted *bool   `json:"deleted,omitempty"`
+	ID      *string `json:"id,omitempty"`
+}
+
+// WebhookDeliveriesResponse defines model for WebhookDeliveriesResponse.
+type WebhookDeliveriesResponse struct {
+	Data []WebhookDelivery `json:"data,omitempty"`
+
+	// HasMore True when older deliveries remain: ask for the next page starting after the last `id`.
+	HasMore *bool `json:"has_more,omitempty"`
+	Success *bool `json:"success,omitempty"`
+}
+
+// WebhookDelivery One delivery to an endpoint, as the deliveries listing returns it.
+type WebhookDelivery struct {
+	Attempts    *float64 `json:"attempts,omitempty"`
+	CreatedAt   *string  `json:"created_at,omitempty"`
+	DeliveredAt *string  `json:"delivered_at,omitempty"`
+	ExpiresAt   *string  `json:"expires_at,omitempty"`
+
+	// ID The event id (`Owls-Webhook-Id`).
+	ID            *string  `json:"id,omitempty"`
+	LastError     *string  `json:"last_error,omitempty"`
+	LastLatencyMs *float64 `json:"last_latency_ms,omitempty"`
+
+	// LastStatusCode Your receiver's last HTTP status, or null.
+	LastStatusCode *float64 `json:"last_status_code,omitempty"`
+
+	// NextAttemptAt When the next attempt is due, while `pending`; otherwise null.
+	NextAttemptAt *string `json:"next_attempt_at,omitempty"`
+	OccurredAt    *string `json:"occurred_at,omitempty"`
+
+	// Payload The exact body sent, or null.
+	Payload *WebhookDeliveryPayload `json:"payload,omitempty"`
+
+	// ResponseExcerpt Up to the first 512 bytes of your receiver's last answer.
+	ResponseExcerpt *string `json:"response_excerpt,omitempty"`
+
+	// Status `pending` (queued or between retries), `delivered`, `failed` (retries exhausted),
+	// `expired` (past `expires_at`), `cancelled` (the endpoint was disabled or deleted) or
+	// `shadow` (recorded while the event type was held back, never sent).
+	Status *WebhookDeliveryStatus `json:"status,omitempty"`
+	Type   *string                `json:"type,omitempty"`
+}
+
+// WebhookDeliveryPayload A delivery body as stored, with `data` untyped: its shape depends on `type`.
+type WebhookDeliveryPayload struct {
+	// APIVersion The payload version.
+	APIVersion *string `json:"api_version,omitempty"`
+
+	// Created When the event was created (ISO 8601).
+	Created *string          `json:"created,omitempty"`
+	Data    *json.RawMessage `json:"data,omitempty"`
+
+	// EndpointID The endpoint it was sent to, `whk_...`.
+	EndpointID *string `json:"endpoint_id,omitempty"`
+
+	// ExpiresAt No delivery is attempted after this (ISO 8601).
+	ExpiresAt *string `json:"expires_at,omitempty"`
+
+	// ID The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.
+	ID *string `json:"id,omitempty"`
+
+	// OccurredAt When what it reports happened, as far as is known (ISO 8601).
+	OccurredAt *string `json:"occurred_at,omitempty"`
+
+	// Type The event type; a type added later arrives as a string this version does not list.
+	Type *string `json:"type,omitempty"`
+}
+
+// WebhookDeliveryStatus `pending` (queued or between retries), `delivered`, `failed` (retries exhausted),
+// `expired` (past `expires_at`), `cancelled` (the endpoint was disabled or deleted) or
+// `shadow` (recorded while the event type was held back, never sent).
+type WebhookDeliveryStatus = string
+
+// WebhookEndpoint A webhook endpoint. It never carries the signing secret: create and rotate-secret return it once.
+type WebhookEndpoint struct {
+	// APIVersion The payload version this endpoint's deliveries carry.
+	APIVersion *string `json:"api_version,omitempty"`
+
+	// ConsecutiveFailures Failed deliveries in a row.
+	ConsecutiveFailures *float64                       `json:"consecutive_failures,omitempty"`
+	CreatedAt           *string                        `json:"created_at,omitempty"`
+	Description         *string                        `json:"description,omitempty"`
+	EventTypes          []WebhookSubscribableEventType `json:"event_types,omitempty"`
+
+	// FailingSince When the current run of failures began (ISO 8601), or null.
+	FailingSince *string `json:"failing_since,omitempty"`
+
+	// Filters An endpoint's filters as stored: the API fills in every default.
+	Filters *WebhookFilters `json:"filters,omitempty"`
+
+	// ID The endpoint id, `whk_...`.
+	ID            *string `json:"id,omitempty"`
+	LastSuccessAt *string `json:"last_success_at,omitempty"`
+
+	// PreviousSecretExpiresAt While set, deliveries also carry a v1 signature made with the previous secret, until this time (ISO 8601).
+	PreviousSecretExpiresAt *string `json:"previous_secret_expires_at,omitempty"`
+
+	// SecretHint The last 4 characters of the current signing secret, to tell secrets apart.
+	SecretHint *string `json:"secret_hint,omitempty"`
+
+	// Status `enabled`; `disabled` (by you, or after your receiver answered 410 Gone); or
+	// `auto_disabled` (after 50 failed deliveries in a row and 3 days without a success). An
+	// update with `enabled` set to true resumes a disabled or auto-disabled endpoint.
+	Status *WebhookEndpointStatus `json:"status,omitempty"`
+
+	// StatusReason Why the endpoint is not enabled, or null.
+	StatusReason *string `json:"status_reason,omitempty"`
+	UpdatedAt    *string `json:"updated_at,omitempty"`
+	URL          *string `json:"url,omitempty"`
+}
+
+// WebhookEndpointStatus `enabled`; `disabled` (by you, or after your receiver answered 410 Gone); or
+// `auto_disabled` (after 50 failed deliveries in a row and 3 days without a success). An
+// update with `enabled` set to true resumes a disabled or auto-disabled endpoint.
+type WebhookEndpointStatus = string
+
+// WebhookEndpointWithSecret What create returns: the endpoint and its signing secret.
+type WebhookEndpointWithSecret struct {
+	// APIVersion The payload version this endpoint's deliveries carry.
+	APIVersion *string `json:"api_version,omitempty"`
+
+	// ConsecutiveFailures Failed deliveries in a row.
+	ConsecutiveFailures *float64                       `json:"consecutive_failures,omitempty"`
+	CreatedAt           *string                        `json:"created_at,omitempty"`
+	Description         *string                        `json:"description,omitempty"`
+	EventTypes          []WebhookSubscribableEventType `json:"event_types,omitempty"`
+
+	// FailingSince When the current run of failures began (ISO 8601), or null.
+	FailingSince *string `json:"failing_since,omitempty"`
+
+	// Filters An endpoint's filters as stored: the API fills in every default.
+	Filters *WebhookFilters `json:"filters,omitempty"`
+
+	// ID The endpoint id, `whk_...`.
+	ID            *string `json:"id,omitempty"`
+	LastSuccessAt *string `json:"last_success_at,omitempty"`
+
+	// PreviousSecretExpiresAt While set, deliveries also carry a v1 signature made with the previous secret, until this time (ISO 8601).
+	PreviousSecretExpiresAt *string `json:"previous_secret_expires_at,omitempty"`
+
+	// Secret The signing secret, `whsec_...`. Returned once: store it now.
+	Secret *string `json:"secret,omitempty"`
+
+	// SecretHint The last 4 characters of the current signing secret, to tell secrets apart.
+	SecretHint *string `json:"secret_hint,omitempty"`
+
+	// Status `enabled`; `disabled` (by you, or after your receiver answered 410 Gone); or
+	// `auto_disabled` (after 50 failed deliveries in a row and 3 days without a success). An
+	// update with `enabled` set to true resumes a disabled or auto-disabled endpoint.
+	Status *WebhookEndpointStatus `json:"status,omitempty"`
+
+	// StatusReason Why the endpoint is not enabled, or null.
+	StatusReason *string `json:"status_reason,omitempty"`
+	UpdatedAt    *string `json:"updated_at,omitempty"`
+	URL          *string `json:"url,omitempty"`
+}
+
+// WebhookEvFoundData `ev.found` data: a price on the EV board became tradeable at or above your `min_ev`.
+type WebhookEvFoundData struct {
+	AwayTeam *string `json:"away_team,omitempty"`
+
+	// BoardAgeMs The EV board's age in milliseconds when the event was made, or null.
+	BoardAgeMs *float64 `json:"board_age_ms,omitempty"`
+
+	// CommenceTime The scheduled start (ISO 8601).
+	CommenceTime *string `json:"commence_time,omitempty"`
+
+	// EventID Our stable id of the game (`{sport}:{away}@{home}-{date}`), the `eventId` the odds board and the history endpoints use; empty when unknown.
+	EventID  *string `json:"event_id,omitempty"`
+	HomeTeam *string `json:"home_team,omitempty"`
+	League   *string `json:"league,omitempty"`
+
+	// MinEv The endpoint's `min_ev` the price reached.
+	MinEv *float64 `json:"min_ev,omitempty"`
+
+	// OddsEventID The game's `id` on the odds board: what the EV endpoint returns as `eventId`.
+	OddsEventID *string `json:"odds_event_id,omitempty"`
+
+	// Signal The price behind an `ev.found` event, scored like the EV endpoint scores it.
+	Signal *WebhookEvSignal `json:"signal,omitempty"`
+	Sport  *string          `json:"sport,omitempty"`
+}
+
+// WebhookEvFoundEvent An `ev.found` delivery.
+type WebhookEvFoundEvent struct {
+	// APIVersion The payload version.
+	APIVersion *string `json:"api_version,omitempty"`
+
+	// Created When the event was created (ISO 8601).
+	Created *string `json:"created,omitempty"`
+
+	// Data `ev.found` data: a price on the EV board became tradeable at or above your `min_ev`.
+	Data *WebhookEvFoundData `json:"data,omitempty"`
+
+	// EndpointID The endpoint it was sent to, `whk_...`.
+	EndpointID *string `json:"endpoint_id,omitempty"`
+
+	// ExpiresAt No delivery is attempted after this (ISO 8601).
+	ExpiresAt *string `json:"expires_at,omitempty"`
+
+	// ID The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.
+	ID *string `json:"id,omitempty"`
+
+	// OccurredAt When what it reports happened, as far as is known (ISO 8601).
+	OccurredAt *string `json:"occurred_at,omitempty"`
+
+	// Type The event type; a type added later arrives as a string this version does not list.
+	Type *string `json:"type,omitempty"`
+}
+
+// WebhookEvFoundFilters `ev.found` filters as stored: every field is set.
+type WebhookEvFoundFilters struct {
+	// Kinds The price kinds that fire (default both).
+	Kinds []WebhookEvKind `json:"kinds,omitempty"`
+
+	// MinEv The least EV that fires, in percent: 1, 2, 3, 5 or 8 (default 3).
+	MinEv *float64 `json:"min_ev,omitempty"`
+
+	// Venues Sportsbook or venue keys; empty (the default) means every one the EV board scores.
+	Venues []string `json:"venues,omitempty"`
+}
+
+// WebhookEvKind `ev.found` price kinds: `book` (a sportsbook) or `venue` (an exchange or prediction market).
+type WebhookEvKind = string
+
+// WebhookEvSignal The price behind an `ev.found` event, scored like the EV endpoint scores it.
+type WebhookEvSignal struct {
+	// Ev The EV in dollars: per $1 staked at a sportsbook, per contract at a venue. Null when it is not scored.
+	Ev *float64 `json:"ev,omitempty"`
+
+	// EvPercent The EV in percent of the amount at risk, rounded to 2 decimals.
+	EvPercent *float64 `json:"ev_percent,omitempty"`
+
+	// FairLow The conservative fair (the fair less 1 percentage point) the EV is scored against, or null.
+	FairLow *float64 `json:"fair_low,omitempty"`
+
+	// FairProbability The fair probability of this side, or null.
+	FairProbability *float64 `json:"fair_probability,omitempty"`
+
+	// Fee A venue's taker fee per contract, in dollars; 0 for a sportsbook.
+	Fee *float64 `json:"fee,omitempty"`
+
+	// ImpliedProbability The implied probability of `price`.
+	ImpliedProbability *float64 `json:"implied_probability,omitempty"`
+
+	// Kind `ev.found` price kinds: `book` (a sportsbook) or `venue` (an exchange or prediction market).
+	Kind *WebhookEvKind `json:"kind,omitempty"`
+
+	// Link The venue's page for the market, or null.
+	Link *string `json:"link,omitempty"`
+
+	// Price American odds of the price you pay (a venue's ask).
+	Price *float64 `json:"price,omitempty"`
+
+	// QuoteAgeMs The price's age in milliseconds when the EV board was built, or null.
+	QuoteAgeMs *float64 `json:"quote_age_ms,omitempty"`
+
+	// Route A venue's route: `yes`, or `no:<CODE>` (buy NO on the opponent's market); null for a sportsbook.
+	Route *string `json:"route,omitempty"`
+	Side  *string `json:"side,omitempty"`
+
+	// Size Dollars available at `price`, or null when unknown.
+	Size *float64 `json:"size,omitempty"`
+	Team *string  `json:"team,omitempty"`
+
+	// Venue The sportsbook or venue key.
+	Venue *string `json:"venue,omitempty"`
+}
+
+// WebhookEventType Every event type a delivery can carry: the subscribable ones and `webhook.test` (sent only on request, by the test call).
+type WebhookEventType = string
+
+// WebhookFilters An endpoint's filters as stored: the API fills in every default.
+type WebhookFilters struct {
+	// EvFound `ev.found` filters as stored: every field is set.
+	EvFound *WebhookEvFoundFilters `json:"ev_found,omitempty"`
+
+	// LineMoved `line.moved` filters as stored: every field is set.
+	LineMoved *WebhookLineMovedFilters `json:"line_moved,omitempty"`
+
+	// Sports Sport keys; empty (the default) means every sport each subscribed event type covers.
+	Sports []string `json:"sports,omitempty"`
+}
+
+// WebhookGameData `game.started` and `game.final` data.
+type WebhookGameData struct {
+	AwayTeam *string `json:"away_team,omitempty"`
+
+	// EventID The game's id in the live scores.
+	EventID  *string `json:"event_id,omitempty"`
+	HomeTeam *string `json:"home_team,omitempty"`
+	League   *string `json:"league,omitempty"`
+
+	// Score Null when the scores show none.
+	Score *WebhookGameScore `json:"score,omitempty"`
+	Sport *string           `json:"sport,omitempty"`
+
+	// StartTime The start time (ISO 8601), or null.
+	StartTime *string `json:"start_time,omitempty"`
+
+	// Status A game's status as the live scores show it.
+	Status *WebhookGameStatus `json:"status,omitempty"`
+}
+
+// WebhookGameFinalEvent A `game.final` delivery.
+type WebhookGameFinalEvent struct {
+	// APIVersion The payload version.
+	APIVersion *string `json:"api_version,omitempty"`
+
+	// Created When the event was created (ISO 8601).
+	Created *string `json:"created,omitempty"`
+
+	// Data `game.started` and `game.final` data.
+	Data *WebhookGameData `json:"data,omitempty"`
+
+	// EndpointID The endpoint it was sent to, `whk_...`.
+	EndpointID *string `json:"endpoint_id,omitempty"`
+
+	// ExpiresAt No delivery is attempted after this (ISO 8601).
+	ExpiresAt *string `json:"expires_at,omitempty"`
+
+	// ID The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.
+	ID *string `json:"id,omitempty"`
+
+	// OccurredAt When what it reports happened, as far as is known (ISO 8601).
+	OccurredAt *string `json:"occurred_at,omitempty"`
+
+	// Type The event type; a type added later arrives as a string this version does not list.
+	Type *string `json:"type,omitempty"`
+}
+
+// WebhookGameScore A game's score. For tennis, sets won.
+type WebhookGameScore struct {
+	Away *float64 `json:"away,omitempty"`
+	Home *float64 `json:"home,omitempty"`
+}
+
+// WebhookGameStartedEvent A `game.started` delivery.
+type WebhookGameStartedEvent struct {
+	// APIVersion The payload version.
+	APIVersion *string `json:"api_version,omitempty"`
+
+	// Created When the event was created (ISO 8601).
+	Created *string `json:"created,omitempty"`
+
+	// Data `game.started` and `game.final` data.
+	Data *WebhookGameData `json:"data,omitempty"`
+
+	// EndpointID The endpoint it was sent to, `whk_...`.
+	EndpointID *string `json:"endpoint_id,omitempty"`
+
+	// ExpiresAt No delivery is attempted after this (ISO 8601).
+	ExpiresAt *string `json:"expires_at,omitempty"`
+
+	// ID The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.
+	ID *string `json:"id,omitempty"`
+
+	// OccurredAt When what it reports happened, as far as is known (ISO 8601).
+	OccurredAt *string `json:"occurred_at,omitempty"`
+
+	// Type The event type; a type added later arrives as a string this version does not list.
+	Type *string `json:"type,omitempty"`
+}
+
+// WebhookGameStatus A game's status as the live scores show it.
+type WebhookGameStatus struct {
+	// Detail Its detail text, such as the clock or the result.
+	Detail *string `json:"detail,omitempty"`
+
+	// State The scores feed's state, such as `in` or `post`.
+	State *string `json:"state,omitempty"`
+}
+
+// WebhookLineMarket The markets `line.moved` watches.
+type WebhookLineMarket = string
+
+// WebhookLineMovedData `line.moved` data: Pinnacle's main moneyline, spread or total for a game that has not
+// started moved by at least your step since the last `line.moved` you were sent for that
+// market, so small moves add up.
+type WebhookLineMovedData struct {
+	// AwayTeam Empty when unknown.
+	AwayTeam *string `json:"away_team,omitempty"`
+	Book     *string `json:"book,omitempty"`
+
+	// CommenceTime The scheduled start (ISO 8601); empty when unknown.
+	CommenceTime *string `json:"commence_time,omitempty"`
+
+	// Current The sides of a `line.moved` market: `home`, `away` and, on a three-way market, `draw`
+	// (moneyline); `home` and `away` (spread); `over` and `under` (total).
+	Current *WebhookLineSides `json:"current,omitempty"`
+
+	// EventID Our stable id of the game (`{sport}:{away}@{home}-{date}`), the `eventId` the odds board and the history endpoints use. Empty when unknown.
+	EventID *string `json:"event_id,omitempty"`
+
+	// HomeTeam Empty when unknown.
+	HomeTeam *string `json:"home_team,omitempty"`
+	League   *string `json:"league,omitempty"`
+
+	// Market The markets `line.moved` watches.
+	Market *WebhookLineMarket `json:"market,omitempty"`
+
+	// MaxProbabilityChangePp The largest change of a side's implied probability from `previous`, in percentage points.
+	MaxProbabilityChangePp *float64 `json:"max_probability_change_pp,omitempty"`
+
+	// PointChange The change of the line (the home spread, or the total) from `previous`; 0 on a moneyline.
+	PointChange *float64 `json:"point_change,omitempty"`
+
+	// Previous The sides of a `line.moved` market: `home`, `away` and, on a three-way market, `draw`
+	// (moneyline); `home` and `away` (spread); `over` and `under` (total).
+	Previous *WebhookLineSides `json:"previous,omitempty"`
+
+	// Reason `price`: a side's implied probability moved by at least `price_step_pp` at the same line. `point`: the line moved by at least `point_step`.
+	Reason *string `json:"reason,omitempty"`
+
+	// SourceEventID The book's own id for the event.
+	SourceEventID *string `json:"source_event_id,omitempty"`
+	Sport         *string `json:"sport,omitempty"`
+
+	// Thresholds The endpoint's `line.moved` steps the move cleared.
+	Thresholds *WebhookLineMovedThresholds `json:"thresholds,omitempty"`
+}
+
+// WebhookLineMovedEvent A `line.moved` delivery.
+type WebhookLineMovedEvent struct {
+	// APIVersion The payload version.
+	APIVersion *string `json:"api_version,omitempty"`
+
+	// Created When the event was created (ISO 8601).
+	Created *string `json:"created,omitempty"`
+
+	// Data `line.moved` data: Pinnacle's main moneyline, spread or total for a game that has not
+	// started moved by at least your step since the last `line.moved` you were sent for that
+	// market, so small moves add up.
+	Data *WebhookLineMovedData `json:"data,omitempty"`
+
+	// EndpointID The endpoint it was sent to, `whk_...`.
+	EndpointID *string `json:"endpoint_id,omitempty"`
+
+	// ExpiresAt No delivery is attempted after this (ISO 8601).
+	ExpiresAt *string `json:"expires_at,omitempty"`
+
+	// ID The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.
+	ID *string `json:"id,omitempty"`
+
+	// OccurredAt When what it reports happened, as far as is known (ISO 8601).
+	OccurredAt *string `json:"occurred_at,omitempty"`
+
+	// Type The event type; a type added later arrives as a string this version does not list.
+	Type *string `json:"type,omitempty"`
+}
+
+// WebhookLineMovedFilters `line.moved` filters as stored: every field is set.
+type WebhookLineMovedFilters struct {
+	// Markets The markets watched (default all three).
+	Markets []WebhookLineMarket `json:"markets,omitempty"`
+
+	// PointStep The spread or total line move that fires: 0.5, 1, 1.5, 2 or 3 (default 1).
+	PointStep *float64 `json:"point_step,omitempty"`
+
+	// PriceStepPp The implied-probability move that fires, in percentage points: 0.5, 1, 2, 3 or 5 (default 2).
+	PriceStepPp *float64 `json:"price_step_pp,omitempty"`
+}
+
+// WebhookLineMovedThresholds The endpoint's `line.moved` steps the move cleared.
+type WebhookLineMovedThresholds struct {
+	PointStep   *float64 `json:"point_step,omitempty"`
+	PriceStepPp *float64 `json:"price_step_pp,omitempty"`
+}
+
+// WebhookLineSide One side of a `line.moved` market.
+type WebhookLineSide struct {
+	// Point The line: this side's spread, or the total. Absent on a moneyline.
+	Point *float64 `json:"point,omitempty"`
+
+	// Price American odds.
+	Price *float64 `json:"price,omitempty"`
+}
+
+// WebhookLineSides The sides of a `line.moved` market: `home`, `away` and, on a three-way market, `draw`
+// (moneyline); `home` and `away` (spread); `over` and `under` (total).
+type WebhookLineSides struct {
+	// Away One side of a `line.moved` market.
+	Away *WebhookLineSide `json:"away,omitempty"`
+
+	// Draw One side of a `line.moved` market.
+	Draw *WebhookLineSide `json:"draw,omitempty"`
+
+	// Home One side of a `line.moved` market.
+	Home *WebhookLineSide `json:"home,omitempty"`
+
+	// Over One side of a `line.moved` market.
+	Over *WebhookLineSide `json:"over,omitempty"`
+
+	// Under One side of a `line.moved` market.
+	Under *WebhookLineSide `json:"under,omitempty"`
+}
+
+// WebhookListMeta defines model for WebhookListMeta.
+type WebhookListMeta struct {
+	Count *float64 `json:"count,omitempty"`
+
+	// Limit How many endpoints your plan allows.
+	Limit *float64 `json:"limit,omitempty"`
+}
+
+// WebhookListResponse defines model for WebhookListResponse.
+type WebhookListResponse struct {
+	Data    []WebhookEndpoint `json:"data,omitempty"`
+	Meta    *WebhookListMeta  `json:"meta,omitempty"`
+	Success *bool             `json:"success,omitempty"`
+}
+
+// WebhookPropsGradedData `props.graded` data: the first player prop results of a game are confirmed (`complete: false`), or all of them are (`complete: true`).
+type WebhookPropsGradedData struct {
+	// Complete True when every result of the game is confirmed.
+	Complete       *bool    `json:"complete,omitempty"`
+	ConfirmedCount *float64 `json:"confirmed_count,omitempty"`
+	EventID        *string  `json:"event_id,omitempty"`
+
+	// GameDate The game's date (YYYY-MM-DD), or null.
+	GameDate     *string  `json:"game_date,omitempty"`
+	PendingCount *float64 `json:"pending_count,omitempty"`
+
+	// ResultsPath The path of the graded results (a GET with your key, Rookie and above), such as `/api/v1/mlb/props/results?game_id=...`.
+	ResultsPath *string `json:"results_path,omitempty"`
+	Sport       *string `json:"sport,omitempty"`
+}
+
+// WebhookPropsGradedEvent A `props.graded` delivery.
+type WebhookPropsGradedEvent struct {
+	// APIVersion The payload version.
+	APIVersion *string `json:"api_version,omitempty"`
+
+	// Created When the event was created (ISO 8601).
+	Created *string `json:"created,omitempty"`
+
+	// Data `props.graded` data: the first player prop results of a game are confirmed (`complete: false`), or all of them are (`complete: true`).
+	Data *WebhookPropsGradedData `json:"data,omitempty"`
+
+	// EndpointID The endpoint it was sent to, `whk_...`.
+	EndpointID *string `json:"endpoint_id,omitempty"`
+
+	// ExpiresAt No delivery is attempted after this (ISO 8601).
+	ExpiresAt *string `json:"expires_at,omitempty"`
+
+	// ID The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.
+	ID *string `json:"id,omitempty"`
+
+	// OccurredAt When what it reports happened, as far as is known (ISO 8601).
+	OccurredAt *string `json:"occurred_at,omitempty"`
+
+	// Type The event type; a type added later arrives as a string this version does not list.
+	Type *string `json:"type,omitempty"`
+}
+
+// WebhookResponse defines model for WebhookResponse.
+type WebhookResponse struct {
+	// Data A webhook endpoint. It never carries the signing secret: create and rotate-secret return it once.
+	Data    *WebhookEndpoint `json:"data,omitempty"`
+	Success *bool            `json:"success,omitempty"`
+}
+
+// WebhookRotateSecretResponse defines model for WebhookRotateSecretResponse.
+type WebhookRotateSecretResponse struct {
+	Data    *WebhookRotatedSecret `json:"data,omitempty"`
+	Success *bool                 `json:"success,omitempty"`
+}
+
+// WebhookRotatedSecret defines model for WebhookRotatedSecret.
+type WebhookRotatedSecret struct {
+	ID *string `json:"id,omitempty"`
+
+	// PreviousSecretExpiresAt Until when the previous secret keeps signing (ISO 8601), or null when it was retired at once.
+	PreviousSecretExpiresAt *string `json:"previous_secret_expires_at,omitempty"`
+
+	// Secret The new signing secret, `whsec_...`. Returned once: store it now.
+	Secret     *string `json:"secret,omitempty"`
+	SecretHint *string `json:"secret_hint,omitempty"`
+}
+
+// WebhookSubscribableEventType Event types an endpoint can subscribe to.
+type WebhookSubscribableEventType = string
+
+// WebhookTestData `webhook.test` data.
+type WebhookTestData struct {
+	Message *string `json:"message,omitempty"`
+}
+
+// WebhookTestEvent A `webhook.test` delivery (sent on request, by the test call).
+type WebhookTestEvent struct {
+	// APIVersion The payload version.
+	APIVersion *string `json:"api_version,omitempty"`
+
+	// Created When the event was created (ISO 8601).
+	Created *string `json:"created,omitempty"`
+
+	// Data `webhook.test` data.
+	Data *WebhookTestData `json:"data,omitempty"`
+
+	// EndpointID The endpoint it was sent to, `whk_...`.
+	EndpointID *string `json:"endpoint_id,omitempty"`
+
+	// ExpiresAt No delivery is attempted after this (ISO 8601).
+	ExpiresAt *string `json:"expires_at,omitempty"`
+
+	// ID The event id, `evt_...`: identical on every retry and in the `Owls-Webhook-Id` header. Dedupe on it.
+	ID *string `json:"id,omitempty"`
+
+	// OccurredAt When what it reports happened, as far as is known (ISO 8601).
+	OccurredAt *string `json:"occurred_at,omitempty"`
+
+	// Type The event type; a type added later arrives as a string this version does not list.
+	Type *string `json:"type,omitempty"`
+}
+
+// WebhookTestQueued defines model for WebhookTestQueued.
+type WebhookTestQueued struct {
+	// ID The test event's id: find it in the endpoint's deliveries.
+	ID     *string `json:"id,omitempty"`
+	Status *string `json:"status,omitempty"`
+	Type   *string `json:"type,omitempty"`
+}
+
+// WebhookTestResponse defines model for WebhookTestResponse.
+type WebhookTestResponse struct {
+	Data    *WebhookTestQueued `json:"data,omitempty"`
+	Success *bool              `json:"success,omitempty"`
+}

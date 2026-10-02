@@ -9,13 +9,19 @@ output-options:
   # Go initialisms: EventID, not EventId. Changing this after a release renames
   # every such field, so it is fixed before 0.1.0.
   name-normalizer: ToCamelCaseWithInitialisms
-  # Request inputs are hand-written (params.go, stream.go): they need value fields,
-  # not the all-optional pointers the lenient response schemas produce.
+  # Request inputs are hand-written (params.go, stream.go, webhooks.go): they need
+  # value fields, not the all-optional pointers the lenient response schemas produce.
   exclude-schemas:
     - SubscribeOptions
     - PropsSubscribeOptions
     - SgpBuildParams
     - SgpLeg
+    - CreateWebhookParams
+    - UpdateWebhookParams
+    - RotateWebhookSecretParams
+    - WebhookFiltersInput
+    - WebhookLineMovedFiltersInput
+    - WebhookEvFoundFiltersInput
   # nil already means "absent" for a slice or map, so containers are not pointers.
   # Scalars stay pointers: a 0 spread must be told apart from a missing one.
   prefer-skip-optional-pointer-on-container-types: true

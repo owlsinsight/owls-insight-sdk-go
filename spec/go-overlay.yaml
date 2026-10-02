@@ -10,6 +10,13 @@ actions:
       Models only. The REST methods are written by hand, so no operation, parameter
       or request-body types are generated.
     remove: true
+  - target: $.webhooks.*
+    description: >-
+      Models only, as for the paths. The delivery bodies the webhooks map names are
+      components (WebhookLineMovedEvent, ...) and are generated with the rest; its
+      operations would add header-parameter and request-body types the spec does not
+      define as components.
+    remove: true
   - target: $.components.schemas.RawJson
     description: A book's own JSON, served verbatim. Kept as raw bytes, never re-typed.
     update:

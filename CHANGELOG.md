@@ -4,6 +4,57 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.5.0] - 2026-10-02
+
+### Added
+
+- Customer webhooks (beta; MVP and Hall of Fame), the methods named after the
+  TypeScript SDK's: `CreateWebhook`, `ListWebhooks`, `GetWebhook`, `UpdateWebhook`,
+  `DeleteWebhook`, `TestWebhook`, `RotateWebhookSecret` and `ListWebhookDeliveries`
+  for `/api/v1/webhooks`. The calls that change something are never retried, whatever
+  `RetryPolicy` says (a retried create could register the endpoint twice). The signing
+  secret is returned by `CreateWebhook` and `RotateWebhookSecret` only. A 400 or 409 is
+  an `*APIError` with the API's `Code` (such as `sport_not_covered`, `https_required`,
+  `event_type_unavailable` or `endpoint_limit`) and the body in `Details`. An empty id,
+  `.` or `..` is refused before anything is sent, since a URL would resolve it to
+  another route.
+- Request inputs, written by hand with value fields: `CreateWebhookParams`,
+  `UpdateWebhookParams` (only the fields you set are sent), `RotateWebhookSecretParams`,
+  `WebhookFiltersInput` with `WebhookLineMovedFiltersInput` and
+  `WebhookEvFoundFiltersInput` (a nil list is not sent; a non-nil empty `Sports` or
+  `Venues` sends `[]`, which means all; their JSON tags let a config loaded from JSON
+  keep every field), and `WebhookDeliveriesParams`.
+- `VerifyWebhookSignature(payload, header, secret)` and `VerifyWebhookSignatureAt`
+  (tolerance and clock given) check a delivery's `Owls-Signature` header against the raw
+  body: HMAC-SHA256 of `t`, a period and the body, keyed with the whole secret; any v1
+  may match (two are sent during a secret rotation), each compared in constant time,
+  and a `t` more than `DefaultWebhookTolerance` (5 minutes) from the clock is refused.
+  The header is read exactly as the API reads it. Also `ComputeWebhookSignature`,
+  `ParseWebhookSignature` (`WebhookSignature`), `WebhookSignatureHeader` and the
+  `WebhookEvent*` event type constants. It passes the known-answer vector the API and
+  every Owls Insight SDK share.
+- `ParseWebhookEvent(body)` decodes a verified delivery into a `WebhookEvent` (with
+  `EventID()` to dedupe on and `EventType()`) holding the model of its type
+  (`*WebhookLineMovedEvent`, `*WebhookEvFoundEvent`, `*WebhookGameStartedEvent`,
+  `*WebhookGameFinalEvent`, `*WebhookPropsGradedEvent`, `*WebhookTestEvent`), or a
+  `*WebhookDeliveryPayload` for a type this version does not know.
+- Models generated from the API description: the endpoint (`WebhookEndpoint`,
+  `WebhookEndpointWithSecret`, `WebhookFilters`), the responses, the deliveries
+  (`WebhookDelivery`, `WebhookDeliveryPayload`) and the delivery bodies with their data
+  (`WebhookLineMovedData`, `WebhookEvFoundData`, `WebhookGameData`,
+  `WebhookPropsGradedData`, `WebhookTestData` and their parts). The tests decode the
+  API's own bodies for every event type with unknown fields disallowed.
+
+### Changed
+
+- `spec/` is the TypeScript SDK's current spec (0.73.0) and the models are regenerated
+  from it. Besides the webhook models nothing in the generated code changed. The Go
+  overlay also removes the spec's `webhooks` operations (models only, as for the
+  paths).
+- The spec drift test checks an operation's only 2xx response when it has no 200 (a
+  create answers 201), so `CreateWebhook` and `TestWebhook` are covered once the
+  webhook paths are in the spec.
+
 ## [0.4.0] - 2026-10-02
 
 ### Added

@@ -23,6 +23,13 @@
 // JSON type does not match the model is left unset rather than failing the call.
 // Raw pass-through data (the v2 books) is kept as [encoding/json.RawMessage].
 //
+// # Webhooks
+//
+// MVP and Hall of Fame plans can register HTTPS endpoints that receive signed
+// event notifications ([Client.CreateWebhook] and the other Webhook methods; beta).
+// Check every delivery against its raw body with [VerifyWebhookSignature], then
+// read it with [ParseWebhookEvent] and dedupe on [WebhookEvent.EventID].
+//
 // # WebSocket
 //
 // A [Stream] keeps one WebSocket connection open and delivers server events to
