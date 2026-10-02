@@ -13739,7 +13739,7 @@
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
     "version": "0.73.0",
-    "x-owls-manifest-commit": "208a4efc"
+    "x-owls-manifest-commit": "61ed1b07"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -15509,6 +15509,330 @@
         ],
         "x-owls-access": "All paying tiers",
         "x-owls-sdk-method": "getScores"
+      }
+    },
+    "/api/v1/webhooks": {
+      "get": {
+        "description": "Lists your webhook endpoints with their status, filters and delivery health. Never returns signing secrets.",
+        "operationId": "listWebhooks",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Lists your webhook endpoints with their status, filters and delivery health. Never returns signing secrets.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "listWebhooks"
+      },
+      "post": {
+        "description": "Registers an HTTPS endpoint for signed event notifications: Pinnacle line moves, positive EV prices, game start and final, and graded player props. Returns the signing secret once.\n\nCoverage by event type (a sport listed in filters.sports that one of your event types does not cover is a 400): line.moved: mlb, nba, ncaab, ncaaf, nfl, nhl, soccer, tennis, wnba; ev.found: cs2, dota2, lol, mlb, mma, nba, ncaab, ncaaf, nfl, nhl, soccer, tennis, valorant, wnba; game.started: mlb, nba, ncaab, nhl, soccer, tennis; game.final: mlb, nba, ncaab, nhl, soccer, tennis; props.graded: mlb, nfl.\n\nline.moved: Pinnacle's main moneyline, spread or total for a game that has not started moved by at least your step since the last line.moved you were sent for that market, so small moves add up. price_step_pp is the change in implied probability in percentage points (0.5, 1, 2, 3, 5), point_step the change in the spread or total line (0.5, 1, 1.5, 2, 3). A line change smaller than point_step restarts the price comparison at the new line. After a line.moved the market is quiet for 60 seconds, and a move inside that window is sent once at its end if it still clears your step. data: { sport, league, event_id, source_event_id, home_team, away_team, commence_time, book, market, reason, previous, current, max_probability_change_pp, point_change, thresholds }, where previous and current map each side (home, away, draw, over, under) to { price, point }.\n\nev.found: a price on the EV board became tradeable at or above your min_ev, in percent (1, 2, 3, 5, 8), by the same fair-value math as the EV endpoint. Tradeable means it clears the trade bar: a sportsbook price needs an EV of at least 2%; an exchange or prediction-market price needs at least 4% on its cost, a bid, a spread of 4 cents or less and $50 at the ask, so a min_ev below those floors adds nothing. It fires when the price crosses min_ev, again only after its EV has fallen more than 1 point below min_ev, or the price has been gone or stopped clearing the trade bar for two consecutive reads (about 40 seconds), and at most once per 15 minutes for one event, venue and side. After an alert, the same price for that event, venue and side is not sent again for 2 hours unless its EV has risen by at least 1 point. Nothing fires while the odds behind the board are out of date. kinds narrows to book (sportsbook) or venue (exchange and prediction market) prices; venues narrows to the listed keys, which must be among fanduel, draftkings, betmgm, bet365, caesars, kalshi, novig, 1xbet, betonline, betr, bovada (other keys can never produce an event, so they are refused). data: { sport, league, event_id, odds_event_id, home_team, away_team, commence_time, min_ev, signal: { kind, venue, side, team, price, implied_probability, fair_probability, fair_low, ev_percent, ev, fee, route, size, link, quote_age_ms }, board_age_ms }.\n\ngame.started: sent once per game when the live scores show it in play on two reads at least 15 seconds apart. game.final: sent once per game when they show it final on two reads at least 60 seconds apart and the final is believable: in tennis a player has won 2 sets, so a match that ends by retirement or walkover before that is not announced; in the other sports the game has run at least 80 minutes (soccer), 90 minutes (nba), 80 minutes (ncaab), 90 minutes (nhl), 90 minutes (mlb) from its start. A game reported final earlier than that, as an interrupted one can be, is not announced then; if the live scores show it in play again, its final is sent when it ends. A postponed or cancelled game never sends it. Status changes can trail the real moment by a few minutes. data: { sport, event_id, league, home_team, away_team, start_time, status: { state, detail }, score: { home, away } }; for tennis the score is sets won.\n\nprops.graded: sent when the first player prop results of a game are confirmed (complete: false) and again when every result of the game is confirmed (complete: true); a game confirmed in one pass sends a single event with complete: true. Games graded before you subscribed are not replayed, except that a game graded in the 30 minutes before can be, and a game graded during an interruption of the service longer than 30 minutes may not be announced. data: { sport, event_id, game_date, complete, confirmed_count, pending_count, results_path }; read the results from results_path.\n\nEvery delivery is a POST of the JSON { id, type, api_version, created, occurred_at, expires_at, endpoint_id, data } (api_version 2026-10-01) with the headers Owls-Webhook-Id (the event id), Owls-Event-Type, Owls-Delivery-Attempt and Owls-Signature.\n\nOwls-Signature is t=<unix seconds>,v1=<hex>. Compute HMAC-SHA256 with your signing secret (the whole string, whsec_ included, as UTF-8) over t, a period, and the raw request body, then compare it with v1 in constant time, and reject a t more than 5 minutes from your clock. The SDKs ship verifyWebhookSignature (TypeScript) and verify_webhook_signature (Python).\n\nDelivery is at least once and unordered: dedupe on id, which is identical on every retry, and do not rely on one event arriving before another.\n\nAnswer with any 2xx within 10 seconds (3 to connect). Anything else is a failure, a redirect included: redirects are never followed. line.moved and ev.found retry after about 5 s, 20 s, 1 m and then expire; the other types retry after about 10 s, 1 m, 5 m, 15 m, 1 h, 3 h, 6 h, 12 h. Retry-After is honoured. Nothing is sent after expires_at: line.moved 5 minutes, ev.found 2 minutes, game.started 2 hours, game.final 24 hours, props.graded 24 hours after the event.\n\n410 Gone disables the endpoint. After 5 failures in a row its deliveries pause briefly (30 seconds, doubling up to 30 minutes). After 50 failures in a row and 72 hours without a success it is disabled (status auto_disabled); PATCH { \"enabled\": true } resumes it.\n\nThe url must be https on the default port with a public hostname. IP addresses, private or reserved addresses and internal hostnames are refused, at registration and on every delivery.\n\nEndpoints per plan: MVP 3, Hall of Fame 10. Events per account: MVP 120 a minute and 20,000 a day, Hall of Fame 600 a minute and 100,000 a day; events over the cap are dropped, and so are new line.moved and ev.found events for an endpoint with more than 1,000 undelivered. At most 30 endpoint changes per minute per account.",
+        "operationId": "createWebhook",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWebhookParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookCreateResponse"
+                }
+              }
+            },
+            "description": "Created"
+          }
+        },
+        "summary": "Registers an HTTPS endpoint for signed event notifications: Pinnacle line moves, positive EV prices, game start and final, and graded player props. Returns the signing secret once.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "createWebhook"
+      }
+    },
+    "/api/v1/webhooks/{id}": {
+      "delete": {
+        "description": "Deletes a webhook endpoint. Undelivered events for it are cancelled and nothing more is sent.",
+        "operationId": "deleteWebhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDeleteResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Deletes a webhook endpoint. Undelivered events for it are cancelled and nothing more is sent.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "deleteWebhook"
+      },
+      "get": {
+        "description": "Returns one webhook endpoint: url, event types, filters, status and delivery health (consecutive_failures, failing_since, last_success_at).",
+        "operationId": "getWebhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Returns one webhook endpoint: url, event types, filters, status and delivery health (consecutive_failures, failing_since, last_success_at).",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "getWebhook"
+      },
+      "patch": {
+        "description": "Changes a webhook endpoint: url, event_types, description, filters, or enabled to turn deliveries off and on.\n\nenabled: false stops deliveries and cancels the undelivered ones. enabled: true resumes an endpoint that you disabled or that was disabled after failing (status auto_disabled), and resets its failure count.\n\nThe same url and coverage checks as create apply.",
+        "operationId": "updateWebhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWebhookParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Changes a webhook endpoint: url, event_types, description, filters, or enabled to turn deliveries off and on.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "updateWebhook"
+      }
+    },
+    "/api/v1/webhooks/{id}/deliveries": {
+      "get": {
+        "description": "Lists recent deliveries to one endpoint, newest first: status, attempts, the last response code and latency, and the exact payload sent.\n\nstatus is pending (queued or between retries), delivered, failed (retries exhausted), expired (past expires_at), cancelled (the endpoint was disabled or deleted) or shadow (recorded while the event type was held back, never sent). Deliveries are kept for 14 days.\n\nresponse_excerpt is up to the first 512 bytes your receiver answered with.",
+        "operationId": "listWebhookDeliveries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only deliveries in this status.",
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "x-extensible-enum": [
+                "cancelled",
+                "delivered",
+                "expired",
+                "failed",
+                "pending",
+                "shadow"
+              ]
+            }
+          },
+          {
+            "description": "Only this event type.",
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "x-extensible-enum": [
+                "ev.found",
+                "game.final",
+                "game.started",
+                "line.moved",
+                "props.graded",
+                "webhook.test"
+              ]
+            }
+          },
+          {
+            "description": "Page size, 1 to 50 (default 20).",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "An event id (evt_...) from the previous page: returns the deliveries older than it.",
+            "in": "query",
+            "name": "starting_after",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDeliveriesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Lists recent deliveries to one endpoint, newest first: status, attempts, the last response code and latency, and the exact payload sent.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "listWebhookDeliveries"
+      }
+    },
+    "/api/v1/webhooks/{id}/rotate-secret": {
+      "post": {
+        "description": "Issues a new signing secret for the endpoint and returns it once. The previous secret keeps signing alongside it until it expires.\n\nWhile the previous secret is live, Owls-Signature carries two v1 values, one per secret. Accept either, then switch your receiver to the new secret.",
+        "operationId": "rotateWebhookSecret",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateWebhookSecretParams"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookRotateSecretResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Issues a new signing secret for the endpoint and returns it once. The previous secret keeps signing alongside it until it expires.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "rotateWebhookSecret"
+      }
+    },
+    "/api/v1/webhooks/{id}/test": {
+      "post": {
+        "description": "Queues a webhook.test event to the endpoint, signed like every other event, so you can check your receiver and its signature check.\n\nOne test event per endpoint every 10 seconds (429 with Retry-After otherwise). The endpoint must be enabled (409 otherwise).\n\ndata is { message }. A test event retries like game.final and expires after 1 hour.",
+        "operationId": "testWebhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookTestResponse"
+                }
+              }
+            },
+            "description": "Accepted"
+          }
+        },
+        "summary": "Queues a webhook.test event to the endpoint, signed like every other event, so you can check your receiver and its signature check.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "testWebhook"
       }
     },
     "/api/v1/{sport}/ev": {
@@ -18268,6 +18592,9 @@
     },
     {
       "name": "Team normalization"
+    },
+    {
+      "name": "Webhooks"
     }
   ],
   "webhooks": {
