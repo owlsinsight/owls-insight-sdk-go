@@ -4,6 +4,42 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.6.0] - 2026-10-07
+
+### Added
+
+- UFC/MMA on the FanDuel, DraftKings, Kalshi, Polymarket and Bovada v2 endpoints.
+  `GetV2`, `GetV2Leagues` and `Subscription.V2` take the book and sport as strings, so
+  no method changed: `GetV2(ctx, "fanduel", "mma", "ufc")`, the same for `draftkings`
+  and `polymarket`; `GetV2(ctx, "kalshi", "mma", key)` with a lowercase series ticker
+  (the UFC's, such as `kxufcfight`, and other promotions', such as `kxmmafight`); and
+  `GetV2(ctx, "bovada", "mma", "")`, one league with every card.
+  `GetV2Leagues(ctx, book, "mma")` lists the leagues.
+- `fanduel-v2-update` and `draftkings-v2-update` carry MMA, for example
+  `Subscription{V2: map[string]map[string]any{"fanduel": {"mma": []string{"ufc"}}}}`.
+  `kalshi-v2-update` and `polymarket-v2-update` do not, so `mma` is REST only on
+  Kalshi and Polymarket.
+- The generated v2 subscription models follow the API description:
+  `FanDuelV2BookSubscription` and `DraftKingsV2BookSubscription` have an `Mma` field,
+  and `DraftKingsV2BookSubscription` also has `Mlb`, `Nba`, `Ncaab`, `Ncaaf`, `Nfl` and
+  `Nhl`, as the API accepts them (pass `"*"`). For those six sports
+  `draftkings-v2-update` pushes only the live slice (market id `live`), unless it is
+  too large to send; their main catalog is REST only.
+
+### Changed
+
+- `spec/` is the TypeScript SDK's current spec (0.74.0) and the models are regenerated
+  from it. Besides the subscription fields above, only doc comments changed: the two
+  subscription types (and `V2Subscription.Draftkings` and `V2Subscription.Fanduel`).
+  The spec also brings the API description's other updates: the webhook management
+  paths (so the spec test now checks the webhook methods' return types against them),
+  the scores, stats and splits descriptions, and on the WebSocket side the
+  `draftkings-v2-update` and `ps3838-realtime` descriptions, the access lines of the
+  props events, the esports realtime events and the Pinnacle and PS3838 realtime
+  events, and `bet365-props-update`, which the API no longer documents (use
+  `bet365-v2-update`).
+- README: `mma` is REST only on Kalshi and Polymarket.
+
 ## [0.5.0] - 2026-10-02
 
 ### Added
