@@ -2200,11 +2200,35 @@
         ]
       },
       "DraftKingsV2BookSubscription": {
-        "description": "Per-book subscription shape for DraftKings v2 events.\n\nEach key is a sport whose markets DraftKings v2 pushes as they change: soccer and\nmma are multi-league (filter by league keys, or `'*'` for all), wnba takes `'*'`.\nThe main catalog of the other DraftKings US sports is served on the v2 REST\nendpoint. Unknown / unsupported sport keys are rejected at compile time.",
+        "description": "Per-book subscription shape for DraftKings v2 events.\n\nEach key is a sport `draftkings-v2-update` carries. Soccer and mma are multi-league\n(filter by league keys, or `'*'` for all); the others are one league each (pass\n`'*'`). Soccer, mma and wnba push their markets as they change. nba, nhl, mlb, nfl,\nncaab and ncaaf push only the live slice (marketId `live`), unless it is too large\nto send; their main catalog is REST only. Unknown / unsupported sport keys are\nrejected at compile time.",
         "properties": {
+          "mlb": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "Single league: pass `'*'`. Pushes only the live slice (marketId `live`); the main catalog is REST only."
+          },
           "mma": {
             "$ref": "#/components/schemas/V2LeagueFilter",
             "description": "League filter for MMA: `ufc` (UFC bouts), or `'*'`."
+          },
+          "nba": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "Single league: pass `'*'`. Pushes only the live slice (marketId `live`); the main catalog is REST only."
+          },
+          "ncaab": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "Single league: pass `'*'`. Pushes only the live slice (marketId `live`); the main catalog is REST only."
+          },
+          "ncaaf": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "Single league: pass `'*'`. Pushes only the live slice (marketId `live`); the main catalog is REST only."
+          },
+          "nfl": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "Single league: pass `'*'`. Pushes only the live slice (marketId `live`); the main catalog is REST only."
+          },
+          "nhl": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "Single league: pass `'*'`. Pushes only the live slice (marketId `live`); the main catalog is REST only."
           },
           "soccer": {
             "$ref": "#/components/schemas/V2LeagueFilter",
@@ -3009,7 +3033,7 @@
         ]
       },
       "FanDuelV2BookSubscription": {
-        "description": "Per-book subscription shape for FanDuel v2 events.\n\nEach key is a sport FanDuel v2 currently supports. Soccer, tennis and mma\nare multi-league — filter by specific league keys or `'*'` for all.",
+        "description": "Per-book subscription shape for FanDuel v2 events.\n\nEach key is a sport FanDuel v2 currently supports. Soccer, tennis and mma\nare multi-league: filter by specific league keys or `'*'` for all.",
         "properties": {
           "mlb": {
             "$ref": "#/components/schemas/V2LeagueFilter",

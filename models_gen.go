@@ -1079,16 +1079,54 @@ type DayScheduleWindow struct {
 
 // DraftKingsV2BookSubscription Per-book subscription shape for DraftKings v2 events.
 //
-// Each key is a sport whose markets DraftKings v2 pushes as they change: soccer and
-// mma are multi-league (filter by league keys, or `'*'` for all), wnba takes `'*'`.
-// The main catalog of the other DraftKings US sports is served on the v2 REST
-// endpoint. Unknown / unsupported sport keys are rejected at compile time.
+// Each key is a sport `draftkings-v2-update` carries. Soccer and mma are multi-league
+// (filter by league keys, or `'*'` for all); the others are one league each (pass
+// `'*'`). Soccer, mma and wnba push their markets as they change. nba, nhl, mlb, nfl,
+// ncaab and ncaaf push only the live slice (marketId `live`), unless it is too large
+// to send; their main catalog is REST only. Unknown / unsupported sport keys are
+// rejected at compile time.
 type DraftKingsV2BookSubscription struct {
+	// Mlb Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Mlb *V2LeagueFilter `json:"mlb,omitempty"`
+
 	// Mma Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
 	// receive every league for that sport, or an array of league keys to
 	// filter to a specific set. League keys come from the corresponding
 	// `/leagues` REST endpoint.
 	Mma *V2LeagueFilter `json:"mma,omitempty"`
+
+	// Nba Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Nba *V2LeagueFilter `json:"nba,omitempty"`
+
+	// Ncaab Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Ncaab *V2LeagueFilter `json:"ncaab,omitempty"`
+
+	// Ncaaf Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Ncaaf *V2LeagueFilter `json:"ncaaf,omitempty"`
+
+	// Nfl Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Nfl *V2LeagueFilter `json:"nfl,omitempty"`
+
+	// Nhl Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Nhl *V2LeagueFilter `json:"nhl,omitempty"`
 
 	// Soccer Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
 	// receive every league for that sport, or an array of league keys to
@@ -1441,7 +1479,7 @@ type EventsResponse struct {
 // FanDuelV2BookSubscription Per-book subscription shape for FanDuel v2 events.
 //
 // Each key is a sport FanDuel v2 currently supports. Soccer, tennis and mma
-// are multi-league - filter by specific league keys or `'*'` for all.
+// are multi-league: filter by specific league keys or `'*'` for all.
 type FanDuelV2BookSubscription struct {
 	// Mlb Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
 	// receive every league for that sport, or an array of league keys to
@@ -5398,10 +5436,12 @@ type V2Subscription struct {
 
 	// Draftkings Per-book subscription shape for DraftKings v2 events.
 	//
-	// Each key is a sport whose markets DraftKings v2 pushes as they change: soccer and
-	// mma are multi-league (filter by league keys, or `'*'` for all), wnba takes `'*'`.
-	// The main catalog of the other DraftKings US sports is served on the v2 REST
-	// endpoint. Unknown / unsupported sport keys are rejected at compile time.
+	// Each key is a sport `draftkings-v2-update` carries. Soccer and mma are multi-league
+	// (filter by league keys, or `'*'` for all); the others are one league each (pass
+	// `'*'`). Soccer, mma and wnba push their markets as they change. nba, nhl, mlb, nfl,
+	// ncaab and ncaaf push only the live slice (marketId `live`), unless it is too large
+	// to send; their main catalog is REST only. Unknown / unsupported sport keys are
+	// rejected at compile time.
 	Draftkings *DraftKingsV2BookSubscription `json:"draftkings,omitempty"`
 
 	// Fanaticsmarkets Per-book subscription shape for Fanatics Markets v2 events.
@@ -5412,7 +5452,7 @@ type V2Subscription struct {
 	// Fanduel Per-book subscription shape for FanDuel v2 events.
 	//
 	// Each key is a sport FanDuel v2 currently supports. Soccer, tennis and mma
-	// are multi-league - filter by specific league keys or `'*'` for all.
+	// are multi-league: filter by specific league keys or `'*'` for all.
 	Fanduel *FanDuelV2BookSubscription `json:"fanduel,omitempty"`
 
 	// Kalshi Per-book subscription shape for Kalshi v2 events.
