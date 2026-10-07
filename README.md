@@ -162,7 +162,8 @@ A new v2 book needs no SDK release; pass its key as the URL has it, including on
 starts with a digit (`4casters`, `888sport`). `owls.V2EventName(book)` gives its
 WebSocket event (`<book>-v2-update`, except BetOnline's `betonline-realtime`). Some
 books are REST only and send no event: 888sport, bookmaker, bovada, hardrock, novig,
-stake, thescore and underdog. Every v2 event decodes into `owls.V2Update`. Books differ
+stake, thescore and underdog. `mma` is REST only on kalshi and polymarket, whose events
+carry their other sports. Every v2 event decodes into `owls.V2Update`. Books differ
 in what they send, so `Markets` (a list of `{marketId, hash, kind, data}` or a count),
 `Timestamp` (epoch milliseconds or an ISO string), `Events`, `Data`, `Raw` and the
 fields only some books send (`Count`, `TotalCount`, `Leagues`, `Heartbeat`,

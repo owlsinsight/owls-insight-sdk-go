@@ -2200,15 +2200,19 @@
         ]
       },
       "DraftKingsV2BookSubscription": {
-        "description": "Per-book subscription shape for DraftKings v2 events.\n\nEach key is a sport DraftKings v2 currently supports. Soccer-only at\nthe Beta launch — additional sports will appear here as they ship.\nUnknown / unsupported sport keys are rejected at compile time.",
+        "description": "Per-book subscription shape for DraftKings v2 events.\n\nEach key is a sport whose markets DraftKings v2 pushes as they change: soccer and\nmma are multi-league (filter by league keys, or `'*'` for all), wnba takes `'*'`.\nThe main catalog of the other DraftKings US sports is served on the v2 REST\nendpoint. Unknown / unsupported sport keys are rejected at compile time.",
         "properties": {
+          "mma": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "League filter for MMA: `ufc` (UFC bouts), or `'*'`."
+          },
           "soccer": {
             "$ref": "#/components/schemas/V2LeagueFilter",
             "description": "League filter for soccer. Discover keys via {@link OwlsInsightRest.getDraftKingsV2Leagues }."
           },
           "wnba": {
             "$ref": "#/components/schemas/V2LeagueFilter",
-            "description": "DK v2 WS deltas publish for soccer AND wnba only; US sports are v2-REST-poll-only."
+            "description": "Single league: pass `'*'`."
           }
         },
         "type": "object"
@@ -3005,11 +3009,15 @@
         ]
       },
       "FanDuelV2BookSubscription": {
-        "description": "Per-book subscription shape for FanDuel v2 events.\n\nEach key is a sport FanDuel v2 currently supports. Both soccer and tennis\nare multi-league — filter by specific league keys or `'*'` for all.",
+        "description": "Per-book subscription shape for FanDuel v2 events.\n\nEach key is a sport FanDuel v2 currently supports. Soccer, tennis and mma\nare multi-league — filter by specific league keys or `'*'` for all.",
         "properties": {
           "mlb": {
             "$ref": "#/components/schemas/V2LeagueFilter",
             "description": "Single-league sports: pass '*'. FanDuel v2 measurably pushes deltas for these\n(observed mlb 77 and nfl 38 events in a 100s window), and the server accepts\nany VALID_SPORTS key here, so omitting them made real subscriptions untypeable."
+          },
+          "mma": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "League filter for MMA: `ufc` (UFC bouts), or `'*'`."
           },
           "nba": {
             "$ref": "#/components/schemas/V2LeagueFilter"
@@ -13739,7 +13747,7 @@
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
     "version": "0.73.0",
-    "x-owls-manifest-commit": "61ed1b07"
+    "x-owls-manifest-commit": "055d2c77"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -15489,7 +15497,7 @@
     },
     "/api/v1/scores/live": {
       "get": {
-        "description": "Returns live games across every supported sport in one call, with current score, clock and status.\n\nScores are REST only; there is no scores WebSocket event.\n\n503 until the first scoreboard has been collected.",
+        "description": "Returns live games across every supported sport in one call, with current score, period and status.\n\nScores are REST only; there is no scores WebSocket event.\n\n503 until the first scoreboard has been collected.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (around the restart, status.period can already be the next period), OT (period 4 for every overtime) or SO (period 5). Owls Insight has no game clock for these sports, so status.displayClock is null. Soccer status.detail is the half (1st Half, 2nd Half) and the match minute is status.displayClock, e.g. 67 or 45+2. A phase without a label, soccer half-time included, reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
         "operationId": "getScores",
         "responses": {
           "200": {
@@ -15503,7 +15511,7 @@
             "description": "OK"
           }
         },
-        "summary": "Returns live games across every supported sport in one call, with current score, clock and status.",
+        "summary": "Returns live games across every supported sport in one call, with current score, period and status.",
         "tags": [
           "Live scores"
         ],
@@ -17536,7 +17544,7 @@
     },
     "/api/v1/{sport}/scores/live": {
       "get": {
-        "description": "Returns live games for one sport with current score, clock and status.\n\nScores are REST only; there is no scores WebSocket event.\n\nAn empty events array with hasScheduledGames true means games are scheduled but none has started.",
+        "description": "Returns live games for one sport with current score, period and status.\n\nScores are REST only; there is no scores WebSocket event.\n\nAn empty events array with hasScheduledGames true means games are scheduled but none has started.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (around the restart, status.period can already be the next period), OT (period 4 for every overtime) or SO (period 5). Owls Insight has no game clock for these sports, so status.displayClock is null. Soccer status.detail is the half (1st Half, 2nd Half) and the match minute is status.displayClock, e.g. 67 or 45+2. A phase without a label, soccer half-time included, reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
         "operationId": "getSportScores",
         "parameters": [
           {
@@ -17576,7 +17584,7 @@
             "description": "OK"
           }
         },
-        "summary": "Returns live games for one sport with current score, clock and status.",
+        "summary": "Returns live games for one sport with current score, period and status.",
         "tags": [
           "Live scores"
         ],
@@ -17714,7 +17722,7 @@
     },
     "/api/v1/{sport}/splits": {
       "get": {
-        "description": "Returns betting splits for a sport: handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of each game, per book, from DraftKings, BetMGM (tickets only) and Circa Sports.\n\nevent_id is the eventId /api/v1/{sport}/odds gives the same game ({sport}:{Away}@{Home}-{YYYYMMDD}), and home_team and away_team are the /odds team names, so splits join to odds on event_id. A game not on /odds gets an id built the same way from its scheduled start. Both games of a doubleheader share one event_id, as on /odds.\n\nEach entry in splits carries as_of, when that book's figures were read. The books are read on different schedules, so two books on one game can show different times.\n\nDraftKings figures run until kickoff. After kickoff the last pre-game DraftKings figures stay on the board for up to 4 hours, with the as_of of that last read.\n\nA market a book has not published for a game is absent from that game rather than reported as zero.\n\nmeta.books lists the books on the board. meta.as_of is the oldest of their latest reads; a split kept after kickoff carries its own, older as_of. meta.source is a fixed value; read meta.books for the books.\n\nmeta.status is \"ok\" when every book has a recent read, \"partial\" when one does not (data may then be a subset) and \"stale\" when no book has one and the last full board, at most 12 hours old, is served instead; meta.age_seconds is then present. meta.partial_reason says which: \"book_unavailable\" (that book's figures could not be read; it is absent from meta.books), \"upstream_limited\" (the Circa figures were withheld) or \"upstream_paused\" (no book could be read and no board from the last 12 hours is available).\n\nBetMGM publishes ticket percentages only, so its entries (book betmgm) carry the bets fields and no handle fields; a percentage absent from any book is not zero.",
+        "description": "Returns betting splits for a sport: handle (money) percent and ticket (bet) percent on each side of the spread, the total and the moneyline of each game, per book, from DraftKings, BetMGM (tickets only) and Circa Sports.\n\nevent_id is the eventId /api/v1/{sport}/odds gives the same game ({sport}:{Away}@{Home}-{YYYYMMDD}), and home_team and away_team are the /odds team names, so splits join to odds on event_id. A game not on /odds gets an id built the same way from its scheduled start. Both games of a doubleheader share one event_id, as on /odds.\n\nEach entry in splits carries as_of, when that book's figures were read. The books are read on different schedules, so two books on one game can show different times.\n\nDraftKings figures run until kickoff. After kickoff the last pre-game DraftKings figures stay on the board for up to 4 hours, with the as_of of that last read.\n\nA market a book has not published for a game is absent from that game rather than reported as zero.\n\nmeta.books lists the books on the board. meta.as_of is the oldest of their latest reads; a split kept after kickoff carries its own, older as_of. meta.source is a fixed value; read meta.books for the books.\n\nmeta.status is \"ok\" when every book has a recent read, \"partial\" when one does not (data may then be a subset) and \"stale\" when no book has one and the last full board, at most 12 hours old, is served instead; meta.age_seconds is then present. meta.partial_reason says which: \"book_unavailable\" (that book's figures could not be read; it is absent from meta.books), \"upstream_limited\" (the Circa figures were withheld) or \"upstream_paused\" (no book could be read and no board from the last 12 hours is available).\n\nBetMGM publishes ticket percentages only, so its entries (book betmgm) carry the bets fields and no handle fields; a percentage absent from any book is not zero.\n\nDraftKings lists splits for only about 50 games of a sport per day, so on a busy slate, such as a full college football Saturday, many games (mostly smaller-conference ones) have no DraftKings split.",
         "operationId": "getSplits",
         "parameters": [
           {
@@ -17901,7 +17909,7 @@
     },
     "/api/v1/{sport}/stats": {
       "get": {
-        "description": "Returns per-game team stats, score and status for every game on a date: live, scheduled and finished.\n\nCovers the current US Eastern day's matches: live, scheduled and finished (a finished match stays for 24 hours from its start). Use the history endpoints for older games.\n\ndate is compared with each game's start time in US Eastern time.\n\nscore is null for a scheduled game. For soccer it never includes penalty shootout goals: soccerDetail carries regulation, extraTime, penalties and decidedBy.\n\nSoccer status.detail is the half (1st Half, 2nd Half); the match minute is status.displayClock, e.g. 67 or 45+2.\n\nA teamStats pair the source did not measure is null or absent, never 0.",
+        "description": "Returns per-game team stats, score and status for every game on a date: live, scheduled and finished.\n\nCovers the current US Eastern day's matches: live, scheduled and finished (a finished match stays for 24 hours from its start). Use the history endpoints for older games.\n\ndate is compared with each game's start time in US Eastern time.\n\nscore is null for a scheduled game. For soccer it never includes penalty shootout goals: soccerDetail carries regulation, extraTime, penalties and decidedBy.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (around the restart, status.period can already be the next period), OT (period 4 for every overtime) or SO (period 5). Owls Insight has no game clock for these sports, so status.displayClock is null. Soccer status.detail is the half (1st Half, 2nd Half) and the match minute is status.displayClock, e.g. 67 or 45+2. A phase without a label, soccer half-time included, reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.\n\nA teamStats pair the source did not measure is null or absent, never 0.",
         "operationId": "getStats",
         "parameters": [
           {
@@ -19266,6 +19274,7 @@
       "book": "bovada",
       "sports": [
         "mlb",
+        "mma",
         "nba",
         "ncaab",
         "ncaaf",
@@ -19278,6 +19287,7 @@
       "book": "draftkings",
       "sports": [
         "mlb",
+        "mma",
         "nba",
         "ncaab",
         "ncaaf",
@@ -19314,6 +19324,7 @@
       "book": "fanduel",
       "sports": [
         "mlb",
+        "mma",
         "nba",
         "ncaaf",
         "nfl",
@@ -19353,6 +19364,7 @@
         "dota2",
         "lol",
         "mlb",
+        "mma",
         "nba",
         "ncaaf",
         "nfl",
@@ -19434,6 +19446,7 @@
         "dota2",
         "lol",
         "mlb",
+        "mma",
         "nba",
         "ncaaf",
         "nfl",

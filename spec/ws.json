@@ -63,7 +63,7 @@
   "info": {
     "title": "Owls Insight WebSocket",
     "version": "0.73.0",
-    "x-owls-manifest-commit": "61ed1b07"
+    "x-owls-manifest-commit": "055d2c77"
   },
   "serverEvents": {
     "1xbet-update": {
@@ -119,9 +119,7 @@
       }
     },
     "bet365-props-update": {
-      "access": "WebSocket access plus Rookie or above",
-      "description": "Bet365 player props, streamed on change. Subscribe with the subscribe-bet365-props event; the server acknowledges with bet365-props-subscribed.",
-      "documented": true,
+      "documented": false,
       "payload": {
         "$ref": "openapi.json#/components/schemas/PropsPayload"
       }
@@ -155,7 +153,7 @@
       }
     },
     "betmgm-props-update": {
-      "access": "WebSocket access plus Rookie or above",
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "BetMGM player props, streamed on change. Subscribe with the subscribe-betmgm-props event; the server acknowledges with betmgm-props-subscribed.",
       "documented": true,
       "payload": {
@@ -207,7 +205,7 @@
       }
     },
     "caesars-props-update": {
-      "access": "WebSocket access plus Rookie or above",
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "Caesars player props, streamed on change. Subscribe with the subscribe-caesars-props event; the server acknowledges with caesars-props-subscribed.",
       "documented": true,
       "payload": {
@@ -215,7 +213,7 @@
       }
     },
     "cs2-realtime": {
-      "access": "WebSocket access plus MVP or above",
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "Pinnacle cs2 realtime in the Pinnacle wire format (matchups, markets, prices).",
       "documented": true,
       "payload": {
@@ -223,7 +221,7 @@
       }
     },
     "dota2-realtime": {
-      "access": "WebSocket access plus MVP or above",
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "Pinnacle dota2 realtime in the Pinnacle wire format (matchups, markets, prices).",
       "documented": true,
       "payload": {
@@ -251,7 +249,7 @@
       }
     },
     "draftkings-props-update": {
-      "access": "WebSocket access plus Rookie or above",
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "DraftKings player props, streamed on change. Subscribe with the subscribe-draftkings-props event; the server acknowledges with draftkings-props-subscribed.",
       "documented": true,
       "payload": {
@@ -260,7 +258,7 @@
     },
     "draftkings-v2-update": {
       "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
-      "description": "DraftKings Source API (v2) market deltas, one market per message. Live pushes cover soccer and WNBA; the DraftKings US sports are served on the v2 REST endpoint and are not pushed on this event.",
+      "description": "DraftKings Source API (v2) market deltas, one market per message: soccer, WNBA and MMA markets, plus the other US sports' live snapshots unless too large to send; their main catalog is REST only.",
       "documented": true,
       "payload": {
         "$ref": "openapi.json#/components/schemas/V2Update"
@@ -309,7 +307,7 @@
       }
     },
     "fanduel-props-update": {
-      "access": "WebSocket access plus Rookie or above",
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "FanDuel player props, streamed on change. Subscribe with the subscribe-fanduel-props event; the server acknowledges with fanduel-props-subscribed.",
       "documented": true,
       "payload": {
@@ -333,7 +331,7 @@
       }
     },
     "lol-realtime": {
-      "access": "WebSocket access plus MVP or above",
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "Pinnacle lol realtime in the Pinnacle wire format (matchups, markets, prices).",
       "documented": true,
       "payload": {
@@ -365,7 +363,7 @@
       }
     },
     "pinnacle-realtime": {
-      "access": "WebSocket access plus MVP or above",
+      "access": "WebSocket access, plus MVP or above for the REST board",
       "description": "Pinnacle real-time odds, sent to eligible connections for the sports in your subscription (all sports if you never subscribe; the books filter does not apply). Each frame carries one sport and at least one event: {timestamp, <sport>: [events], delta: true, resync?, stream?, removed?}. Events have the same fields as the data of GET /api/v1/{sport}/realtime, including status, isLive, phase when known, lastUpdate, seenAt and freshness; that endpoint's notes describe them. Frames are partial: merge each event into your board by event id, replacing the whole event, then delete the ids in removed[<sport>]. resync: true marks a frame from the periodic resend, which also carries events that have not changed. When present, stream is {sport, epoch, seq, checkpoint?}: seq goes up by 1 per frame for that sport within one epoch. Ignore a frame whose seq is at or below the last one you applied (a duplicate). A skipped seq, a new epoch, or a frame without stream after frames that had one means you must load the board again; keep your current board until the new one is ready. To load a board, on every connect or reconnect and after any of those: buffer the sport's frames from both pinnacle-realtime and pinnacle-realtime-sync, wait up to 25 seconds for one with stream.checkpoint set (load at once if the sport's frames carry no stream), then call GET /api/v1/{sport}/realtime and read its meta.stream. If meta.stream is null, replace your board with data, merge every frame with no seq filter, and load again after 10, 20, 40 seconds and so on, up to every 5 minutes; replacing the board is also what drops ended events while frames carry no removed. If its epoch differs from the checkpoint's, or its seq is lower than the checkpoint's, load again at the next checkpoint. Otherwise replace your board with data, discard buffered frames with a seq at or below meta.stream.seq, and apply the rest in order. Each load counts against your request quota. Stream positions and removals for a sport with no events to send arrive on pinnacle-realtime-sync. In soccer women's and youth leagues, team names carry a Women or Unn suffix taken from the league, as on the matching REST endpoint.",
       "documented": true,
       "payload": {
@@ -373,7 +371,7 @@
       }
     },
     "pinnacle-realtime-sync": {
-      "access": "WebSocket access plus MVP or above",
+      "access": "WebSocket access, plus MVP or above for the REST board",
       "description": "Companion of pinnacle-realtime, sent on the same connections and for the same sports: a stream position or removals for a sport that has no events to send, as {timestamp, sport, stream?, removed?}. Track stream and delete removed ids exactly as on pinnacle-realtime; it never carries events.",
       "documented": true,
       "payload": {
@@ -389,7 +387,7 @@
       }
     },
     "player-props-update": {
-      "access": "WebSocket access plus Rookie or above",
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "Pinnacle player props, streamed on change. Subscribe with the subscribe-props event; the server acknowledges with props-subscribed.",
       "documented": true,
       "payload": {
@@ -433,8 +431,8 @@
       }
     },
     "ps3838-realtime": {
-      "access": "WebSocket access plus MVP or above",
-      "description": "PS3838 real-time odds, sent to eligible connections for the sports in your subscription (all sports if you never subscribe; the books filter does not apply). Each frame carries one sport, and a frame can be several MB, so allow a client message size of at least 32 MB. In soccer women's and youth leagues, team names carry a Women or Unn suffix taken from the league, as on the matching REST endpoint.",
+      "access": "WebSocket access, plus MVP or above for the REST board",
+      "description": "PS3838 real-time odds, sent to eligible connections for the sports in your subscription (all sports if you never subscribe; the books filter does not apply). Each frame carries one sport and says how to apply it: with delta: true it holds only the events that changed, so merge them into your board by id; with snapshot: true, or with neither marker, it is the sport's full board, so replace yours. When a sport sends deltas, it also sends a snapshot about every 20 seconds, sometimes sooner after an event leaves the board. A sport with no events sends nothing, so when its last event ends no frame says so: on connect, on reconnect, and whenever a sport has sent nothing for about a minute, load its board from GET /api/v1/{sport}/ps3838-realtime and apply frames from there. A frame can be several MB, so allow a client message size of at least 32 MB. In soccer women's and youth leagues, team names carry a Women or Unn suffix taken from the league, as on the matching REST endpoint.",
       "documented": true,
       "payload": {
         "$ref": "openapi.json#/components/schemas/RealtimeOddsPayload"
@@ -479,7 +477,7 @@
       }
     },
     "valorant-realtime": {
-      "access": "WebSocket access plus MVP or above",
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "Pinnacle valorant realtime in the Pinnacle wire format (matchups, markets, prices).",
       "documented": true,
       "payload": {
