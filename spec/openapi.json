@@ -3,6 +3,10 @@
     "schemas": {
       "AlternateLine": {
         "properties": {
+          "last_seen": {
+            "description": "When the book last CONFIRMED this rung, as an ISO timestamp, whether or not\nits price moved. Pinnacle realtime only (`getRealtime` and `pinnacle-realtime`);\nabsent on `/odds` and on feeds that do not stamp rungs.\n\nPinnacle does not resend every rung in every message, so a rung whose\n`last_seen` is well behind its market's `last_seen` is a hint that the rung has\nbeen taken down, not proof. Rungs are never flagged `suspended` one by one.",
+            "type": "string"
+          },
           "point": {
             "format": "double",
             "type": "number"
@@ -1384,6 +1388,9 @@
             "$ref": "#/components/schemas/ProphetXSubscription",
             "description": "ProphetX exchange subscription (opt-in — default: undefined/no events)."
           },
+          "scores": {
+            "description": "Live scores subscription (`scores-update`; opt-in, default: undefined/no events)."
+          },
           "sports": {
             "items": {
               "$ref": "#/components/schemas/Sport"
@@ -1557,6 +1564,7 @@
             "type": "string"
           },
           "spread": {
+            "description": "Every field null means the spread was captured but withheld: on a live-derived\nclose, a spread whose two points do not cancel or one known to be wrong for that\nbook and date (counted in `dataQuality.suppressedFields`). Absent means none was captured.",
             "properties": {
               "away": {
                 "format": "double",
@@ -1598,9 +1606,12 @@
           "total": {
             "properties": {
               "line": {
-                "description": "Always a number when `total` is present — the API omits the object otherwise.",
+                "description": "The totals line. Null only when the whole total was withheld (a live-derived\nclose known to be wrong for that book and date); the prices are then null too.\nThe API omits `total` when none was captured.",
                 "format": "double",
-                "type": "number"
+                "type": [
+                  "number",
+                  "null"
+                ]
               },
               "overPrice": {
                 "format": "double",
@@ -5570,7 +5581,7 @@
             ]
           },
           "suspended": {
-            "description": "True when betting on this market is closed: the book closed it, and on the\nPinnacle realtime feed it can also be set once the market's period is closed or\nits betting cutoff has passed. Absent otherwise, never `false`.\n\nIts absence does NOT mean the line is being quoted. Pinnacle usually signals a\nsuspension by withdrawing the line rather than closing it, so a pulled line can\narrive with no `suspended` at all. Use `last_seen` to tell whether a quote is live.",
+            "description": "True when betting on this market is closed: the book closed it, and on the\nPinnacle realtime feed it can also be set once the market's period is closed or\nits betting cutoff has passed. Absent otherwise, never `false`.\n\nOn the Pinnacle realtime feed it is also set on a main market (moneyline,\nspread, total or team total) that Pinnacle withdraws while the rest of the match\nstays open, and cleared when Pinnacle offers it again or its period ends. On a\nspread or total only the main line is flagged, never its `alternateLines`.\n\nIts absence does NOT mean every line is being quoted: a withdrawn alternate rung,\nor a special or prop market, can arrive with no `suspended` at all. Use\n`last_seen` (on the market, and on each rung) to tell whether a quote is live.",
             "type": "boolean"
           },
           "units": {
@@ -9723,6 +9734,104 @@
           "score"
         ]
       },
+      "ScoreView": {
+        "description": "One game on the `scores-update` WebSocket event: a lean view of a\n{@link ScoreEvent} with the score, status and teams only. Linescores, stats,\nlineups, incidents and sport-specific detail stay on `getScores()`.",
+        "properties": {
+          "away": {
+            "properties": {
+              "score": {
+                "format": "double",
+                "type": "number"
+              },
+              "team": {
+                "properties": {
+                  "abbreviation": {
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string"
+                  }
+                },
+                "type": "object",
+                "x-owls-required": [
+                  "displayName"
+                ]
+              }
+            },
+            "type": "object",
+            "x-owls-required": [
+              "team",
+              "score"
+            ]
+          },
+          "home": {
+            "properties": {
+              "score": {
+                "format": "double",
+                "type": "number"
+              },
+              "team": {
+                "properties": {
+                  "abbreviation": {
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string"
+                  }
+                },
+                "type": "object",
+                "x-owls-required": [
+                  "displayName"
+                ]
+              }
+            },
+            "type": "object",
+            "x-owls-required": [
+              "team",
+              "score"
+            ]
+          },
+          "id": {
+            "description": "Same id as `ScoreEvent.id` on `getScores()`.",
+            "type": "string"
+          },
+          "lastUpdated": {
+            "description": "In a `delta`, when this change happened. In a `full`, the game's own last\ncontent change, as on `getScores()`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "sport": {
+            "type": "string"
+          },
+          "startTime": {
+            "description": "Null when the source did not supply a start time.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ScoreStatus",
+            "description": "The same status object as `getScores()`."
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "id",
+          "sport",
+          "name",
+          "startTime",
+          "status",
+          "home",
+          "away",
+          "lastUpdated"
+        ]
+      },
       "ScoresResponse": {
         "description": "Response from GET /scores/live (all sports).",
         "properties": {
@@ -9754,6 +9863,45 @@
         "x-owls-required": [
           "success",
           "data"
+        ]
+      },
+      "ScoresUpdate": {
+        "description": "Payload of the `scores-update` WebSocket event: live scores for ONE sport.\n\nOpt in with `subscribe({ ..., scores: true })` (every sport) or\n`scores: ['nfl', 'soccer']`; no `scores` field, no messages. Same access as the v2\nevents: Hall of Fame, or a paid plan with the WebSocket add-on.\n\n- `full`: every game in play for `sport`, about every 30 seconds. Replace your live\n  board for that sport. A sport with no game in play sends no `full`.\n- `delta`: only what changed since the previous message: games in play whose score\n  or state changed, games that just finished (`status.state === \"post\"` with the\n  final score), and `removed`. Merge `events` by `id`, then drop the `removed` ids.\n\nA score change goes out within about 1 second where the source pushes scores, and\nwithin about 3 seconds otherwise. `getScores()` is unchanged.",
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreView"
+            },
+            "type": "array"
+          },
+          "removed": {
+            "description": "`delta` only: ids of games that left the live board without a known final\nstate. Treat them as no longer live; `getScores()` has how they ended.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sport": {
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "ISO 8601 time the message was built.",
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "x-extensible-enum": [
+              "delta",
+              "full"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "type",
+          "timestamp",
+          "sport",
+          "events"
         ]
       },
       "ServerHeartbeat": {
@@ -11436,6 +11584,9 @@
           "prophetx": {
             "$ref": "#/components/schemas/ProphetXSubscription",
             "description": "Opt-in to ProphetX exchange deltas. Default: not subscribed.\nPass `true` for the firehose, or an object to filter by sport/kind.\nSee `ProphetXSubscription` for shape details."
+          },
+          "scores": {
+            "description": "Opt-in to live scores on the `scores-update` event ({@link ScoresUpdate}).\n`true` for every sport, or an array of sport keys. Default: not subscribed.\nUnknown keys are dropped, and an array with no valid key subscribes to nothing.\nSame access as the v2 events. `getScores()` works either way."
           },
           "sports": {
             "description": "Sports for `odds-update` and for the realtime events (`pinnacle-realtime`,\n`pinnacle-realtime-sync`, `ps3838-realtime`). An empty list, or one in which no\nentry is a valid sport, means every sport. The `subscribed` acknowledgement lists\nthe sports in force.",
@@ -13770,8 +13921,8 @@
   "info": {
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
-    "version": "0.74.0",
-    "x-owls-manifest-commit": "33e1943c"
+    "version": "0.75.0",
+    "x-owls-manifest-commit": "0ae52a6b"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -15521,7 +15672,7 @@
     },
     "/api/v1/scores/live": {
       "get": {
-        "description": "Returns live games across every supported sport in one call, with current score, period and status.\n\nScores are REST only; there is no scores WebSocket event.\n\n503 until the first scoreboard has been collected.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (around the restart, status.period can already be the next period), OT (period 4 for every overtime) or SO (period 5). Owls Insight has no game clock for these sports, so status.displayClock is null. Soccer status.detail is the half (1st Half, 2nd Half) and the match minute is status.displayClock, e.g. 67 or 45+2. A phase without a label, soccer half-time included, reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
+        "description": "Returns live games across every supported sport in one call, with current score, period and status.\n\nScore changes for games in play are also pushed on the scores-update WebSocket event, opt-in with scores in the subscription, using this endpoint's event ids. That event carries a lean view (status, teams, score); this endpoint has the full event.\n\n503 until the first scoreboard has been collected.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (around the restart, status.period can already be the next period), OT (period 4 for every overtime) or SO (period 5). Owls Insight has no game clock for these sports, so status.displayClock is null. Soccer status.detail is the half (1st Half, 2nd Half) and the match minute is status.displayClock, e.g. 67 or 45+2. A phase without a label, soccer half-time included, reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
         "operationId": "getScores",
         "responses": {
           "200": {
@@ -17403,7 +17554,7 @@
     },
     "/api/v1/{sport}/realtime": {
       "get": {
-        "description": "Returns real-time Pinnacle odds for a sport. For the esports keys (cs2, lol, valorant, dota2) the response is the Pinnacle wire format unchanged and league is required; every other sport returns the normalized realtime event shape.\n\nmeta.source names the real-time feed that answered; meta.available is false and meta.freshness.stale is true whenever the response is empty.\n\nmeta.feed.lastDataAgeSeconds is the time since this sport last produced any data, or null if it never has; it is the field to watch for a feed that has stopped. For a feed that is running but hearing nothing from Pinnacle, watch meta.feed.upstreamAgeSeconds.\n\nmeta.feed.upstreamAgeSeconds is the time since Pinnacle last sent anything for this sport, and meta.feed.resubscribing is true while the feed is subscribing again after a reconnect, when some leagues can be silent. lastDataAgeSeconds stays low while Pinnacle is quiet, because the board is rewritten on a schedule either way; upstreamAgeSeconds keeps growing. Both are null when unknown, which includes every response whose meta.source is not pinnacle and the moments before the feed has received anything since it started.\n\nEach event carries status and isLive and may carry phase: scheduled (not started), live (in play, betting open), suspended (in play, betting paused for now; its markets carry suspended: true) or closed (betting over for good; the event is sent that way for a few minutes, then removed). phase can gain values, so treat an unknown one like a missing field. When phase is present, isLive is true while in-play betting on the match is running. Without phase, isLive can be false on a match that is in progress, so check status as well, and read phase first whenever it is present.\n\nWhen meta.source is pinnacle, each event also carries lastUpdate and seenAt (epoch milliseconds) and freshness: { lastUpdate, ageSeconds, stale, refreshedAt, refreshedAgeSeconds }. freshness.lastUpdate is the price change the event's freshness is measured from and ageSeconds its age; refreshedAt is the last time the feed confirmed a price on the event, changed or not, and refreshedAgeSeconds its age. stale is true when the event reads as in play and ageSeconds is over 30 or unknown; pre-match prices can sit unchanged for hours and are not flagged. The event-level lastUpdate can be older than the newest price on an in-play event, so for the age of one market read that market's last_update.\n\nmarkets[].last_update is when that market's price last changed, and last_seen, where present, when the feed last confirmed it. That holds for the main lines: h2h, spreads, totals, team_totals, total_games, and their corner, first_half_ and set versions. On special_ markets folded from a sub-matchup, on btts markets and on the other markets, last_update moves with the whole matchup or sub-matchup rather than the single market, so do not read it as that market's own age.\n\nmeta.stream is { epoch, seq }, the position on the pinnacle-realtime stream that this response matches, or null when the response cannot be aligned with the stream. To follow pinnacle-realtime without gaps, wait up to 25 seconds for a frame whose stream.checkpoint is true (call at once if the frames carry no stream), then call this endpoint. If meta.stream is null, replace your board with data, apply every frame, and call again after 10, 20, 40 seconds and so on, up to every 5 minutes. If its epoch differs from the checkpoint's, or its seq is lower than the checkpoint's, call again at the next checkpoint. Otherwise replace your board with data and apply only frames with a seq above meta.stream.seq, in order; a skipped seq or a new epoch after that means calling again. The pinnacle-realtime event description has the full procedure.\n\nWhen meta.stream is set, data is the board at that position after the league filter and the filters this endpoint applies to every response (confirmed finished events, events too old to still be live, duplicates), so an empty data array means no event matches, not a missing feed.\n\nmeta.freshness.droppedAsFinished and droppedAsStale count events removed because they were confirmed finished or their start time is too far past to still be live.\n\nEsports rows each carry their own freshness; the top-level freshness is the freshest served event and stale is true only when no served event is fresh.\n\nThe SDK exposes the esports keys through getEsportsRealtime / get_esports_realtime, which enforce the league parameter.\n\nSoccer women's and youth leagues: Pinnacle names the clubs as in the senior league and puts Women or the age only in the league label. The team names here carry that marker (Liverpool Women, Uzbekistan U23), and so does every outcome label that names a team, such as Draw No Bet, Double Chance (Draw Or Uzbekistan U23) and progression outrights. The v2 Pinnacle endpoints keep Pinnacle's own names.",
+        "description": "Returns real-time Pinnacle odds for a sport. For the esports keys (cs2, lol, valorant, dota2) the response is the Pinnacle wire format unchanged and league is required; every other sport returns the normalized realtime event shape.\n\nmeta.source names the real-time feed that answered; meta.available is false and meta.freshness.stale is true whenever the response is empty.\n\nmeta.feed.lastDataAgeSeconds is the time since this sport last produced any data, or null if it never has; it is the field to watch for a feed that has stopped. For a feed that is running but hearing nothing from Pinnacle, watch meta.feed.upstreamAgeSeconds.\n\nmeta.feed.upstreamAgeSeconds is the time since Pinnacle last sent anything for this sport, and meta.feed.resubscribing is true while the feed is subscribing again after a reconnect, when some leagues can be silent. lastDataAgeSeconds stays low while Pinnacle is quiet, because the board is rewritten on a schedule either way; upstreamAgeSeconds keeps growing. Both are null when unknown, which includes every response whose meta.source is not pinnacle and the moments before the feed has received anything since it started.\n\nEach event carries status and isLive and may carry phase: scheduled (not started), live (in play, betting open), suspended (in play, betting paused for now; its markets carry suspended: true) or closed (betting over for good; the event is sent that way for a few minutes, then removed). phase can gain values, so treat an unknown one like a missing field. When phase is present, isLive is true while in-play betting on the match is running. Without phase, isLive can be false on a match that is in progress, so check status as well, and read phase first whenever it is present.\n\nA main market (moneyline, spread, total or team total) that Pinnacle takes down while the rest of the match stays open also carries suspended: true, and loses it when Pinnacle offers it again or its period ends. On a spread or total the flag is on the main line only; its alternateLines are not flagged one by one, so read each rung's last_seen for those.\n\nWhen meta.source is pinnacle, each event also carries lastUpdate and seenAt (epoch milliseconds) and freshness: { lastUpdate, ageSeconds, stale, refreshedAt, refreshedAgeSeconds }. freshness.lastUpdate is the price change the event's freshness is measured from and ageSeconds its age; refreshedAt is the last time the feed confirmed a price on the event, changed or not, and refreshedAgeSeconds its age. stale is true when the event reads as in play and ageSeconds is over 30 or unknown; pre-match prices can sit unchanged for hours and are not flagged. The event-level lastUpdate can be older than the newest price on an in-play event, so for the age of one market read that market's last_update.\n\nmarkets[].last_update is when that market's price last changed, and last_seen, where present, when the feed last confirmed it. That holds for the main lines: h2h, spreads, totals, team_totals, total_games, and their corner, first_half_ and set versions. On special_ markets folded from a sub-matchup, on btts markets and on the other markets, last_update moves with the whole matchup or sub-matchup rather than the single market, so do not read it as that market's own age.\n\nEach alternateLines rung (point and price) may carry its own last_seen, when the feed last confirmed that rung. Pinnacle does not resend every rung in every message, so a rung whose last_seen is well behind its market's is a hint that Pinnacle has taken it down, not proof.\n\nmeta.stream is { epoch, seq }, the position on the pinnacle-realtime stream that this response matches, or null when the response cannot be aligned with the stream. To follow pinnacle-realtime without gaps, wait up to 25 seconds for a frame whose stream.checkpoint is true (call at once if the frames carry no stream), then call this endpoint. If meta.stream is null, replace your board with data, apply every frame, and call again after 10, 20, 40 seconds and so on, up to every 5 minutes. If its epoch differs from the checkpoint's, or its seq is lower than the checkpoint's, call again at the next checkpoint. Otherwise replace your board with data and apply only frames with a seq above meta.stream.seq, in order; a skipped seq or a new epoch after that means calling again. The pinnacle-realtime event description has the full procedure.\n\nWhen meta.stream is set, data is the board at that position after the league filter and the filters this endpoint applies to every response (confirmed finished events, events too old to still be live, duplicates), so an empty data array means no event matches, not a missing feed.\n\nmeta.freshness.droppedAsFinished and droppedAsStale count events removed because they were confirmed finished or their start time is too far past to still be live.\n\nEsports rows each carry their own freshness; the top-level freshness is the freshest served event and stale is true only when no served event is fresh.\n\nThe SDK exposes the esports keys through getEsportsRealtime / get_esports_realtime, which enforce the league parameter.\n\nSoccer women's and youth leagues: Pinnacle names the clubs as in the senior league and puts Women or the age only in the league label. The team names here carry that marker (Liverpool Women, Uzbekistan U23), and so does every outcome label that names a team, such as Draw No Bet, Double Chance (Draw Or Uzbekistan U23) and progression outrights. The v2 Pinnacle endpoints keep Pinnacle's own names.",
         "operationId": "getRealtime",
         "parameters": [
           {
@@ -17568,7 +17719,7 @@
     },
     "/api/v1/{sport}/scores/live": {
       "get": {
-        "description": "Returns live games for one sport with current score, period and status.\n\nScores are REST only; there is no scores WebSocket event.\n\nAn empty events array with hasScheduledGames true means games are scheduled but none has started.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (around the restart, status.period can already be the next period), OT (period 4 for every overtime) or SO (period 5). Owls Insight has no game clock for these sports, so status.displayClock is null. Soccer status.detail is the half (1st Half, 2nd Half) and the match minute is status.displayClock, e.g. 67 or 45+2. A phase without a label, soccer half-time included, reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
+        "description": "Returns live games for one sport with current score, period and status.\n\nScore changes for games in play are also pushed on the scores-update WebSocket event, opt-in with scores in the subscription, using this endpoint's event ids. That event carries a lean view (status, teams, score); this endpoint has the full event.\n\nAn empty events array with hasScheduledGames true means games are scheduled but none has started.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (around the restart, status.period can already be the next period), OT (period 4 for every overtime) or SO (period 5). Owls Insight has no game clock for these sports, so status.displayClock is null. Soccer status.detail is the half (1st Half, 2nd Half) and the match minute is status.displayClock, e.g. 67 or 45+2. A phase without a label, soccer half-time included, reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
         "operationId": "getSportScores",
         "parameters": [
           {

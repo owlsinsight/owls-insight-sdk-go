@@ -8,8 +8,16 @@ import (
 
 // AlternateLine defines model for AlternateLine.
 type AlternateLine struct {
-	Point *float64 `json:"point,omitempty"`
-	Price *float64 `json:"price,omitempty"`
+	// LastSeen When the book last CONFIRMED this rung, as an ISO timestamp, whether or not
+	// its price moved. Pinnacle realtime only (`getRealtime` and `pinnacle-realtime`);
+	// absent on `/odds` and on feeds that do not stamp rungs.
+	//
+	// Pinnacle does not resend every rung in every message, so a rung whose
+	// `last_seen` is well behind its market's `last_seen` is a hint that the rung has
+	// been taken down, not proof. Rungs are never flagged `suspended` one by one.
+	LastSeen *string  `json:"last_seen,omitempty"`
+	Point    *float64 `json:"point,omitempty"`
+	Price    *float64 `json:"price,omitempty"`
 }
 
 // ArchivedGame defines model for ArchivedGame.
@@ -753,7 +761,10 @@ type ClientSubscription struct {
 	// server AFTER being received - the server never widens the subscription
 	// to "all". See the server's validateSubscription() for exact semantics.
 	Prophetx *ProphetXSubscription `json:"prophetx,omitempty"`
-	Sports   []Sport               `json:"sports,omitempty"`
+
+	// Scores Live scores subscription (`scores-update`; opt-in, default: undefined/no events).
+	Scores *json.RawMessage `json:"scores,omitempty"`
+	Sports []Sport          `json:"sports,omitempty"`
 
 	// V2 Opt-in subscription for raw pass-through Source API (v2) WebSocket
 	// events. Pass on `subscribe()` to start receiving the corresponding
@@ -838,6 +849,10 @@ type ClosingOddsRow struct {
 	// For closing-line-value work prefer `football-data` where present.
 	Source *ClosingOddsSource `json:"source,omitempty"`
 	Sport  *string            `json:"sport,omitempty"`
+
+	// Spread Every field null means the spread was captured but withheld: on a live-derived
+	// close, a spread whose two points do not cancel or one known to be wrong for that
+	// book and date (counted in `dataQuality.suppressedFields`). Absent means none was captured.
 	Spread *struct {
 		Away      *float64 `json:"away,omitempty"`
 		AwayPrice *float64 `json:"awayPrice,omitempty"`
@@ -845,7 +860,9 @@ type ClosingOddsRow struct {
 		HomePrice *float64 `json:"homePrice,omitempty"`
 	} `json:"spread,omitempty"`
 	Total *struct {
-		// Line Always a number when `total` is present - the API omits the object otherwise.
+		// Line The totals line. Null only when the whole total was withheld (a live-derived
+		// close known to be wrong for that book and date); the prices are then null too.
+		// The API omits `total` when none was captured.
 		Line       *float64 `json:"line,omitempty"`
 		OverPrice  *float64 `json:"overPrice,omitempty"`
 		UnderPrice *float64 `json:"underPrice,omitempty"`
@@ -2595,9 +2612,14 @@ type Market struct {
 	// Pinnacle realtime feed it can also be set once the market's period is closed or
 	// its betting cutoff has passed. Absent otherwise, never `false`.
 	//
-	// Its absence does NOT mean the line is being quoted. Pinnacle usually signals a
-	// suspension by withdrawing the line rather than closing it, so a pulled line can
-	// arrive with no `suspended` at all. Use `last_seen` to tell whether a quote is live.
+	// On the Pinnacle realtime feed it is also set on a main market (moneyline,
+	// spread, total or team total) that Pinnacle withdraws while the rest of the match
+	// stays open, and cleared when Pinnacle offers it again or its period ends. On a
+	// spread or total only the main line is flagged, never its `alternateLines`.
+	//
+	// Its absence does NOT mean every line is being quoted: a withdrawn alternate rung,
+	// or a special or prop market, can arrive with no `suspended` at all. Use
+	// `last_seen` (on the market, and on each rung) to tell whether a quote is live.
 	Suspended *bool `json:"suspended,omitempty"`
 
 	// Units The source's own unit-of-measure for the sub-matchup this market came from,
@@ -4479,6 +4501,39 @@ type ScoreTeam struct {
 	} `json:"team,omitempty"`
 }
 
+// ScoreView One game on the `scores-update` WebSocket event: a lean view of a
+// ScoreEvent with the score, status and teams only. Linescores, stats,
+// lineups, incidents and sport-specific detail stay on `getScores()`.
+type ScoreView struct {
+	Away *struct {
+		Score *float64 `json:"score,omitempty"`
+		Team  *struct {
+			Abbreviation *string `json:"abbreviation,omitempty"`
+			DisplayName  *string `json:"displayName,omitempty"`
+		} `json:"team,omitempty"`
+	} `json:"away,omitempty"`
+	Home *struct {
+		Score *float64 `json:"score,omitempty"`
+		Team  *struct {
+			Abbreviation *string `json:"abbreviation,omitempty"`
+			DisplayName  *string `json:"displayName,omitempty"`
+		} `json:"team,omitempty"`
+	} `json:"home,omitempty"`
+
+	// ID Same id as `ScoreEvent.id` on `getScores()`.
+	ID *string `json:"id,omitempty"`
+
+	// LastUpdated In a `delta`, when this change happened. In a `full`, the game's own last
+	// content change, as on `getScores()`.
+	LastUpdated *string `json:"lastUpdated,omitempty"`
+	Name        *string `json:"name,omitempty"`
+	Sport       *string `json:"sport,omitempty"`
+
+	// StartTime Null when the source did not supply a start time.
+	StartTime *string      `json:"startTime,omitempty"`
+	Status    *ScoreStatus `json:"status,omitempty"`
+}
+
 // ScoresResponse Response from GET /scores/live (all sports).
 type ScoresResponse struct {
 	Cached *bool `json:"cached,omitempty"`
@@ -4486,6 +4541,33 @@ type ScoresResponse struct {
 		Sports map[string][]ScoreEvent `json:"sports,omitempty"`
 	} `json:"data,omitempty"`
 	Success *bool `json:"success,omitempty"`
+}
+
+// ScoresUpdate Payload of the `scores-update` WebSocket event: live scores for ONE sport.
+//
+// Opt in with `subscribe({ ..., scores: true })` (every sport) or
+// `scores: ['nfl', 'soccer']`; no `scores` field, no messages. Same access as the v2
+// events: Hall of Fame, or a paid plan with the WebSocket add-on.
+//
+//   - `full`: every game in play for `sport`, about every 30 seconds. Replace your live
+//     board for that sport. A sport with no game in play sends no `full`.
+//   - `delta`: only what changed since the previous message: games in play whose score
+//     or state changed, games that just finished (`status.state === "post"` with the
+//     final score), and `removed`. Merge `events` by `id`, then drop the `removed` ids.
+//
+// A score change goes out within about 1 second where the source pushes scores, and
+// within about 3 seconds otherwise. `getScores()` is unchanged.
+type ScoresUpdate struct {
+	Events []ScoreView `json:"events,omitempty"`
+
+	// Removed `delta` only: ids of games that left the live board without a known final
+	// state. Treat them as no longer live; `getScores()` has how they ended.
+	Removed []string `json:"removed,omitempty"`
+	Sport   *string  `json:"sport,omitempty"`
+
+	// Timestamp ISO 8601 time the message was built.
+	Timestamp *string `json:"timestamp,omitempty"`
+	Type      *string `json:"type,omitempty"`
 }
 
 // ServerHeartbeat `server-heartbeat`: sent every 10 seconds on every connection, independent of odds
