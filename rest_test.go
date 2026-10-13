@@ -157,6 +157,9 @@ func TestRequestPaths(t *testing.T) {
 	}{
 		{func() error { _, err := c.GetV2(ctx, "fanduel", "soccer", "epl"); return err }, "/api/v2/fanduel/soccer?league=epl"},
 		{func() error { _, err := c.GetV2(ctx, "4casters", "nba", ""); return err }, "/api/v2/4casters/nba"},
+		{func() error { _, err := c.GetV2Markets(ctx, "draftkings", "nfl", "", "props-*"); return err }, "/api/v2/draftkings/nfl?marketIds=props-%2A"},
+		{func() error { _, err := c.GetV2Markets(ctx, "draftkings", "soccer", "epl", "main"); return err }, "/api/v2/draftkings/soccer?league=epl&marketIds=main"},
+		{func() error { _, err := c.GetV2Markets(ctx, "draftkings", "nfl", "", ""); return err }, "/api/v2/draftkings/nfl"},
 		{func() error { _, err := c.GetV2Leagues(ctx, "draftkings", "soccer"); return err }, "/api/v2/draftkings/soccer/leagues"},
 		// 888sport: a book key that starts with a digit, single-league and multi-league sports.
 		{func() error { _, err := c.GetV2(ctx, "888sport", "nfl", ""); return err }, "/api/v2/888sport/nfl"},

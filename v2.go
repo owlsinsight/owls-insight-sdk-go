@@ -13,6 +13,20 @@ func (c *Client) GetV2(ctx context.Context, book, sport, league string) (*V2Book
 	return getInto[V2BookResponse](ctx, c, "/api/v2/"+esc(book)+"/"+esc(sport), leagueQuery(league))
 }
 
+// GetV2Markets is GetV2 with a marketIds filter: a comma-separated list of market
+// ids and prefixes ending in *, for example "props-*", "main,props-*" or "*" for
+// every entry. Only those entries are returned (and dated and hashed into the
+// ETag). DraftKings stores its US-sport player props one entry per subcategory,
+// "props-<subcategoryId>", and leaves them out unless asked for: GetV2Markets(ctx,
+// "draftkings", "nfl", "", "props-*"). An empty marketIds behaves like GetV2.
+// Books with their own routes (bet365, hardrock, mybookie, stake, thunderpick,
+// underdog) ignore it and return their whole board.
+func (c *Client) GetV2Markets(ctx context.Context, book, sport, league, marketIds string) (*V2BookResponse, error) {
+	q := leagueQuery(league)
+	setStr(q, "marketIds", marketIds)
+	return getInto[V2BookResponse](ctx, c, "/api/v2/"+esc(book)+"/"+esc(sport), q)
+}
+
 // GetV2Leagues returns the league index of a v2 book and sport:
 // GET /api/v2/{book}/{sport}/leagues.
 func (c *Client) GetV2Leagues(ctx context.Context, book, sport string) (*V2LeaguesResponse, error) {

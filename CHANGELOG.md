@@ -4,6 +4,25 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.7.0] - 2026-10-13
+
+### Added
+
+- `GetV2Markets(ctx, book, sport, league, marketIds)`: `GetV2` with the `marketIds`
+  filter, comma-separated market ids and prefixes ending in `*`. DraftKings stores
+  its US-sport player props (nba, nfl, nhl, mlb, ncaab, ncaaf) one entry per
+  subcategory, `props-<subcategoryId>`, and leaves them out unless asked for:
+  `GetV2Markets(ctx, "draftkings", "nfl", "", "props-*")`.
+- The spec is the JS SDK's 0.75.0: the `scores-update` WebSocket event, `AlternateLine.last_seen`,
+  `Market.suspended` on pulled Pinnacle main markets, the v2 `meta.marketIds`,
+  `marketsFilteredOut`, `defaultExcluded` and `marketAges`, and the leagues
+  `marketCountExcludedByDefault`.
+
+### Changed
+
+- Closing odds: `total.line` can be null when a live-derived total is withheld, and a
+  withheld spread arrives with every field null. Both were already pointers.
+
 ## [0.6.0] - 2026-10-07
 
 ### Added
