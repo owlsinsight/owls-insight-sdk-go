@@ -207,7 +207,8 @@ game, err := c.GetV2Markets(ctx, "propbuilder", "nfl", "",
 (replace yours by `marketId`), and `RemovedIds` for the entries that left the board.
 Load the board with `GetV2` on every `connect` event, the first and every reconnect, then
 apply the updates. Updates can arrive while the board loads: hold them, and apply them on
-top of the board once it is in. Subscribe with
+top of the board once it is in. (Handlers run one at a time, so a `GetV2` call inside the
+`EventConnect` handler holds them for you, up to the stream's 64-event queue.) Subscribe with
 `V2: map[string]map[string]any{"propbuilder": {"nfl": "*"}}`.
 
 ### Same game parlays
@@ -323,9 +324,9 @@ a string, such as `Outcome.SelectionID`) and raw book data are `json.RawMessage`
 
 A `pinnacle-realtime` or `ps3838-realtime` frame is keyed by sport. `RealtimeOddsPayload`
 has a field for each common sport; `owls.RealtimeSportEvents(raw, sport)` reads the
-events of any sport from the raw frame, including one added to the API later. Every
-`pinnacle-realtime` and `pinnacle-realtime-sync` frame carries `Feed`
-(`UpstreamAgeSeconds`, `Resubscribing`, `Stalled`), the same as `Meta.Feed` on
+events of any sport from the raw frame, including one added to the API later.
+`pinnacle-realtime` and `pinnacle-realtime-sync` frames can carry `Feed`
+(`UpstreamAgeSeconds`, `Resubscribing`, `Stalled`, nil when absent), the same as `Meta.Feed` on
 `GetRealtime`: `Stalled` is true when the sport has a game in play and Pinnacle has been
 silent for longer than its normal quiet spells, so prices can be out of date while
 frames keep arriving.
@@ -358,18 +359,22 @@ messages. If the server does not acknowledge them within 5 s it sends them once 
   filter.
 - `SubscribeProps(ctx, book, filter)` and `UnsubscribeProps(ctx, book)` manage the props
   streams (`""` for Pinnacle's `player-props-update`).
-- `Realtime: &owls.RealtimeFeeds{PS3838: owls.Ptr(false)}` stops `ps3838-realtime` for the
-  connection and keeps `pinnacle-realtime` (default: both). Only a literal false counts.
-  `UpdateSubscription` replaces the whole object, so `Realtime: &owls.RealtimeFeeds{}`
-  there turns `ps3838-realtime` back on.
-- `Scores: true`, or a list of sport keys such as `[]string{"nfl"}`, opts in to
-  `scores-update` (`owls.EventScoresUpdate`, payload `owls.ScoresUpdate`): a full live
-  board per sport about every 30 seconds and a delta within a few seconds of a change.
 
 These return `owls.ErrNotConnected` while the stream is not connected; use
 `WithSubscription` for the first connect. The context only bounds the wait for a send
 already in progress. Once a call has stored its change it writes it before returning
 (within 10 s), so calls reach the server in the order they return.
+
+Two `Subscription` fields are opt-ins rather than filters:
+
+- `Realtime: &owls.RealtimeFeeds{PS3838: owls.Ptr(false)}` stops `ps3838-realtime` for the
+  connection and keeps `pinnacle-realtime` (default: both). Only a literal false counts.
+  `UpdateSubscription` replaces the whole object, so `Realtime: &owls.RealtimeFeeds{}`
+  there turns `ps3838-realtime` back on. The `subscribed` acknowledgement carries the
+  same type in `ClientSubscription.Realtime`.
+- `Scores: true`, or a list of sport keys such as `[]string{"nfl"}`, opts in to
+  `scores-update` (`owls.EventScoresUpdate`, payload `owls.ScoresUpdate`): a full live
+  board per sport about every 30 seconds and a delta within a few seconds of a change.
 
 **Events.** `On(name, fn)` receives each event's payload as `json.RawMessage`, in order,
 on one goroutine; `owls.Decode[T]` turns it into a model type. Up to 64 events queue for

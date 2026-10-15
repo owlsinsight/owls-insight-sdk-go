@@ -65,3 +65,10 @@ actions:
       next to SportEventID.
     update:
       x-go-name: SportEventIDAlt
+  - target: $.components.schemas.RealtimeFeedsSubscription.properties.ps3838
+    description: >-
+      The realtime opt-out's field keeps the package's PS3838 initialism
+      (EventPS3838Realtime, GetPS3838Realtime), so the subscribed acknowledgement and
+      Subscription.Realtime share one type (RealtimeFeeds is an alias of it).
+    update:
+      x-go-name: PS3838

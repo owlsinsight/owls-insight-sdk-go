@@ -21,7 +21,9 @@ All notable changes to this module are documented here. The format follows
   book `propbuilder`, for example `{"propbuilder": {"nfl": "*"}}`: the entries that
   changed, each one whole, and `RemovedIds`. It decodes into `V2Update`, and the generated
   `V2Subscription` has a `Propbuilder` field.
-- `Subscription.Realtime` (`RealtimeFeeds`): `&RealtimeFeeds{PS3838: Ptr(false)}` stops
+- `Subscription.Realtime` (`RealtimeFeeds`, an alias of the generated
+  `RealtimeFeedsSubscription` that the `subscribed` acknowledgement carries):
+  `&RealtimeFeeds{PS3838: Ptr(false)}` stops
   `ps3838-realtime` for the connection and keeps `pinnacle-realtime`. Nil, the default,
   gets both. Only a literal false is honoured. `UpdateSubscription` replaces the whole
   object (`&RealtimeFeeds{}` there turns `ps3838-realtime` back on), and the stream sends
@@ -39,9 +41,9 @@ All notable changes to this module are documented here. The format follows
 ### Changed
 
 - `spec/` is the TypeScript SDK's 0.78.0 spec and the models are regenerated from it. The
-  props `category` enum lists all 85 categories `/api/v1/{sport}/props` serves (football
-  periods, kickers, `longest_completion`, `assisted_tackles`, ...); `category` stays a
-  plain string in Go, so nothing changes at runtime. `ArchivedGame.OddsSnapshots` and
+  spec's props `category` values list all 85 categories `/api/v1/{sport}/props` serves
+  (football periods, kickers, `longest_completion`, `assisted_tackles`, ...); `category`
+  is a plain string in Go, so nothing changes in the Go types. `ArchivedGame.OddsSnapshots` and
   `PropsSnapshots` are documented as null when not counted (they were already pointers),
   and the generated `ClientSubscription`, the `subscribed` acknowledgement, has `Realtime`.
 - README: Prop Builder, `GetV2Markets`, the realtime opt-out, the scores opt-in and the

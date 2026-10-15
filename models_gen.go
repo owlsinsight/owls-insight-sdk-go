@@ -4229,7 +4229,7 @@ type RealtimeFeedState struct {
 
 // RealtimeFeedsSubscription See SubscribeOptions.realtime.
 type RealtimeFeedsSubscription struct {
-	Ps3838 *bool `json:"ps3838,omitempty"`
+	PS3838 *bool `json:"ps3838,omitempty"`
 }
 
 // RealtimeFrameFeed The sport's upstream feed state on every `pinnacle-realtime` and

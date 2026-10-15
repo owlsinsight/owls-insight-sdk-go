@@ -49,12 +49,11 @@ type Subscription struct {
 	Realtime *RealtimeFeeds `json:"realtime,omitempty"`
 }
 
-// RealtimeFeeds is [Subscription.Realtime]. The server honours only a literal
-// false: a nil or true field leaves the event on.
-type RealtimeFeeds struct {
-	// PS3838 set to false stops ps3838-realtime for this connection.
-	PS3838 *bool `json:"ps3838,omitempty"`
-}
+// RealtimeFeeds is [Subscription.Realtime], the same type the subscribed
+// acknowledgement carries in ClientSubscription.Realtime. PS3838 set to false
+// stops ps3838-realtime for this connection; the server honours only a literal
+// false, so a nil or true field leaves the event on.
+type RealtimeFeeds = RealtimeFeedsSubscription
 
 // MarshalJSON sends a list or map that is empty but not nil as [] or {}, so that
 // an update can clear it; omitempty alone would drop it.

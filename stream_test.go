@@ -283,8 +283,9 @@ func TestStreamRealtimeOptOutSurvivesReconnect(t *testing.T) {
 		t.Errorf("reconnect subscribe = %s, want %s", subs[0], want)
 	}
 
-	// An empty Realtime replaces the whole object: both events again, on the
-	// server and in what the next reconnect sends.
+	// An empty Realtime replaces the whole object in what the stream stores and
+	// sends on the next reconnect. (This test server echoes "realtime":{}; the API
+	// leaves realtime out of its ack instead, and sends both events again.)
 	until(t, 5*time.Second, "the reconnect's ack", func() bool { return acks.len() >= 3 })
 	if err := s.UpdateSubscription(context.Background(), Subscription{Realtime: &RealtimeFeeds{}}); err != nil {
 		t.Fatal(err)
