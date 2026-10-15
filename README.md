@@ -206,7 +206,8 @@ game, err := c.GetV2Markets(ctx, "propbuilder", "nfl", "",
 `propbuilder-v2-update` pushes the entries that changed within seconds, each one whole
 (replace yours by `marketId`), and `RemovedIds` for the entries that left the board.
 Load the board with `GetV2` on every `connect` event, the first and every reconnect, then
-apply the updates. Subscribe with
+apply the updates. Updates can arrive while the board loads: hold them, and apply them on
+top of the board once it is in. Subscribe with
 `V2: map[string]map[string]any{"propbuilder": {"nfl": "*"}}`.
 
 ### Same game parlays
