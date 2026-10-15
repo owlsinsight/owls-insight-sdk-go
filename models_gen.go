@@ -48,7 +48,11 @@ type ArchivedGame struct {
 
 	// HomeTeamID Stable roster id for `homeTeam`, absent when the name is not on a roster
 	// we carry. Note the casing: camelCase here, `home_team_id` on `/odds`.
-	HomeTeamID    *string  `json:"homeTeamId,omitempty"`
+	HomeTeamID *string `json:"homeTeamId,omitempty"`
+
+	// OddsSnapshots Stored odds rows for the eventId, both team orderings. `null` when the count
+	// could not be taken when the game was archived ("not counted", never a false 0);
+	// a later recount fills it.
 	OddsSnapshots *float64 `json:"oddsSnapshots,omitempty"`
 
 	// PeriodScores Per-period scores, absent when none were captured. `period` is a label,
@@ -60,7 +64,9 @@ type ArchivedGame struct {
 		Home   *float64 `json:"home,omitempty"`
 		Period *string  `json:"period,omitempty"`
 	} `json:"periodScores,omitempty"`
-	PlayerStats    *float64 `json:"playerStats,omitempty"`
+	PlayerStats *float64 `json:"playerStats,omitempty"`
+
+	// PropsSnapshots Stored props rows for the eventId; `null` when not counted (as oddsSnapshots).
 	PropsSnapshots *float64 `json:"propsSnapshots,omitempty"`
 	Season         *string  `json:"season,omitempty"`
 
@@ -761,6 +767,9 @@ type ClientSubscription struct {
 	// server AFTER being received - the server never widens the subscription
 	// to "all". See the server's validateSubscription() for exact semantics.
 	Prophetx *ProphetXSubscription `json:"prophetx,omitempty"`
+
+	// Realtime See SubscribeOptions.realtime.
+	Realtime *RealtimeFeedsSubscription `json:"realtime,omitempty"`
 
 	// Scores Live scores subscription (`scores-update`; opt-in, default: undefined/no events).
 	Scores *json.RawMessage `json:"scores,omitempty"`
@@ -3084,6 +3093,12 @@ type Outcome struct {
 // connections and for the same sports as `pinnacle-realtime`; track `stream` and
 // delete the `removed` ids exactly as you do there. See RealtimeOddsPayload.
 type PinnacleRealtimeSyncPayload struct {
+	// Feed The sport's upstream feed state on every `pinnacle-realtime` and
+	// `pinnacle-realtime-sync` frame: the same fields as REST `meta.feed`
+	// (RealtimeFeedState). `stalled: true` means prices can be out of date while
+	// frames keep arriving. Each field is `null` when unknown.
+	Feed *RealtimeFrameFeed `json:"feed,omitempty"`
+
 	// Removed Event ids to delete from your board, keyed by sport.
 	Removed map[string][]string `json:"removed,omitempty"`
 	Sport   *string             `json:"sport,omitempty"`
@@ -3735,6 +3750,16 @@ type PropUngradableReason = string
 // PropVerdict defines model for PropVerdict.
 type PropVerdict = string
 
+// PropbuilderV2BookSubscription Per-sport filter for `v2: { propbuilder: {...} }`. Every sport is one league: pass `'*'`.
+type PropbuilderV2BookSubscription struct {
+	Mlb   *json.RawMessage `json:"mlb,omitempty"`
+	Nba   *json.RawMessage `json:"nba,omitempty"`
+	Ncaaf *json.RawMessage `json:"ncaaf,omitempty"`
+	Nfl   *json.RawMessage `json:"nfl,omitempty"`
+	Nhl   *json.RawMessage `json:"nhl,omitempty"`
+	Wnba  *json.RawMessage `json:"wnba,omitempty"`
+}
+
 // ProphetXCompetitor Competitor inside a ProphetX event. Stable fields - the server-side
 // publisher always emits these five keys for every competitor.
 //
@@ -4181,8 +4206,15 @@ type RealtimeFeedState struct {
 	// Resubscribing True while the feed is subscribing again after a reconnect, when some leagues
 	// can be silent. `null` means unknown, by the same rules as `upstreamAgeSeconds`.
 	// Absent from API versions that predate it.
-	Resubscribing *bool   `json:"resubscribing,omitempty"`
-	State         *string `json:"state,omitempty"`
+	Resubscribing *bool `json:"resubscribing,omitempty"`
+
+	// Stalled True when the board has an event in play (`phase: "live"`) and Pinnacle has sent
+	// nothing for this sport for longer than its normal quiet spells during play: prices
+	// can be out of date even though the board was rewritten seconds ago. False on a board
+	// with nothing in play. `null` when `upstreamAgeSeconds` is null or the events carry no
+	// `phase`. It does not change `freshness.stale`. Absent from API versions that predate it.
+	Stalled *bool   `json:"stalled,omitempty"`
+	State   *string `json:"state,omitempty"`
 
 	// UpstreamAgeSeconds Seconds since Pinnacle last sent anything for this sport, as of this response.
 	// `lastDataAgeSeconds` stays low while Pinnacle is quiet, because the board is
@@ -4192,6 +4224,21 @@ type RealtimeFeedState struct {
 	// `null` means unknown: always when `meta.source` is not `"pinnacle"`, and before
 	// the feed has received anything since it started. Absent from API versions that
 	// predate it.
+	UpstreamAgeSeconds *float64 `json:"upstreamAgeSeconds,omitempty"`
+}
+
+// RealtimeFeedsSubscription See SubscribeOptions.realtime.
+type RealtimeFeedsSubscription struct {
+	Ps3838 *bool `json:"ps3838,omitempty"`
+}
+
+// RealtimeFrameFeed The sport's upstream feed state on every `pinnacle-realtime` and
+// `pinnacle-realtime-sync` frame: the same fields as REST `meta.feed`
+// (RealtimeFeedState). `stalled: true` means prices can be out of date while
+// frames keep arriving. Each field is `null` when unknown.
+type RealtimeFrameFeed struct {
+	Resubscribing      *bool    `json:"resubscribing,omitempty"`
+	Stalled            *bool    `json:"stalled,omitempty"`
 	UpstreamAgeSeconds *float64 `json:"upstreamAgeSeconds,omitempty"`
 }
 
@@ -4343,14 +4390,20 @@ type RealtimeOddsPayload struct {
 
 	// Delta The frame carries only changed events: merge them into your board by `id`. Set on
 	// every `pinnacle-realtime` frame, and on `ps3838-realtime` delta frames.
-	Delta    *bool       `json:"delta,omitempty"`
-	Handball []OddsEvent `json:"handball,omitempty"`
-	Mlb      []OddsEvent `json:"mlb,omitempty"`
-	Nba      []OddsEvent `json:"nba,omitempty"`
-	Ncaab    []OddsEvent `json:"ncaab,omitempty"`
-	Ncaaf    []OddsEvent `json:"ncaaf,omitempty"`
-	Nfl      []OddsEvent `json:"nfl,omitempty"`
-	Nhl      []OddsEvent `json:"nhl,omitempty"`
+	Delta *bool `json:"delta,omitempty"`
+
+	// Feed The sport's upstream feed state on every `pinnacle-realtime` and
+	// `pinnacle-realtime-sync` frame: the same fields as REST `meta.feed`
+	// (RealtimeFeedState). `stalled: true` means prices can be out of date while
+	// frames keep arriving. Each field is `null` when unknown.
+	Feed     *RealtimeFrameFeed `json:"feed,omitempty"`
+	Handball []OddsEvent        `json:"handball,omitempty"`
+	Mlb      []OddsEvent        `json:"mlb,omitempty"`
+	Nba      []OddsEvent        `json:"nba,omitempty"`
+	Ncaab    []OddsEvent        `json:"ncaab,omitempty"`
+	Ncaaf    []OddsEvent        `json:"ncaaf,omitempty"`
+	Nfl      []OddsEvent        `json:"nfl,omitempty"`
+	Nhl      []OddsEvent        `json:"nhl,omitempty"`
 
 	// OddsFormat Odds format hint from the upstream source. Prices on the realtime feeds are American odds (value: "american").
 	OddsFormat *string `json:"odds_format,omitempty"`
@@ -5568,6 +5621,9 @@ type V2Subscription struct {
 	// `epl`, `ucl`, `nba`, `mlb`). Pass `'*'` for every tag, or an array
 	// of tag slugs to filter.
 	Polymarket *PolymarketV2BookSubscription `json:"polymarket,omitempty"`
+
+	// Propbuilder Per-sport filter for `v2: { propbuilder: {...} }`. Every sport is one league: pass `'*'`.
+	Propbuilder *PropbuilderV2BookSubscription `json:"propbuilder,omitempty"`
 
 	// Thunderpick Per-book subscription shape for Thunderpick v2 events.
 	//

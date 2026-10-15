@@ -65,8 +65,12 @@
             "type": "string"
           },
           "oddsSnapshots": {
+            "description": "Stored odds rows for the eventId, both team orderings. `null` when the count\ncould not be taken when the game was archived (\"not counted\", never a false 0);\na later recount fills it.",
             "format": "double",
-            "type": "number"
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "periodScores": {
             "description": "Per-period scores, absent when none were captured. `period` is a label,\nnot an index: `\"Q1\"`..`\"Q4\"` then `\"OT1\"`, `\"OT2\"` for the quarter sports\n(nba, wnba, nfl, ncaaf), and the plain period or inning number for\neverything else. A bare `\"OT\"` is never sent.",
@@ -98,8 +102,12 @@
             "type": "number"
           },
           "propsSnapshots": {
+            "description": "Stored props rows for the eventId; `null` when not counted (as oddsSnapshots).",
             "format": "double",
-            "type": "number"
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "season": {
             "type": "string"
@@ -1387,6 +1395,10 @@
           "prophetx": {
             "$ref": "#/components/schemas/ProphetXSubscription",
             "description": "ProphetX exchange subscription (opt-in — default: undefined/no events)."
+          },
+          "realtime": {
+            "$ref": "#/components/schemas/RealtimeFeedsSubscription",
+            "description": "Realtime feed opt-out; present only as `{ ps3838: false }`."
           },
           "scores": {
             "description": "Live scores subscription (`scores-update`; opt-in, default: undefined/no events)."
@@ -6468,6 +6480,10 @@
       "PinnacleRealtimeSyncPayload": {
         "description": "Payload of the `pinnacle-realtime-sync` event: a stream position, removals, or both,\nfor a sport that has no events to send. It never carries events. Sent on the same\nconnections and for the same sports as `pinnacle-realtime`; track `stream` and\ndelete the `removed` ids exactly as you do there. See {@link RealtimeOddsPayload}.",
         "properties": {
+          "feed": {
+            "$ref": "#/components/schemas/RealtimeFrameFeed",
+            "description": "The sport's upstream feed state ({@link RealtimeFrameFeed})."
+          },
           "removed": {
             "additionalProperties": {
               "items": {
@@ -6777,37 +6793,71 @@
           "category": {
             "type": "string",
             "x-extensible-enum": [
+              "assisted_tackles",
               "assists",
               "blocks",
+              "combos",
               "corners_taken",
               "double_double",
               "doubles",
               "earned_runs",
               "earned_runs_allowed",
+              "extra_base_hits",
+              "extra_points_made",
+              "field_goals_made",
+              "first_goal_scorer",
+              "first_touchdown_scorer",
               "fouls_committed",
+              "games_won",
               "goals",
+              "goals_against",
+              "goals_assists",
               "hits",
               "hits_allowed",
               "hits_runs_rbis",
               "hockey_assists",
               "hockey_points",
               "home_runs",
+              "interceptions",
+              "kicking_points",
+              "longest_completion",
+              "longest_reception",
+              "longest_rush",
+              "minutes",
+              "most_receiving_yards",
+              "most_rushing_yards",
               "outs_recorded",
+              "pass_attempts",
+              "pass_completions",
+              "pass_rush_yards",
               "passes",
               "passing_tds",
+              "passing_tds_1h",
+              "passing_tds_1q",
               "passing_yards",
+              "passing_yards_1h",
+              "passing_yards_1q",
               "points",
+              "power_play_points",
               "pts_asts",
               "pts_rebs",
               "pts_rebs_asts",
               "rbis",
               "rebounds",
               "rebs_asts",
+              "receiving_tds",
               "receiving_yards",
+              "receiving_yards_1h",
+              "receiving_yards_1q",
               "receptions",
               "runs",
+              "rush_attempts",
+              "rush_rec_yards",
               "rushing_tds",
               "rushing_yards",
+              "rushing_yards_1h",
+              "rushing_yards_1q",
+              "saves",
               "shots_on_goal",
               "shots_on_target",
               "singles",
@@ -6817,12 +6867,19 @@
               "strikeouts_batter",
               "strikeouts_pitcher",
               "tackles",
+              "tackles_assists",
               "threes_made",
               "to_record_hit",
               "total_bases",
               "total_stolen_bases",
               "touchdowns",
+              "touchdowns_1h",
+              "touchdowns_1q",
+              "touchdowns_2h",
+              "touchdowns_2q",
               "triple_double",
+              "triples",
+              "turnovers",
               "walks",
               "walks_allowed"
             ]
@@ -7121,37 +7178,71 @@
           "category": {
             "type": "string",
             "x-extensible-enum": [
+              "assisted_tackles",
               "assists",
               "blocks",
+              "combos",
               "corners_taken",
               "double_double",
               "doubles",
               "earned_runs",
               "earned_runs_allowed",
+              "extra_base_hits",
+              "extra_points_made",
+              "field_goals_made",
+              "first_goal_scorer",
+              "first_touchdown_scorer",
               "fouls_committed",
+              "games_won",
               "goals",
+              "goals_against",
+              "goals_assists",
               "hits",
               "hits_allowed",
               "hits_runs_rbis",
               "hockey_assists",
               "hockey_points",
               "home_runs",
+              "interceptions",
+              "kicking_points",
+              "longest_completion",
+              "longest_reception",
+              "longest_rush",
+              "minutes",
+              "most_receiving_yards",
+              "most_rushing_yards",
               "outs_recorded",
+              "pass_attempts",
+              "pass_completions",
+              "pass_rush_yards",
               "passes",
               "passing_tds",
+              "passing_tds_1h",
+              "passing_tds_1q",
               "passing_yards",
+              "passing_yards_1h",
+              "passing_yards_1q",
               "points",
+              "power_play_points",
               "pts_asts",
               "pts_rebs",
               "pts_rebs_asts",
               "rbis",
               "rebounds",
               "rebs_asts",
+              "receiving_tds",
               "receiving_yards",
+              "receiving_yards_1h",
+              "receiving_yards_1q",
               "receptions",
               "runs",
+              "rush_attempts",
+              "rush_rec_yards",
               "rushing_tds",
               "rushing_yards",
+              "rushing_yards_1h",
+              "rushing_yards_1q",
+              "saves",
               "shots_on_goal",
               "shots_on_target",
               "singles",
@@ -7161,12 +7252,19 @@
               "strikeouts_batter",
               "strikeouts_pitcher",
               "tackles",
+              "tackles_assists",
               "threes_made",
               "to_record_hit",
               "total_bases",
               "total_stolen_bases",
               "touchdowns",
+              "touchdowns_1h",
+              "touchdowns_1q",
+              "touchdowns_2h",
+              "touchdowns_2q",
               "triple_double",
+              "triples",
+              "turnovers",
               "walks",
               "walks_allowed"
             ]
@@ -7903,6 +8001,18 @@
           "push",
           "under"
         ]
+      },
+      "PropbuilderV2BookSubscription": {
+        "description": "Per-sport filter for `v2: { propbuilder: {...} }`. Every sport is one league: pass `'*'`.",
+        "properties": {
+          "mlb": {},
+          "nba": {},
+          "ncaaf": {},
+          "nfl": {},
+          "nhl": {},
+          "wnba": {}
+        },
+        "type": "object"
       },
       "ProphetXCompetitor": {
         "description": "Competitor inside a ProphetX event. Stable fields — the server-side\npublisher always emits these five keys for every competitor.\n\n`seq` indicates home/away: 0 = home, 1 = away.",
@@ -8892,37 +9002,71 @@
             "items": {
               "type": "string",
               "x-extensible-enum": [
+                "assisted_tackles",
                 "assists",
                 "blocks",
+                "combos",
                 "corners_taken",
                 "double_double",
                 "doubles",
                 "earned_runs",
                 "earned_runs_allowed",
+                "extra_base_hits",
+                "extra_points_made",
+                "field_goals_made",
+                "first_goal_scorer",
+                "first_touchdown_scorer",
                 "fouls_committed",
+                "games_won",
                 "goals",
+                "goals_against",
+                "goals_assists",
                 "hits",
                 "hits_allowed",
                 "hits_runs_rbis",
                 "hockey_assists",
                 "hockey_points",
                 "home_runs",
+                "interceptions",
+                "kicking_points",
+                "longest_completion",
+                "longest_reception",
+                "longest_rush",
+                "minutes",
+                "most_receiving_yards",
+                "most_rushing_yards",
                 "outs_recorded",
+                "pass_attempts",
+                "pass_completions",
+                "pass_rush_yards",
                 "passes",
                 "passing_tds",
+                "passing_tds_1h",
+                "passing_tds_1q",
                 "passing_yards",
+                "passing_yards_1h",
+                "passing_yards_1q",
                 "points",
+                "power_play_points",
                 "pts_asts",
                 "pts_rebs",
                 "pts_rebs_asts",
                 "rbis",
                 "rebounds",
                 "rebs_asts",
+                "receiving_tds",
                 "receiving_yards",
+                "receiving_yards_1h",
+                "receiving_yards_1q",
                 "receptions",
                 "runs",
+                "rush_attempts",
+                "rush_rec_yards",
                 "rushing_tds",
                 "rushing_yards",
+                "rushing_yards_1h",
+                "rushing_yards_1q",
+                "saves",
                 "shots_on_goal",
                 "shots_on_target",
                 "singles",
@@ -8932,12 +9076,19 @@
                 "strikeouts_batter",
                 "strikeouts_pitcher",
                 "tackles",
+                "tackles_assists",
                 "threes_made",
                 "to_record_hit",
                 "total_bases",
                 "total_stolen_bases",
                 "touchdowns",
+                "touchdowns_1h",
+                "touchdowns_1q",
+                "touchdowns_2h",
+                "touchdowns_2q",
                 "triple_double",
+                "triples",
+                "turnovers",
                 "walks",
                 "walks_allowed"
               ]
@@ -9153,6 +9304,13 @@
               "null"
             ]
           },
+          "stalled": {
+            "description": "True when the board has an event in play (`phase: \"live\"`) and Pinnacle has sent\nnothing for this sport for longer than its normal quiet spells during play: prices\ncan be out of date even though the board was rewritten seconds ago. False on a board\nwith nothing in play. `null` when `upstreamAgeSeconds` is null or the events carry no\n`phase`. It does not change `freshness.stale`. Absent from API versions that predate it.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "state": {
             "type": "string",
             "x-extensible-enum": [
@@ -9173,6 +9331,45 @@
         "x-owls-required": [
           "state",
           "lastDataAgeSeconds"
+        ]
+      },
+      "RealtimeFeedsSubscription": {
+        "description": "See {@link SubscribeOptions.realtime}.",
+        "properties": {
+          "ps3838": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "RealtimeFrameFeed": {
+        "description": "The sport's upstream feed state on every `pinnacle-realtime` and\n`pinnacle-realtime-sync` frame: the same fields as REST `meta.feed`\n({@link RealtimeFeedState}). `stalled: true` means prices can be out of date while\nframes keep arriving. Each field is `null` when unknown.",
+        "properties": {
+          "resubscribing": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "stalled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "upstreamAgeSeconds": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "upstreamAgeSeconds",
+          "resubscribing",
+          "stalled"
         ]
       },
       "RealtimeFreshness": {
@@ -9284,6 +9481,10 @@
           "delta": {
             "description": "The frame carries only changed events: merge them into your board by `id`. Set on\nevery `pinnacle-realtime` frame, and on `ps3838-realtime` delta frames.",
             "type": "boolean"
+          },
+          "feed": {
+            "$ref": "#/components/schemas/RealtimeFrameFeed",
+            "description": "`pinnacle-realtime`: the sport's upstream feed state ({@link RealtimeFrameFeed})."
           },
           "handball": {
             "items": {
@@ -11585,6 +11786,10 @@
             "$ref": "#/components/schemas/ProphetXSubscription",
             "description": "Opt-in to ProphetX exchange deltas. Default: not subscribed.\nPass `true` for the firehose, or an object to filter by sport/kind.\nSee `ProphetXSubscription` for shape details."
           },
+          "realtime": {
+            "$ref": "#/components/schemas/RealtimeFeedsSubscription",
+            "description": "Realtime feed opt-out. Default: every subscribed sport gets both\n`pinnacle-realtime` and `ps3838-realtime`. `{ ps3838: false }` stops\n`ps3838-realtime` for this connection and keeps `pinnacle-realtime`. Only a literal\n`false` is honoured. `updateSubscription()` replaces the whole object."
+          },
           "scores": {
             "description": "Opt-in to live scores on the `scores-update` event ({@link ScoresUpdate}).\n`true` for every sport, or an array of sport keys. Default: not subscribed.\nUnknown keys are dropped, and an array with no valid key subscribes to nothing.\nSame access as the v2 events. `getScores()` works either way."
           },
@@ -12236,6 +12441,10 @@
           },
           "polymarket": {
             "$ref": "#/components/schemas/PolymarketV2BookSubscription"
+          },
+          "propbuilder": {
+            "$ref": "#/components/schemas/PropbuilderV2BookSubscription",
+            "description": "Prop Builder. Delivers `propbuilder-v2-update`. Every sport is one\nleague: pass `'*'` (`{ nfl: '*' }`). Pregame player props and game markets,\nodds DECIMAL; changed entries are pushed within seconds, each one whole."
           },
           "thunderpick": {
             "$ref": "#/components/schemas/ThunderpickV2BookSubscription"
@@ -13921,8 +14130,8 @@
   "info": {
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
-    "version": "0.75.0",
-    "x-owls-manifest-commit": "0ae52a6b"
+    "version": "0.77.0",
+    "x-owls-manifest-commit": "f99c8dad"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -16560,6 +16769,7 @@
             "schema": {
               "type": "string",
               "x-extensible-enum": [
+                "assisted_tackles",
                 "assists",
                 "blocks",
                 "combos",
@@ -16568,6 +16778,8 @@
                 "doubles",
                 "earned_runs",
                 "extra_base_hits",
+                "extra_points_made",
+                "field_goals_made",
                 "first_goal_scorer",
                 "first_touchdown_scorer",
                 "fouls_committed",
@@ -16582,6 +16794,8 @@
                 "hockey_points",
                 "home_runs",
                 "interceptions",
+                "kicking_points",
+                "longest_completion",
                 "longest_reception",
                 "longest_rush",
                 "minutes",
@@ -16593,7 +16807,11 @@
                 "pass_rush_yards",
                 "passes",
                 "passing_tds",
+                "passing_tds_1h",
+                "passing_tds_1q",
                 "passing_yards",
+                "passing_yards_1h",
+                "passing_yards_1q",
                 "points",
                 "power_play_points",
                 "pts_asts",
@@ -16604,12 +16822,16 @@
                 "rebs_asts",
                 "receiving_tds",
                 "receiving_yards",
+                "receiving_yards_1h",
+                "receiving_yards_1q",
                 "receptions",
                 "runs",
                 "rush_attempts",
                 "rush_rec_yards",
                 "rushing_tds",
                 "rushing_yards",
+                "rushing_yards_1h",
+                "rushing_yards_1q",
                 "saves",
                 "shots_on_goal",
                 "shots_on_target",
@@ -16797,6 +17019,7 @@
             "schema": {
               "type": "string",
               "x-extensible-enum": [
+                "assisted_tackles",
                 "assists",
                 "blocks",
                 "combos",
@@ -16805,6 +17028,8 @@
                 "doubles",
                 "earned_runs",
                 "extra_base_hits",
+                "extra_points_made",
+                "field_goals_made",
                 "first_goal_scorer",
                 "first_touchdown_scorer",
                 "fouls_committed",
@@ -16819,6 +17044,8 @@
                 "hockey_points",
                 "home_runs",
                 "interceptions",
+                "kicking_points",
+                "longest_completion",
                 "longest_reception",
                 "longest_rush",
                 "minutes",
@@ -16830,7 +17057,11 @@
                 "pass_rush_yards",
                 "passes",
                 "passing_tds",
+                "passing_tds_1h",
+                "passing_tds_1q",
                 "passing_yards",
+                "passing_yards_1h",
+                "passing_yards_1q",
                 "points",
                 "power_play_points",
                 "pts_asts",
@@ -16841,12 +17072,16 @@
                 "rebs_asts",
                 "receiving_tds",
                 "receiving_yards",
+                "receiving_yards_1h",
+                "receiving_yards_1q",
                 "receptions",
                 "runs",
                 "rush_attempts",
                 "rush_rec_yards",
                 "rushing_tds",
                 "rushing_yards",
+                "rushing_yards_1h",
+                "rushing_yards_1q",
                 "saves",
                 "shots_on_goal",
                 "shots_on_target",
@@ -16965,6 +17200,7 @@
             "schema": {
               "type": "string",
               "x-extensible-enum": [
+                "assisted_tackles",
                 "assists",
                 "blocks",
                 "combos",
@@ -16973,6 +17209,8 @@
                 "doubles",
                 "earned_runs",
                 "extra_base_hits",
+                "extra_points_made",
+                "field_goals_made",
                 "first_goal_scorer",
                 "first_touchdown_scorer",
                 "fouls_committed",
@@ -16987,6 +17225,8 @@
                 "hockey_points",
                 "home_runs",
                 "interceptions",
+                "kicking_points",
+                "longest_completion",
                 "longest_reception",
                 "longest_rush",
                 "minutes",
@@ -16998,7 +17238,11 @@
                 "pass_rush_yards",
                 "passes",
                 "passing_tds",
+                "passing_tds_1h",
+                "passing_tds_1q",
                 "passing_yards",
+                "passing_yards_1h",
+                "passing_yards_1q",
                 "points",
                 "power_play_points",
                 "pts_asts",
@@ -17009,12 +17253,16 @@
                 "rebs_asts",
                 "receiving_tds",
                 "receiving_yards",
+                "receiving_yards_1h",
+                "receiving_yards_1q",
                 "receptions",
                 "runs",
                 "rush_attempts",
                 "rush_rec_yards",
                 "rushing_tds",
                 "rushing_yards",
+                "rushing_yards_1h",
+                "rushing_yards_1q",
                 "saves",
                 "shots_on_goal",
                 "shots_on_target",
@@ -17116,6 +17364,7 @@
             "schema": {
               "type": "string",
               "x-extensible-enum": [
+                "assisted_tackles",
                 "assists",
                 "blocks",
                 "combos",
@@ -17124,6 +17373,8 @@
                 "doubles",
                 "earned_runs",
                 "extra_base_hits",
+                "extra_points_made",
+                "field_goals_made",
                 "first_goal_scorer",
                 "first_touchdown_scorer",
                 "fouls_committed",
@@ -17138,6 +17389,8 @@
                 "hockey_points",
                 "home_runs",
                 "interceptions",
+                "kicking_points",
+                "longest_completion",
                 "longest_reception",
                 "longest_rush",
                 "minutes",
@@ -17149,7 +17402,11 @@
                 "pass_rush_yards",
                 "passes",
                 "passing_tds",
+                "passing_tds_1h",
+                "passing_tds_1q",
                 "passing_yards",
+                "passing_yards_1h",
+                "passing_yards_1q",
                 "points",
                 "power_play_points",
                 "pts_asts",
@@ -17160,12 +17417,16 @@
                 "rebs_asts",
                 "receiving_tds",
                 "receiving_yards",
+                "receiving_yards_1h",
+                "receiving_yards_1q",
                 "receptions",
                 "runs",
                 "rush_attempts",
                 "rush_rec_yards",
                 "rushing_tds",
                 "rushing_yards",
+                "rushing_yards_1h",
+                "rushing_yards_1q",
                 "saves",
                 "shots_on_goal",
                 "shots_on_target",
@@ -17393,6 +17654,7 @@
             "schema": {
               "type": "string",
               "x-extensible-enum": [
+                "assisted_tackles",
                 "assists",
                 "blocks",
                 "combos",
@@ -17401,6 +17663,8 @@
                 "doubles",
                 "earned_runs",
                 "extra_base_hits",
+                "extra_points_made",
+                "field_goals_made",
                 "first_goal_scorer",
                 "first_touchdown_scorer",
                 "fouls_committed",
@@ -17415,6 +17679,8 @@
                 "hockey_points",
                 "home_runs",
                 "interceptions",
+                "kicking_points",
+                "longest_completion",
                 "longest_reception",
                 "longest_rush",
                 "minutes",
@@ -17426,7 +17692,11 @@
                 "pass_rush_yards",
                 "passes",
                 "passing_tds",
+                "passing_tds_1h",
+                "passing_tds_1q",
                 "passing_yards",
+                "passing_yards_1h",
+                "passing_yards_1q",
                 "points",
                 "power_play_points",
                 "pts_asts",
@@ -17437,12 +17707,16 @@
                 "rebs_asts",
                 "receiving_tds",
                 "receiving_yards",
+                "receiving_yards_1h",
+                "receiving_yards_1q",
                 "receptions",
                 "runs",
                 "rush_attempts",
                 "rush_rec_yards",
                 "rushing_tds",
                 "rushing_yards",
+                "rushing_yards_1h",
+                "rushing_yards_1q",
                 "saves",
                 "shots_on_goal",
                 "shots_on_target",
@@ -17554,7 +17828,7 @@
     },
     "/api/v1/{sport}/realtime": {
       "get": {
-        "description": "Returns real-time Pinnacle odds for a sport. For the esports keys (cs2, lol, valorant, dota2) the response is the Pinnacle wire format unchanged and league is required; every other sport returns the normalized realtime event shape.\n\nmeta.source names the real-time feed that answered; meta.available is false and meta.freshness.stale is true whenever the response is empty.\n\nmeta.feed.lastDataAgeSeconds is the time since this sport last produced any data, or null if it never has; it is the field to watch for a feed that has stopped. For a feed that is running but hearing nothing from Pinnacle, watch meta.feed.upstreamAgeSeconds.\n\nmeta.feed.upstreamAgeSeconds is the time since Pinnacle last sent anything for this sport, and meta.feed.resubscribing is true while the feed is subscribing again after a reconnect, when some leagues can be silent. lastDataAgeSeconds stays low while Pinnacle is quiet, because the board is rewritten on a schedule either way; upstreamAgeSeconds keeps growing. Both are null when unknown, which includes every response whose meta.source is not pinnacle and the moments before the feed has received anything since it started.\n\nEach event carries status and isLive and may carry phase: scheduled (not started), live (in play, betting open), suspended (in play, betting paused for now; its markets carry suspended: true) or closed (betting over for good; the event is sent that way for a few minutes, then removed). phase can gain values, so treat an unknown one like a missing field. When phase is present, isLive is true while in-play betting on the match is running. Without phase, isLive can be false on a match that is in progress, so check status as well, and read phase first whenever it is present.\n\nA main market (moneyline, spread, total or team total) that Pinnacle takes down while the rest of the match stays open also carries suspended: true, and loses it when Pinnacle offers it again or its period ends. On a spread or total the flag is on the main line only; its alternateLines are not flagged one by one, so read each rung's last_seen for those.\n\nWhen meta.source is pinnacle, each event also carries lastUpdate and seenAt (epoch milliseconds) and freshness: { lastUpdate, ageSeconds, stale, refreshedAt, refreshedAgeSeconds }. freshness.lastUpdate is the price change the event's freshness is measured from and ageSeconds its age; refreshedAt is the last time the feed confirmed a price on the event, changed or not, and refreshedAgeSeconds its age. stale is true when the event reads as in play and ageSeconds is over 30 or unknown; pre-match prices can sit unchanged for hours and are not flagged. The event-level lastUpdate can be older than the newest price on an in-play event, so for the age of one market read that market's last_update.\n\nmarkets[].last_update is when that market's price last changed, and last_seen, where present, when the feed last confirmed it. That holds for the main lines: h2h, spreads, totals, team_totals, total_games, and their corner, first_half_ and set versions. On special_ markets folded from a sub-matchup, on btts markets and on the other markets, last_update moves with the whole matchup or sub-matchup rather than the single market, so do not read it as that market's own age.\n\nEach alternateLines rung (point and price) may carry its own last_seen, when the feed last confirmed that rung. Pinnacle does not resend every rung in every message, so a rung whose last_seen is well behind its market's is a hint that Pinnacle has taken it down, not proof.\n\nmeta.stream is { epoch, seq }, the position on the pinnacle-realtime stream that this response matches, or null when the response cannot be aligned with the stream. To follow pinnacle-realtime without gaps, wait up to 25 seconds for a frame whose stream.checkpoint is true (call at once if the frames carry no stream), then call this endpoint. If meta.stream is null, replace your board with data, apply every frame, and call again after 10, 20, 40 seconds and so on, up to every 5 minutes. If its epoch differs from the checkpoint's, or its seq is lower than the checkpoint's, call again at the next checkpoint. Otherwise replace your board with data and apply only frames with a seq above meta.stream.seq, in order; a skipped seq or a new epoch after that means calling again. The pinnacle-realtime event description has the full procedure.\n\nWhen meta.stream is set, data is the board at that position after the league filter and the filters this endpoint applies to every response (confirmed finished events, events too old to still be live, duplicates), so an empty data array means no event matches, not a missing feed.\n\nmeta.freshness.droppedAsFinished and droppedAsStale count events removed because they were confirmed finished or their start time is too far past to still be live.\n\nEsports rows each carry their own freshness; the top-level freshness is the freshest served event and stale is true only when no served event is fresh.\n\nThe SDK exposes the esports keys through getEsportsRealtime / get_esports_realtime, which enforce the league parameter.\n\nSoccer women's and youth leagues: Pinnacle names the clubs as in the senior league and puts Women or the age only in the league label. The team names here carry that marker (Liverpool Women, Uzbekistan U23), and so does every outcome label that names a team, such as Draw No Bet, Double Chance (Draw Or Uzbekistan U23) and progression outrights. The v2 Pinnacle endpoints keep Pinnacle's own names.",
+        "description": "Returns real-time Pinnacle odds for a sport. For the esports keys (cs2, lol, valorant, dota2) the response is the Pinnacle wire format unchanged and league is required; every other sport returns the normalized realtime event shape.\n\nmeta.source names the real-time feed that answered; meta.available is false and meta.freshness.stale is true whenever the response is empty.\n\nmeta.feed.lastDataAgeSeconds is the time since this sport last produced any data, or null if it never has; it is the field to watch for a feed that has stopped. For a feed that is running but hearing nothing from Pinnacle, watch meta.feed.upstreamAgeSeconds.\n\nmeta.feed.upstreamAgeSeconds is the time since Pinnacle last sent anything for this sport, and meta.feed.resubscribing is true while the feed is subscribing again after a reconnect, when some leagues can be silent. lastDataAgeSeconds stays low while Pinnacle is quiet, because the board is rewritten on a schedule either way; upstreamAgeSeconds keeps growing. Both are null when unknown, which includes every response whose meta.source is not pinnacle and the moments before the feed has received anything since it started.\n\nmeta.feed.stalled is true when the board has an event in play (phase live) and Pinnacle has sent nothing for this sport for longer than its normal quiet spells during play (5 minutes for NFL and college football, 8 for soccer and MLB, 12 for tennis and WNBA, 18 for NHL and every other sport): prices can be out of date even though the board was rewritten seconds ago. It is false on a board with nothing in play, however quiet, and null when upstreamAgeSeconds is null or the events carry no phase. It does not change meta.freshness.stale. The pinnacle-realtime WebSocket event carries the same field in its feed object.\n\nEach event carries status and isLive and may carry phase: scheduled (not started), live (in play, betting open), suspended (in play, betting paused for now; its markets carry suspended: true) or closed (betting over for good; the event is sent that way for a few minutes, then removed). phase can gain values, so treat an unknown one like a missing field. When phase is present, isLive is true while in-play betting on the match is running. Without phase, isLive can be false on a match that is in progress, so check status as well, and read phase first whenever it is present.\n\nA main market (moneyline, spread, total or team total) that Pinnacle takes down while the rest of the match stays open also carries suspended: true, and loses it when Pinnacle offers it again or its period ends. On a spread or total the flag is on the main line only; its alternateLines are not flagged one by one, so read each rung's last_seen for those.\n\nWhen meta.source is pinnacle, each event also carries lastUpdate and seenAt (epoch milliseconds) and freshness: { lastUpdate, ageSeconds, stale, refreshedAt, refreshedAgeSeconds }. freshness.lastUpdate is the price change the event's freshness is measured from and ageSeconds its age; refreshedAt is the last time the feed confirmed a price on the event, changed or not, and refreshedAgeSeconds its age. stale is true when the event reads as in play and ageSeconds is over 30 or unknown; pre-match prices can sit unchanged for hours and are not flagged. The event-level lastUpdate can be older than the newest price on an in-play event, so for the age of one market read that market's last_update.\n\nmarkets[].last_update is when that market's price last changed, and last_seen, where present, when the feed last confirmed it. That holds for the main lines: h2h, spreads, totals, team_totals, total_games, and their corner, first_half_ and set versions. On special_ markets folded from a sub-matchup, on btts markets and on the other markets, last_update moves with the whole matchup or sub-matchup rather than the single market, so do not read it as that market's own age.\n\nEach alternateLines rung (point and price) may carry its own last_seen, when the feed last confirmed that rung. Pinnacle does not resend every rung in every message, so a rung whose last_seen is well behind its market's is a hint that Pinnacle has taken it down, not proof.\n\nmeta.stream is { epoch, seq }, the position on the pinnacle-realtime stream that this response matches, or null when the response cannot be aligned with the stream. To follow pinnacle-realtime without gaps, wait up to 25 seconds for a frame whose stream.checkpoint is true (call at once if the frames carry no stream), then call this endpoint. If meta.stream is null, replace your board with data, apply every frame, and call again after 10, 20, 40 seconds and so on, up to every 5 minutes. If its epoch differs from the checkpoint's, or its seq is lower than the checkpoint's, call again at the next checkpoint. Otherwise replace your board with data and apply only frames with a seq above meta.stream.seq, in order; a skipped seq or a new epoch after that means calling again. The pinnacle-realtime event description has the full procedure.\n\nWhen meta.stream is set, data is the board at that position after the league filter and the filters this endpoint applies to every response (confirmed finished events, events too old to still be live, duplicates), so an empty data array means no event matches, not a missing feed.\n\nmeta.freshness.droppedAsFinished and droppedAsStale count events removed because they were confirmed finished or their start time is too far past to still be live.\n\nEsports rows each carry their own freshness; the top-level freshness is the freshest served event and stale is true only when no served event is fresh.\n\nThe SDK exposes the esports keys through getEsportsRealtime / get_esports_realtime, which enforce the league parameter.\n\nSoccer women's and youth leagues: Pinnacle names the clubs as in the senior league and puts Women or the age only in the league label. The team names here carry that marker (Liverpool Women, Uzbekistan U23), and so does every outcome label that names a team, such as Draw No Bet, Double Chance (Draw Or Uzbekistan U23) and progression outrights. The v2 Pinnacle endpoints keep Pinnacle's own names.",
         "operationId": "getRealtime",
         "parameters": [
           {
@@ -18581,7 +18855,7 @@
     },
     "/api/v2/{book}/{sport}": {
       "get": {
-        "description": "Returns a sportsbook's native markets for a sport exactly as the source publishes them: no mapping, no team normalization, no merging. Each entry in data is one raw market blob keyed by the source's own market id.\n\nmeta.status is ok, stale, partial or no-data. It flips to stale once ageSeconds passes the book's own freshness threshold, which is set to that book's refresh cadence.\n\nSend If-None-Match with the ETag response header, quoted exactly as received (a leading W/ is fine), to receive 304 when nothing changed. The body etag is the same value without quotes, so a bare etag never matches. A 304 on /api/v2 does not count toward your monthly quota; it still counts toward your per-minute limit and appears in your usage log. A key that has used up its monthly quota gets 429 even when the request would have been a 304.\n\nmeta.cached is false only when there is no stored board to serve (no-data, and partial-miss on the books that report it). It is not a freshness signal: read meta.ageSeconds and meta.status for that.\n\nFor a multi-league sport without league, most books return 400 with a hint to the /leagues index. Books flagged mergeWhenUnspecified instead return a merged board with league null, a leagues index attributing every market to its competition, and meta.merged true; if the merge had to truncate, meta.status is partial and meta.truncated says what was omitted.\n\nA few books key data by event rather than by market, so one entry holds a whole game. Each book's sport set, single-league sports and league rules are in the v2Books entries of this manifest.\n\nThe SDKs expose one method per book: get<Book>V2 in TypeScript and get_<book>_v2 in Python.\n\nThe stake board is the exception to the meta shape above: it serves meta { source, cached, status, timestamp, ageSeconds, hash, now } on every response, with data as an array of fixtures. On no-data and partial-miss, timestamp, ageSeconds and hash are null because there is no board to date, and now is the response clock; never read freshness from a null timestamp.\n\nOn stake ice-hockey, a fixture also carries swish when Stake prices player props for it: Stake's player props (shots on goal, goals, assists, points, hits, plus minus, power play points, blocked shots, and goalie saves once Stake prices them) as { id, status, startTime, players: [{ id, name, position, markets: [{ id, stat: { name }, lines: [{ id, name, line, over, under, balanced, suspended }] }] }] }, over and under in decimal odds. Markets with no line are left out, and a game in progress has no swish block because Stake pulls player props once it starts.",
+        "description": "Returns a sportsbook's native markets for a sport exactly as the source publishes them: no mapping, no team normalization, no merging. Each entry in data is one raw market blob keyed by the source's own market id.\n\nmarketIds narrows data to the listed market ids and prefixes (main,props-* or props-9524; case does not matter). Only those entries are returned, dated in meta.ageSeconds and hashed into the ETag, so a caller of one family keeps its 304s while another family moves. meta.marketIds echoes the filter and meta.marketsFilteredOut counts the entries left out. When the stored board exists but nothing matches, data is empty with meta.cached true and the status and age of the board's entries a default request returns, so it is not mistaken for an outage; if none of those is left (for example only DraftKings props-* is stored), meta.status is no-data. An entry that is neither an id (letters, digits, - or _) nor a prefix ending in * is a 400. bet365, hardrock, mybookie, stake, thunderpick and underdog ignore marketIds and always return their whole board.\n\nDraftKings nba, nfl, nhl, mlb, ncaab and ncaaf hold main (the league page: game lines), live (the live feed snapshot, when it fits) and one props-<subcategoryId> entry per player-prop subcategory: DraftKings' response for that subcategory as received (parsed and re-serialized, not mapped), with its events, markets and selections. props-* entries refresh about every 3 to 5 minutes and are REST only (no draftkings-v2-update message). They are left out unless marketIds asks for them; meta.defaultExcluded then gives their count and the marketIds value that includes them. They are judged fresh against their own 480 second threshold, so they do not turn meta.status stale; meta.marketAges gives each returned entry's age in seconds. When one subcategory's request fails, its previous entry is kept for a cycle; if it reaches its 10 minute lifetime first, a request that includes it reads meta.status partial until the entry is cleared, at the latest on the next cycle.\n\nmeta.status is ok, stale, partial or no-data. It flips to stale once ageSeconds passes the book's own freshness threshold, which is set to that book's refresh cadence.\n\nSend If-None-Match with the ETag response header, quoted exactly as received (a leading W/ is fine), to receive 304 when nothing changed. The body etag is the same value without quotes, so a bare etag never matches. A 304 on /api/v2 does not count toward your monthly quota; it still counts toward your per-minute limit and appears in your usage log. A key that has used up its monthly quota gets 429 even when the request would have been a 304.\n\nmeta.cached is false only when there is no stored board to serve (no-data, and partial-miss on the books that report it). It is not a freshness signal: read meta.ageSeconds and meta.status for that.\n\nFor a multi-league sport without league, most books return 400 with a hint to the /leagues index. Books flagged mergeWhenUnspecified instead return a merged board with league null, a leagues index attributing every market to its competition, and meta.merged true; if the merge had to truncate, meta.status is partial and meta.truncated says what was omitted.\n\nA few books key data by event rather than by market, so one entry holds a whole game. Each book's sport set, single-league sports and league rules are in the v2Books entries of this manifest.\n\nThe SDKs expose one method per book: get<Book>V2 in TypeScript and get_<book>_v2 in Python.\n\nThe stake board is the exception to the meta shape above: it serves meta { source, cached, status, timestamp, ageSeconds, hash, now } on every response, with data as an array of fixtures. On no-data and partial-miss, timestamp, ageSeconds and hash are null because there is no board to date, and now is the response clock; never read freshness from a null timestamp.\n\nOn stake ice-hockey, a fixture also carries swish when Stake prices player props for it: Stake's player props (shots on goal, goals, assists, points, hits, plus minus, power play points, blocked shots, and goalie saves once Stake prices them) as { id, status, startTime, players: [{ id, name, position, markets: [{ id, stat: { name }, lines: [{ id, name, line, over, under, balanced, suspended }] }] }] }, over and under in decimal odds. Markets with no line are left out, and a game in progress has no swish block because Stake pulls player props once it starts.\n\npropbuilder (Prop Builder) holds one entry per game and market family, family first: game-<gameId> (the game record with home, away, startTime and entries, the ids stored for that game), gfm-<gameId>-<statistic>-<hash> (one game-market group), ou-<gameId>-<statistic>-<hash> (Over/Under lines for one statistic), ss-<gameId>-<statistic>-<hash> (an N+ milestone ladder), ppd-<gameId> (Player Doubles) and h2h-<gameId> (player vs player). marketIds=ou-* returns every Over/Under entry, and game-<gameId>,ou-<gameId>-*,ss-<gameId>-*,gfm-<gameId>-*,ppd-<gameId>,h2h-<gameId> returns one game. gameId is the board's own game id, not the eventId of the /api/v1 endpoints. Odds are decimal, and a market's oddsOverride replaces odds when it is greater than 1. Games are listed until they start, and a market the board suspends or withdraws leaves its entry, as on the board itself. The board sells the game markets (gfm) as parlay legs only, and a leg's price is not the price of a parlay. Several sportsbooks embed this board, and its prices were identical on every site we compared. propbuilder-v2-update pushes changed entries within seconds: load this board on every connect, then apply the messages.",
         "operationId": "getV2",
         "parameters": [
           {
@@ -18610,6 +18884,7 @@
                 "novig",
                 "pinnacle",
                 "polymarket",
+                "propbuilder",
                 "stake",
                 "thescore",
                 "thunderpick",
@@ -18631,6 +18906,14 @@
             "description": "League key to serve. Required for multi-league sports.",
             "in": "query",
             "name": "league",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated market ids and/or prefixes ending in *, e.g. main or props-*, to return only those entries of data; * returns every entry. Without it, or with it empty, a book returns its default set (DraftKings US sports leave out props-*).",
+            "in": "query",
+            "name": "marketIds",
             "schema": {
               "type": "string"
             }
@@ -18657,7 +18940,7 @@
     },
     "/api/v2/{book}/{sport}/leagues": {
       "get": {
-        "description": "Returns the league index for a sport at one book: each league key with its name and market count, for use as the league parameter on the markets endpoint.\n\nSingle-league sports still answer, with one entry.\n\nThe SDKs expose one method per book: get<Book>V2Leagues in TypeScript and get_<book>_v2_leagues in Python.",
+        "description": "Returns the league index for a sport at one book: each league key with its name and market count, for use as the league parameter on the markets endpoint.\n\nSingle-league sports still answer, with one entry.\n\nmarketCount counts the entries a request without marketIds returns. Books that leave some entries out by default (DraftKings US sports: props-*) also give marketCountExcludedByDefault, the entries reachable only with marketIds.\n\nThe SDKs expose one method per book: get<Book>V2Leagues in TypeScript and get_<book>_v2_leagues in Python.",
         "operationId": "getV2Leagues",
         "parameters": [
           {
@@ -18685,6 +18968,7 @@
                 "novig",
                 "pinnacle",
                 "polymarket",
+                "propbuilder",
                 "thescore",
                 "tippmixpro",
                 "versus"
@@ -19421,6 +19705,7 @@
     {
       "book": "bookmaker",
       "sports": [
+        "alternative-sports",
         "aussie-rules",
         "baseball",
         "basketball",
@@ -19432,6 +19717,7 @@
         "esports",
         "football",
         "futsal",
+        "futures",
         "golf",
         "ice-hockey",
         "mma",
@@ -19636,6 +19922,18 @@
         "wnba"
       ],
       "wsEvent": "polymarket-v2-update"
+    },
+    {
+      "book": "propbuilder",
+      "sports": [
+        "mlb",
+        "nba",
+        "ncaaf",
+        "nfl",
+        "nhl",
+        "wnba"
+      ],
+      "wsEvent": "propbuilder-v2-update"
     },
     {
       "book": "stake",
