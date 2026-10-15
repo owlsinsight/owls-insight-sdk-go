@@ -169,6 +169,46 @@ in what they send, so `Markets` (a list of `{marketId, hash, kind, data}` or a c
 fields only some books send (`Count`, `TotalCount`, `Leagues`, `Heartbeat`,
 `MatchupIds`, `RemovedIds`, `RemovedMatchupIds`, `RemovedGhids`) stay `json.RawMessage`.
 
+`GetV2Markets(ctx, book, sport, league, marketIds)` returns only the entries you name:
+a comma-separated list of market ids and prefixes ending in `*` (at most 50), or `*` for
+every entry. DraftKings leaves its US-sport player props (`props-*`) out unless asked for.
+
+**Prop Builder** (book `propbuilder`; sports `nfl`, `ncaaf`, `nba`, `wnba`, `nhl` and
+`mlb`, each one league, so pass an empty league) is a pregame player-props board:
+Over/Under lines, "N+" ladders, Player Doubles, player vs player, and game markets.
+Several sportsbooks embed this board, and its prices were identical on every site we
+compared. Odds are decimal, and a market whose `oddsOverride` is above 1 is priced at
+`oddsOverride` instead of `odds`. A game leaves the board when it starts. `Data` is keyed
+by entry id, family first:
+
+| Entry id | Holds |
+|---|---|
+| `game-{gameId}` | The game: `home`, `away`, `startTime`, its tab map (`categories`) and `entries`, every entry id of the game |
+| `ou-{gameId}-{stat}-{hash}` | Over/Under lines for one statistic: `condition` 3 is over and 1 under, `value` is the line |
+| `ss-{gameId}-{stat}-{hash}` | The "N+" ladder for one statistic: `value` 2 means 2 or more |
+| `gfm-{gameId}-{stat}-{hash}` | One game-market group (`to win`, `handicap win`, `total points`) |
+| `ppd-{gameId}` | Player Doubles: two legs at one price |
+| `h2h-{gameId}` | Player vs player |
+
+Read the statistic from an entry's `statistic`, not from its id. `gameId` is the board's
+own game id, not a `GetOdds` event id. More families may be added, so skip one you do not
+handle. The game markets are sold as parlay legs only, and a leg's price is not a parlay
+price.
+
+```go
+// Every Over/Under and N+ board of the sport.
+nfl, err := c.GetV2Markets(ctx, "propbuilder", "nfl", "", "ou-*,ss-*")
+// One game; the "-" before "*" keeps game 2816110 out.
+game, err := c.GetV2Markets(ctx, "propbuilder", "nfl", "",
+	"game-281611,ou-281611-*,ss-281611-*,gfm-281611-*,ppd-281611,h2h-281611")
+```
+
+`propbuilder-v2-update` pushes the entries that changed within seconds, each one whole
+(replace yours by `marketId`), and `RemovedIds` for the entries that left the board.
+Load the board with `GetV2` on every `connect` event, the first and every reconnect, then
+apply the updates. Subscribe with
+`V2: map[string]map[string]any{"propbuilder": {"nfl": "*"}}`.
+
 ### Same game parlays
 
 ```go
@@ -282,7 +322,12 @@ a string, such as `Outcome.SelectionID`) and raw book data are `json.RawMessage`
 
 A `pinnacle-realtime` or `ps3838-realtime` frame is keyed by sport. `RealtimeOddsPayload`
 has a field for each common sport; `owls.RealtimeSportEvents(raw, sport)` reads the
-events of any sport from the raw frame, including one added to the API later.
+events of any sport from the raw frame, including one added to the API later. Every
+`pinnacle-realtime` and `pinnacle-realtime-sync` frame carries `Feed`
+(`UpstreamAgeSeconds`, `Resubscribing`, `Stalled`), the same as `Meta.Feed` on
+`GetRealtime`: `Stalled` is true when the sport has a game in play and Pinnacle has been
+silent for longer than its normal quiet spells, so prices can be out of date while
+frames keep arriving.
 
 ## WebSocket
 
@@ -312,6 +357,13 @@ messages. If the server does not acknowledge them within 5 s it sends them once 
   filter.
 - `SubscribeProps(ctx, book, filter)` and `UnsubscribeProps(ctx, book)` manage the props
   streams (`""` for Pinnacle's `player-props-update`).
+- `Realtime: &owls.RealtimeFeeds{PS3838: owls.Ptr(false)}` stops `ps3838-realtime` for the
+  connection and keeps `pinnacle-realtime` (default: both). Only a literal false counts.
+  `UpdateSubscription` replaces the whole object, so `Realtime: &owls.RealtimeFeeds{}`
+  there turns `ps3838-realtime` back on.
+- `Scores: true`, or a list of sport keys such as `[]string{"nfl"}`, opts in to
+  `scores-update` (`owls.EventScoresUpdate`, payload `owls.ScoresUpdate`): a full live
+  board per sport about every 30 seconds and a delta within a few seconds of a change.
 
 These return `owls.ErrNotConnected` while the stream is not connected; use
 `WithSubscription` for the first connect. The context only bounds the wait for a send
@@ -445,7 +497,7 @@ running, and do not restart it in a tight loop.
 | `getHardRockEvents` | `GetHardRockEvents(ctx, state, sport, league)` | `GET /api/v2/hardrock/{state}/{sport}` |
 | `getHardRockLadder` | `GetHardRockLadder(ctx)` | `GET /api/v2/hardrock/ladder` |
 | `getStakeBets` | `GetStakeBets(ctx)` | `GET /api/v2/stake/bets` |
-| `get<Book>V2` | `GetV2(ctx, book, sport, league)` | `GET /api/v2/{book}/{sport}` |
+| `get<Book>V2` | `GetV2(ctx, book, sport, league)`, `GetV2Markets(ctx, book, sport, league, marketIds)` | `GET /api/v2/{book}/{sport}` |
 | `get<Book>V2Leagues` | `GetV2Leagues(ctx, book, sport)` | `GET /api/v2/{book}/{sport}/leagues` |
 | `getSgpEvents` | `GetSgpEvents(ctx, sport, book)` | `GET /api/v1/{sport}/sgp/events` |
 | `buildSgp` | `BuildSgp(ctx, sport, SgpBuildParams)` | `POST /api/v1/{sport}/sgp/build` |

@@ -23,10 +23,18 @@ func TestSubscriptionMarshal(t *testing.T) {
 			ExcludeExchanges: Ptr(true), Esports: []string{"cs2"},
 			EsportsRealtime: map[string]EsportsRealtimeFilter{"cs2": {League: "BLAST"}},
 			ProphetX:        map[string][]string{"sports": {"basketball"}},
-			V2:              map[string]map[string]any{"fanduel": {"mlb": "*"}}, OneXBetSoccer: Ptr(true),
+			V2:              map[string]map[string]any{"fanduel": {"mlb": "*"}, "propbuilder": {"nfl": "*"}}, OneXBetSoccer: Ptr(true),
+			Scores: []string{"nfl"}, Realtime: &RealtimeFeeds{PS3838: Ptr(false)},
 		}, `{"sports":["mlb"],"books":["pinnacle"],"eventIds":["e1"],"alternates":false,"exclude_exchanges":true,
 			"esports":["cs2"],"esportsRealtime":{"cs2":{"league":"BLAST"}},"prophetx":{"sports":["basketball"]},
-			"v2":{"fanduel":{"mlb":"*"}},"oneXBetSoccer":true}`},
+			"v2":{"fanduel":{"mlb":"*"},"propbuilder":{"nfl":"*"}},"oneXBetSoccer":true,"scores":["nfl"],
+			"realtime":{"ps3838":false}}`},
+		{"the realtime opt-out is sent as a literal false", Subscription{Realtime: &RealtimeFeeds{PS3838: Ptr(false)}},
+			`{"realtime":{"ps3838":false}}`},
+		{"an empty realtime object is sent empty (both events again)", Subscription{Realtime: &RealtimeFeeds{}},
+			`{"realtime":{}}`},
+		{"scores: true for every sport", Subscription{Scores: true, Sports: []string{"nfl"}},
+			`{"sports":["nfl"],"scores":true}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := json.Marshal(tc.sub)
@@ -63,6 +71,24 @@ func TestMergeSubscriptionClearsWithEmpty(t *testing.T) {
 	// CONTROL: a nil field leaves the stored one alone.
 	patch, _ = json.Marshal(Subscription{Books: []string{"x"}})
 	if merged, _ = mergeSubscription(stored, patch); !jsonEqual(t, merged, json.RawMessage(`{"sports":["nba"],"eventIds":["e1"],"books":["x"]}`)) {
+		t.Fatalf("merged %s", merged)
+	}
+}
+
+func TestMergeSubscriptionReplacesRealtimeWhole(t *testing.T) {
+	stored, _ := json.Marshal(Subscription{Sports: []string{"nba"}, Realtime: &RealtimeFeeds{PS3838: Ptr(false)}})
+	// A patch without Realtime keeps the opt-out (it is re-sent on every reconnect).
+	patch, _ := json.Marshal(Subscription{Books: []string{"pinnacle"}})
+	merged, err := mergeSubscription(stored, patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !jsonEqual(t, merged, json.RawMessage(`{"sports":["nba"],"books":["pinnacle"],"realtime":{"ps3838":false}}`)) {
+		t.Fatalf("merged %s", merged)
+	}
+	// An empty Realtime replaces the whole object, as the server does: both events again.
+	patch, _ = json.Marshal(Subscription{Realtime: &RealtimeFeeds{}})
+	if merged, _ = mergeSubscription(merged, patch); !jsonEqual(t, merged, json.RawMessage(`{"sports":["nba"],"books":["pinnacle"],"realtime":{}}`)) {
 		t.Fatalf("merged %s", merged)
 	}
 }

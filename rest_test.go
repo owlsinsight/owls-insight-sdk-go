@@ -161,6 +161,11 @@ func TestRequestPaths(t *testing.T) {
 		{func() error { _, err := c.GetV2Markets(ctx, "draftkings", "soccer", "epl", "main"); return err }, "/api/v2/draftkings/soccer?league=epl&marketIds=main"},
 		{func() error { _, err := c.GetV2Markets(ctx, "draftkings", "nfl", "", ""); return err }, "/api/v2/draftkings/nfl"},
 		{func() error { _, err := c.GetV2Leagues(ctx, "draftkings", "soccer"); return err }, "/api/v2/draftkings/soccer/leagues"},
+		// Prop Builder: every sport is one league; marketIds selects entry families.
+		{func() error { _, err := c.GetV2(ctx, "propbuilder", "nfl", ""); return err }, "/api/v2/propbuilder/nfl"},
+		{func() error { _, err := c.GetV2Markets(ctx, "propbuilder", "nba", "", "ou-*,ss-*"); return err },
+			"/api/v2/propbuilder/nba?marketIds=ou-%2A%2Css-%2A"},
+		{func() error { _, err := c.GetV2Leagues(ctx, "propbuilder", "mlb"); return err }, "/api/v2/propbuilder/mlb/leagues"},
 		// 888sport: a book key that starts with a digit, single-league and multi-league sports.
 		{func() error { _, err := c.GetV2(ctx, "888sport", "nfl", ""); return err }, "/api/v2/888sport/nfl"},
 		{func() error { _, err := c.GetV2(ctx, "888sport", "soccer", "england-premier-league"); return err },
@@ -1338,6 +1343,15 @@ func TestLenientDecoding(t *testing.T) {
 		if len(p.Nba) != 1 || !*p.Delta || p.Resync != nil || *p.Stream.Seq != 7 || p.Removed["curling"][0] != "c0" {
 			t.Errorf("frame %+v", p)
 		}
+		// The sport's feed state; pinnacle-realtime-sync carries the same object.
+		if f := p.Feed; f == nil || *f.UpstreamAgeSeconds != 41.5 || *f.Resubscribing || !*f.Stalled {
+			t.Errorf("feed %+v", p.Feed)
+		}
+		rs, err := Decode[PinnacleRealtimeSyncPayload](json.RawMessage(`{"sport": "nfl",
+			"feed": {"upstreamAgeSeconds": null, "resubscribing": null, "stalled": false}}`))
+		if err != nil || rs.Feed == nil || rs.Feed.UpstreamAgeSeconds != nil || rs.Feed.Resubscribing != nil || *rs.Feed.Stalled {
+			t.Errorf("sync feed %+v (%v)", rs, err)
+		}
 		// RealtimeSportEvents reads a sport the model has no field for.
 		curling, err := RealtimeSportEvents(frame, "curling")
 		if err != nil || len(curling) != 1 || *curling[0].ID != "c1" || *curling[0].HomeTeam != "A" {
@@ -1351,7 +1365,7 @@ func TestLenientDecoding(t *testing.T) {
 			t.Errorf("nba = %+v (%v)", nba, err)
 		}
 		// Keys that are not event lists, and absent sports, give nil.
-		for _, key := range []string{"removed", "stream", "timestamp", "resync", "delta", "mlb"} {
+		for _, key := range []string{"removed", "stream", "timestamp", "resync", "delta", "feed", "mlb"} {
 			if ev, err := RealtimeSportEvents(frame, key); err != nil || ev != nil {
 				t.Errorf("RealtimeSportEvents(%q) = %+v, %v; want nil, nil", key, ev, err)
 			}
@@ -1406,10 +1420,22 @@ func TestLenientDecoding(t *testing.T) {
 func TestV2EventName(t *testing.T) {
 	for book, want := range map[string]string{
 		"fanduel": "fanduel-v2-update", "4casters": "4casters-v2-update", "betonline": "betonline-realtime",
+		"propbuilder": "propbuilder-v2-update",
 	} {
 		if got := V2EventName(book); got != want {
 			t.Errorf("V2EventName(%q) = %q, want %q", book, got, want)
 		}
+	}
+	// The event layer knows the events added since the manifest check last ran,
+	// without a manifest; CONTROL: an unknown name is not known.
+	known := knownEvents()
+	for _, name := range []string{"propbuilder-v2-update", EventScoresUpdate} {
+		if !known[name] {
+			t.Errorf("knownEvents lacks %q", name)
+		}
+	}
+	if known["propbuilder-v3-update"] {
+		t.Error("control: knownEvents accepts any name")
 	}
 }
 

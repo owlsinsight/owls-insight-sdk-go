@@ -243,6 +243,69 @@ func TestStreamResubscribesAfterDrop(t *testing.T) {
 	}
 }
 
+func TestStreamRealtimeOptOutSurvivesReconnect(t *testing.T) {
+	srv := startWSServer(t, testPingInterval, testPingTimeout)
+	optOut := Subscription{Sports: []string{"nfl"}, Realtime: &RealtimeFeeds{PS3838: Ptr(false)}}
+	s := newTestClient(t, srv.URL).Stream(WithSubscription(optOut))
+	s.t = fastTiming()
+	var acks recorder
+	s.On(EventSubscribed, acks.add)
+	runStream(t, s)
+	until(t, 5*time.Second, "the first ack", func() bool { return acks.len() >= 1 })
+	want := mustJSON(map[string]any{"sports": []string{"nfl"}, "realtime": map[string]any{"ps3838": false}})
+	st := srv.state()
+	if !jsonEqual(t, st.Attempts[0].Auth, mustJSON(map[string]any{"sdk": SDKLabel, "subscription": json.RawMessage(want)})) {
+		t.Errorf("handshake auth = %s", st.Attempts[0].Auth)
+	}
+	if subs := eventsNamed(st.Connections[0], "subscribe"); len(subs) == 0 || !jsonEqual(t, subs[0], want) {
+		t.Errorf("subscribe = %s, want %s", subs, want)
+	}
+
+	// A patch without Realtime keeps the opt-out, and the reconnect re-sends it.
+	if err := s.UpdateSubscription(context.Background(), Subscription{Books: []string{"pinnacle"}}); err != nil {
+		t.Fatal(err)
+	}
+	want = mustJSON(map[string]any{"sports": []string{"nfl"}, "books": []string{"pinnacle"}, "realtime": map[string]any{"ps3838": false}})
+	until(t, 5*time.Second, "the update's ack", func() bool {
+		n := acks.len()
+		return n >= 2 && jsonEqual(t, acks.at(n-1), want)
+	})
+	srv.control(map[string]any{"op": "drop"})
+	until(t, 5*time.Second, "the reconnect's replay", func() bool {
+		st := srv.state()
+		return len(st.Connections) == 2 && len(eventsNamed(st.Connections[1], "subscribe")) == 1
+	})
+	st = srv.state()
+	if !jsonEqual(t, st.Attempts[1].Auth, mustJSON(map[string]any{"sdk": SDKLabel, "subscription": json.RawMessage(want)})) {
+		t.Errorf("reconnect handshake auth = %s", st.Attempts[1].Auth)
+	}
+	if subs := eventsNamed(st.Connections[1], "subscribe"); !jsonEqual(t, subs[0], want) {
+		t.Errorf("reconnect subscribe = %s, want %s", subs[0], want)
+	}
+
+	// An empty Realtime replaces the whole object: both events again, on the
+	// server and in what the next reconnect sends.
+	until(t, 5*time.Second, "the reconnect's ack", func() bool { return acks.len() >= 3 })
+	if err := s.UpdateSubscription(context.Background(), Subscription{Realtime: &RealtimeFeeds{}}); err != nil {
+		t.Fatal(err)
+	}
+	want = mustJSON(map[string]any{"sports": []string{"nfl"}, "books": []string{"pinnacle"}, "realtime": map[string]any{}})
+	until(t, 5*time.Second, "the server to drop the opt-out", func() bool {
+		n := acks.len()
+		return n >= 4 && jsonEqual(t, acks.at(n-1), want)
+	})
+	s.mu.Lock()
+	stored := s.desired
+	s.mu.Unlock()
+	if !jsonEqual(t, stored, want) {
+		t.Errorf("stored %s, want %s", stored, want)
+	}
+	// CONTROL: the stream that never set Realtime sends no realtime key at all.
+	if strings.Contains(string(mustJSON(Subscription{Sports: []string{"nfl"}})), "realtime") {
+		t.Error("control: a nil Realtime was sent")
+	}
+}
+
 func TestStreamResubscribeControl(t *testing.T) {
 	// CONTROL: the server keeps no subscription across connections: a bare client
 	// that reconnects without re-sending has none on the new connection.

@@ -4,6 +4,49 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.8.0] - 2026-10-15
+
+### Added
+
+- Prop Builder on the v2 endpoints, book `propbuilder`, through the methods every v2 book
+  uses: `GetV2(ctx, "propbuilder", sport, "")`, `GetV2Markets` and `GetV2Leagues`, for
+  `nfl`, `ncaaf`, `nba`, `wnba`, `nhl` and `mlb` (each one league). It is a pregame
+  player-props board (Over/Under lines, "N+" ladders, Player Doubles, player vs player)
+  with game markets. Several sportsbooks embed this board, and its prices were identical
+  on every site we compared. Odds are decimal. `Data` is keyed by entry id, family first,
+  so `GetV2Markets(ctx, "propbuilder", "nfl", "", "ou-*,ss-*")` returns every Over/Under
+  and N+ board of the sport. The game markets are sold as parlay legs only, and a leg's
+  price is not a parlay price.
+- `propbuilder-v2-update` (`V2EventName("propbuilder")`), opted in with the `Subscription.V2`
+  book `propbuilder`, for example `{"propbuilder": {"nfl": "*"}}`: the entries that
+  changed, each one whole, and `RemovedIds`. It decodes into `V2Update`, and the generated
+  `V2Subscription` has a `Propbuilder` field.
+- `Subscription.Realtime` (`RealtimeFeeds`): `&RealtimeFeeds{PS3838: Ptr(false)}` stops
+  `ps3838-realtime` for the connection and keeps `pinnacle-realtime`. Nil, the default,
+  gets both. Only a literal false is honoured. `UpdateSubscription` replaces the whole
+  object (`&RealtimeFeeds{}` there turns `ps3838-realtime` back on), and the stream sends
+  it again on every reconnect with the rest of the stored subscription.
+- `Subscription.Scores` and `EventScoresUpdate`: opt in to `scores-update` with `true` or
+  a list of sport keys, and decode it with `Decode[ScoresUpdate]`. The model came with
+  0.7.0; the subscription field did not.
+- `RealtimeOddsPayload.Feed` and `PinnacleRealtimeSyncPayload.Feed` (`RealtimeFrameFeed`:
+  `UpstreamAgeSeconds`, `Resubscribing`, `Stalled`) on every `pinnacle-realtime` and
+  `pinnacle-realtime-sync` frame, and `RealtimeFeedState.Stalled` on `GetRealtime`:
+  true when the sport has a game in play and Pinnacle has been silent for longer than its
+  normal quiet spells, so prices can be out of date while frames keep arriving. It does
+  not change `freshness.stale`.
+
+### Changed
+
+- `spec/` is the TypeScript SDK's 0.78.0 spec and the models are regenerated from it. The
+  props `category` enum lists all 85 categories `/api/v1/{sport}/props` serves (football
+  periods, kickers, `longest_completion`, `assisted_tackles`, ...); `category` stays a
+  plain string in Go, so nothing changes at runtime. `ArchivedGame.OddsSnapshots` and
+  `PropsSnapshots` are documented as null when not counted (they were already pointers),
+  and the generated `ClientSubscription`, the `subscribed` acknowledgement, has `Realtime`.
+- README: Prop Builder, `GetV2Markets`, the realtime opt-out, the scores opt-in and the
+  frame feed state.
+
 ## [0.7.0] - 2026-10-13
 
 ### Added

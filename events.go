@@ -11,6 +11,10 @@ const (
 	EventServerNotice         = "server-notice"
 	EventProphetXUpdate       = "prophetx-update"
 	EventOneXBetUpdate        = "1xbet-update"
+	// EventScoresUpdate is live scores for one sport, payload ScoresUpdate: a full
+	// live board about every 30 seconds and a delta within a few seconds of a
+	// change. Opt in with Subscription.Scores.
+	EventScoresUpdate = "scores-update"
 	// EventSubscribed acknowledges subscribe and update-subscription with the
 	// subscription in force.
 	EventSubscribed = "subscribed"
@@ -47,7 +51,7 @@ var (
 	v2StreamBooks = []string{
 		"draftkings", "fanduel", "bet365", "mybookie", "kalshi", "polymarket", "thunderpick",
 		"pinnacle", "versus", "betonline", "lowvig", "betrivers", "fanaticsmarkets", "betus",
-		"bet105", "4casters", "tippmixpro", "ballybet",
+		"bet105", "4casters", "tippmixpro", "ballybet", "propbuilder",
 	}
 )
 
@@ -57,7 +61,7 @@ func knownEvents() map[string]bool {
 	for _, n := range []string{
 		EventOddsUpdate, EventEsportsUpdate, EventPinnacleRealtime, EventPinnacleRealtimeSync,
 		EventPS3838Realtime, EventServerHeartbeat, EventServerNotice, EventProphetXUpdate,
-		EventOneXBetUpdate, EventSubscribed, EventError,
+		EventOneXBetUpdate, EventScoresUpdate, EventSubscribed, EventError,
 	} {
 		known[n] = true
 	}

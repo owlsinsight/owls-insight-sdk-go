@@ -37,6 +37,23 @@ type Subscription struct {
 	V2 map[string]map[string]any `json:"v2,omitempty"`
 	// OneXBetSoccer opts in to 1xbet-update.
 	OneXBetSoccer *bool `json:"oneXBetSoccer,omitempty"`
+	// Scores opts in to scores-update (live scores; nothing is sent without it):
+	// true for every sport, or a list of sport keys such as []string{"nfl"}.
+	// Decode the payload with Decode[ScoresUpdate].
+	Scores any `json:"scores,omitempty"`
+	// Realtime opts the connection out of a realtime event. Nil (the default)
+	// gets both pinnacle-realtime and ps3838-realtime for the subscribed sports;
+	// &RealtimeFeeds{PS3838: Ptr(false)} stops ps3838-realtime and keeps
+	// pinnacle-realtime. UpdateSubscription replaces the whole object, so
+	// &RealtimeFeeds{} there turns ps3838-realtime back on.
+	Realtime *RealtimeFeeds `json:"realtime,omitempty"`
+}
+
+// RealtimeFeeds is [Subscription.Realtime]. The server honours only a literal
+// false: a nil or true field leaves the event on.
+type RealtimeFeeds struct {
+	// PS3838 set to false stops ps3838-realtime for this connection.
+	PS3838 *bool `json:"ps3838,omitempty"`
 }
 
 // MarshalJSON sends a list or map that is empty but not nil as [] or {}, so that

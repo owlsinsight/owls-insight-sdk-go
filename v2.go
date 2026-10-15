@@ -18,7 +18,10 @@ func (c *Client) GetV2(ctx context.Context, book, sport, league string) (*V2Book
 // every entry. Only those entries are returned (and dated and hashed into the
 // ETag). DraftKings stores its US-sport player props one entry per subcategory,
 // "props-<subcategoryId>", and leaves them out unless asked for: GetV2Markets(ctx,
-// "draftkings", "nfl", "", "props-*"). An empty marketIds behaves like GetV2.
+// "draftkings", "nfl", "", "props-*"). Prop Builder ("propbuilder") keys its
+// entries family first, so GetV2Markets(ctx, "propbuilder", "nfl", "", "ou-*,ss-*")
+// returns every Over/Under and N+ board of the sport. An empty marketIds behaves
+// like GetV2.
 // Books with their own routes (bet365, hardrock, mybookie, stake, thunderpick,
 // underdog) ignore it and return their whole board.
 func (c *Client) GetV2Markets(ctx context.Context, book, sport, league, marketIds string) (*V2BookResponse, error) {
