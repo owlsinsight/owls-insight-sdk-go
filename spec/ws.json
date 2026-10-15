@@ -62,7 +62,7 @@
   },
   "info": {
     "title": "Owls Insight WebSocket",
-    "version": "0.77.0",
+    "version": "0.78.0",
     "x-owls-manifest-commit": "f99c8dad"
   },
   "serverEvents": {
