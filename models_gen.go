@@ -29,7 +29,7 @@ type ArchivedGame struct {
 	// AwayTeamID Stable roster id for `awayTeam`; same rules.
 	AwayTeamID *string `json:"awayTeamId,omitempty"`
 
-	// CommenceTime Scheduled start of the game. Cut `recordedAt` against this to separate
+	// CommenceTime Scheduled start of the game. Cut `recordedAtUtc` (not the stored `recordedAt`) against this to separate
 	// pre-game odds from in-play ones exactly, rather than by date.
 	//
 	// Absent whenever the start time was not captured: every game archived
@@ -111,6 +111,26 @@ type BaseballScoreDetail struct {
 		Away *string `json:"away,omitempty"`
 		Home *string `json:"home,omitempty"`
 	} `json:"pitcher,omitempty"`
+}
+
+// BasketballPlayDetail NBA: the action sub type, the player, the shot.
+type BasketballPlayDetail struct {
+	Descriptor  *string  `json:"descriptor,omitempty"`
+	IsFieldGoal *bool    `json:"isFieldGoal,omitempty"`
+	PlayerID    *float64 `json:"playerId,omitempty"`
+	PlayerName  *string  `json:"playerName,omitempty"`
+	Possession  *string  `json:"possession,omitempty"`
+	Qualifiers  []string `json:"qualifiers,omitempty"`
+
+	// ShotDistance Feet.
+	ShotDistance *float64 `json:"shotDistance,omitempty"`
+
+	// ShotResult "Made" or "Missed" on shots.
+	ShotResult  *string  `json:"shotResult,omitempty"`
+	SubType     *string  `json:"subType,omitempty"`
+	TeamTricode *string  `json:"teamTricode,omitempty"`
+	X           *float64 `json:"x,omitempty"`
+	Y           *float64 `json:"y,omitempty"`
 }
 
 // BasketballStats defines model for BasketballStats.
@@ -752,6 +772,10 @@ type ClientSubscription struct {
 	// its own channel. (1xBet esports is unaffected and stays in the odds stream.)
 	OneXBetSoccer *bool `json:"oneXBetSoccer,omitempty"`
 
+	// Plays Play-by-play subscription (`plays-update`) as the server kept it: `true`, or the
+	// valid play-by-play sports you sent. Absent when nothing valid was sent.
+	Plays *json.RawMessage `json:"plays,omitempty"`
+
 	// Prophetx ProphetX WebSocket subscription filter.
 	//
 	//   - omitted / false    → do NOT receive prophetx-update events (default)
@@ -1063,7 +1087,7 @@ type DayScheduleResponse struct {
 	// - `ok`.
 	Meta *DayScheduleMeta `json:"meta,omitempty"`
 
-	// Sports The sports asked for (all nine by default).
+	// Sports The sports asked for (every sport by default).
 	Sports  []string `json:"sports,omitempty"`
 	Success *bool    `json:"success,omitempty"`
 	Tz      *string  `json:"tz,omitempty"`
@@ -1244,6 +1268,125 @@ type EVFair struct {
 
 	// Sources Independent price sources behind the event's fair.
 	Sources *float64 `json:"sources,omitempty"`
+}
+
+// EVLineEvent One game and market with its +EV prices.
+type EVLineEvent struct {
+	AwayTeam         *string  `json:"awayTeam,omitempty"`
+	BooksInConsensus *float64 `json:"booksInConsensus,omitempty"`
+	CanonicalEventID *string  `json:"canonicalEventId,omitempty"`
+	CommenceTime     *string  `json:"commenceTime,omitempty"`
+	EventID          *string  `json:"eventId,omitempty"`
+
+	// Fair The fair per side before the margin, and how it was formed (always Pinnacle on spreads and totals).
+	Fair *struct {
+		Anchor  *string  `json:"anchor,omitempty"`
+		Away    *float64 `json:"away,omitempty"`
+		Home    *float64 `json:"home,omitempty"`
+		Method  *string  `json:"method,omitempty"`
+		Over    *float64 `json:"over,omitempty"`
+		Sources *float64 `json:"sources,omitempty"`
+		Under   *float64 `json:"under,omitempty"`
+	} `json:"fair,omitempty"`
+
+	// FairProbability The conservative fair per side, keyed home/away (spreads) or over/under (totals).
+	FairProbability *struct {
+		Away  *float64 `json:"away,omitempty"`
+		Home  *float64 `json:"home,omitempty"`
+		Over  *float64 `json:"over,omitempty"`
+		Under *float64 `json:"under,omitempty"`
+	} `json:"fairProbability,omitempty"`
+	HomeTeam *string `json:"homeTeam,omitempty"`
+
+	// Market A spread/total market: `spreads` (sides home/away) or `totals` (sides over/under).
+	Market *EVLineMarket `json:"market,omitempty"`
+
+	// Opportunities Best EV first.
+	Opportunities []EVLineOpportunity `json:"opportunities,omitempty"`
+
+	// Point Pinnacle's main number: the home side's number on spreads, the total on totals.
+	Point *float64 `json:"point,omitempty"`
+
+	// PushPossible A whole number: a push refunds the stake. The fair is each side's chance given no push.
+	PushPossible *bool   `json:"pushPossible,omitempty"`
+	Sport        *string `json:"sport,omitempty"`
+}
+
+// EVLineMarket A spread/total market: `spreads` (sides home/away) or `totals` (sides over/under).
+type EVLineMarket = string
+
+// EVLineOpportunity One +EV price on a spread or total, scored at Pinnacle's main number. Same math as EVOpportunity.
+type EVLineOpportunity struct {
+	Book        *string  `json:"book,omitempty"`
+	BookImplied *float64 `json:"bookImplied,omitempty"`
+	BookPrice   *float64 `json:"bookPrice,omitempty"`
+
+	// BooksInConsensus Independent sources behind the fair this price was scored against (1 = Pinnacle alone).
+	BooksInConsensus *float64 `json:"booksInConsensus,omitempty"`
+	EdgePp           *float64 `json:"edgePp,omitempty"`
+
+	// EvPct On a whole number, the EV of a bet that is not refunded by a push.
+	EvPct     *float64 `json:"evPct,omitempty"`
+	FairPrice *float64 `json:"fairPrice,omitempty"`
+
+	// FairProbability The conservative fair (the fair minus 1 percentage point); evPct, edgePp, kellyFraction and fairPrice are computed at it.
+	FairProbability *float64 `json:"fairProbability,omitempty"`
+	FairUnadjusted  *float64 `json:"fairUnadjusted,omitempty"`
+	KellyFraction   *float64 `json:"kellyFraction,omitempty"`
+	Kind            *string  `json:"kind,omitempty"`
+
+	// Market A spread/total market: `spreads` (sides home/away) or `totals` (sides over/under).
+	Market *EVLineMarket `json:"market,omitempty"`
+
+	// Point This side's own number: -3.5 on the favourite, +3.5 on the underdog; the total on totals.
+	Point      *float64    `json:"point,omitempty"`
+	QuoteAgeMs *float64    `json:"quoteAgeMs,omitempty"`
+	Reason     *string     `json:"reason,omitempty"`
+	Roi        *float64    `json:"roi,omitempty"`
+	Side       *EVLineSide `json:"side,omitempty"`
+
+	// Team Team name on spreads; "Over" or "Under" on totals.
+	Team      *string `json:"team,omitempty"`
+	Tradeable *bool   `json:"tradeable,omitempty"`
+}
+
+// EVLineSide defines model for EVLineSide.
+type EVLineSide = string
+
+// EVLinesResponse Response for `GET /api/v1/{sport}/ev?market=spreads|totals` (MVP+). Pre-game only.
+type EVLinesResponse struct {
+	Data []EVLineEvent `json:"data,omitempty"`
+	Meta *struct {
+		Board *struct {
+			AgeMs   *float64 `json:"ageMs,omitempty"`
+			BuiltAt *string  `json:"builtAt,omitempty"`
+			Stale   *bool    `json:"stale,omitempty"`
+		} `json:"board,omitempty"`
+		Book       *string  `json:"book,omitempty"`
+		Events     *float64 `json:"events,omitempty"`
+		FairMethod *string  `json:"fair_method,omitempty"`
+		Freshness  *struct {
+			AgeSeconds *float64 `json:"ageSeconds,omitempty"`
+			Stale      *bool    `json:"stale,omitempty"`
+		} `json:"freshness,omitempty"`
+
+		// Line Every price is compared at Pinnacle's main number only.
+		Line *string `json:"line,omitempty"`
+
+		// Market The markets asked for, e.g. "spreads" or "spreads,totals".
+		Market        *string  `json:"market,omitempty"`
+		MaxEv         *float64 `json:"max_ev,omitempty"`
+		MinEv         *float64 `json:"min_ev,omitempty"`
+		OddsFormat    *string  `json:"odds_format,omitempty"`
+		Opportunities *float64 `json:"opportunities,omitempty"`
+		PregameOnly   *bool    `json:"pregame_only,omitempty"`
+		Sport         *string  `json:"sport,omitempty"`
+		Timestamp     *string  `json:"timestamp,omitempty"`
+
+		// Unsupported Set when the sport's books do not agree on what a handicap counts (tennis, esports, MMA): no line is scored.
+		Unsupported *string `json:"unsupported,omitempty"`
+	} `json:"meta,omitempty"`
+	Success *bool `json:"success,omitempty"`
 }
 
 // EVOpportunity One +EV opportunity: a sportsbook price, or a venue's ask (an exchange such as Novig,
@@ -1502,6 +1645,130 @@ type EventsResponse struct {
 	Success *bool          `json:"success,omitempty"`
 }
 
+// FairEvent A game's fair line. A market is null when there is no current fair for it.
+type FairEvent struct {
+	AwayTeam         *string `json:"awayTeam,omitempty"`
+	CanonicalEventID *string `json:"canonicalEventId,omitempty"`
+	CommenceTime     *string `json:"commenceTime,omitempty"`
+	EventID          *string `json:"eventId,omitempty"`
+	HomeTeam         *string `json:"homeTeam,omitempty"`
+	League           *string `json:"league,omitempty"`
+	Moneyline        *struct {
+		Away *FairPrice `json:"away,omitempty"`
+		Draw *FairPrice `json:"draw,omitempty"`
+		Home *FairPrice `json:"home,omitempty"`
+
+		// Method `pinnacle`, or `consensus` (at least three independent books) when Pinnacle has no line.
+		Method  *string  `json:"method,omitempty"`
+		Sources *float64 `json:"sources,omitempty"`
+	} `json:"moneyline,omitempty"`
+	Sport  *string `json:"sport,omitempty"`
+	Spread *struct {
+		Away         *FairLineSide `json:"away,omitempty"`
+		Home         *FairLineSide `json:"home,omitempty"`
+		Point        *float64      `json:"point,omitempty"`
+		PushPossible *bool         `json:"pushPossible,omitempty"`
+		Sources      *float64      `json:"sources,omitempty"`
+	} `json:"spread,omitempty"`
+	Total *struct {
+		Over         *FairLineSide `json:"over,omitempty"`
+		Point        *float64      `json:"point,omitempty"`
+		PushPossible *bool         `json:"pushPossible,omitempty"`
+		Sources      *float64      `json:"sources,omitempty"`
+		Under        *FairLineSide `json:"under,omitempty"`
+	} `json:"total,omitempty"`
+}
+
+// FairLineSide defines model for FairLineSide.
+type FairLineSide struct {
+	// American Its American odds: the break-even price.
+	American *float64 `json:"american,omitempty"`
+
+	// BooksDisagree The other books' median fair chance differs from Pinnacle's by more than 1.5 percentage points on this side.
+	BooksDisagree *bool `json:"booksDisagree,omitempty"`
+
+	// Point This side's own number.
+	Point *float64 `json:"point,omitempty"`
+
+	// Probability The fair (no-vig) chance of this side.
+	Probability *float64 `json:"probability,omitempty"`
+}
+
+// FairPrice One side of a fair price.
+type FairPrice struct {
+	// American Its American odds: the break-even price.
+	American *float64 `json:"american,omitempty"`
+
+	// BooksDisagree The other books' median fair chance differs from Pinnacle's by more than 1.5 percentage points on this side.
+	BooksDisagree *bool `json:"booksDisagree,omitempty"`
+
+	// Probability The fair (no-vig) chance of this side.
+	Probability *float64 `json:"probability,omitempty"`
+}
+
+// FairResponse Response for `GET /api/v1/{sport}/fair` (MVP+): the Owls fair line.
+type FairResponse struct {
+	Data []FairEvent `json:"data,omitempty"`
+	Meta *struct {
+		Anchor *string `json:"anchor,omitempty"`
+		Boards *struct {
+			Lines *struct {
+				AgeMs   *float64 `json:"ageMs,omitempty"`
+				BuiltAt *string  `json:"builtAt,omitempty"`
+				Stale   *bool    `json:"stale,omitempty"`
+			} `json:"lines,omitempty"`
+			Moneyline *struct {
+				AgeMs   *float64 `json:"ageMs,omitempty"`
+				BuiltAt *string  `json:"builtAt,omitempty"`
+				Stale   *bool    `json:"stale,omitempty"`
+			} `json:"moneyline,omitempty"`
+		} `json:"boards,omitempty"`
+		Events     *float64 `json:"events,omitempty"`
+		FairMethod *string  `json:"fair_method,omitempty"`
+
+		// Markets Which markets this sport is priced on.
+		Markets *struct {
+			Moneyline *bool `json:"moneyline,omitempty"`
+			Spreads   *bool `json:"spreads,omitempty"`
+			Totals    *bool `json:"totals,omitempty"`
+		} `json:"markets,omitempty"`
+		Notes       []string `json:"notes,omitempty"`
+		OddsFormat  *string  `json:"odds_format,omitempty"`
+		PregameOnly *bool    `json:"pregame_only,omitempty"`
+		Sport       *string  `json:"sport,omitempty"`
+	} `json:"meta,omitempty"`
+	Success *bool `json:"success,omitempty"`
+}
+
+// FanDuelStateMarketIdsMeta meta.fanduelMarketIds (getProps) / meta.marketIds (getBookProps fanduel) when `state` was sent.
+type FanDuelStateMarketIdsMeta struct {
+	// Mapped marketIds (props and alternate-line rungs) rewritten to the state's id.
+	Mapped *float64 `json:"mapped,omitempty"`
+	State  *string  `json:"state,omitempty"`
+
+	// Timestamp When the state map was last refreshed.
+	Timestamp *string `json:"timestamp,omitempty"`
+
+	// Unmapped FanDuel marketIds with no id for the state, omitted rather than served as New Jersey's.
+	Unmapped *float64 `json:"unmapped,omitempty"`
+}
+
+// FanDuelStateOddsMeta meta.fanduelMarketIds on getOdds (and the per-market routes) with `state`.
+type FanDuelStateOddsMeta struct {
+	// Available false: no FanDuel ids for this sport and state, every FanDuel marketId omitted.
+	Available *bool `json:"available,omitempty"`
+
+	// Mapped FanDuel outcomes whose marketId is the state's.
+	Mapped *float64 `json:"mapped,omitempty"`
+	State  *string  `json:"state,omitempty"`
+
+	// Timestamp When the state's ids were last refreshed; null when `available` is false.
+	Timestamp *string `json:"timestamp,omitempty"`
+
+	// Unmapped FanDuel outcomes with no id for the state, marketId omitted.
+	Unmapped *float64 `json:"unmapped,omitempty"`
+}
+
 // FanDuelV2BookSubscription Per-book subscription shape for FanDuel v2 events.
 //
 // Each key is a sport FanDuel v2 currently supports. Soccer, tennis and mma
@@ -1566,6 +1833,11 @@ type FanDuelV2BookSubscription struct {
 // Use `'*'` for a whole sport or exact series keys (e.g. `['mls']`) from
 // OwlsInsightRest.getFanaticsMarketsV2Leagues.
 type FanaticsMarketsV2BookSubscription struct {
+	// Books Also receive the live order books of the sports above on
+	// `fanaticsmarkets-books-v2-update` (within about a second of a move).
+	// Off by default: `fanaticsmarkets-v2-update` carries the events alone.
+	Books *bool `json:"books,omitempty"`
+
 	// Boxing Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
 	// receive every league for that sport, or an array of league keys to
 	// filter to a specific set. League keys come from the corresponding
@@ -1661,6 +1933,26 @@ type FanaticsMarketsV2BookSubscription struct {
 	// filter to a specific set. League keys come from the corresponding
 	// `/leagues` REST endpoint.
 	Wnba *V2LeagueFilter `json:"wnba,omitempty"`
+}
+
+// FootballPlayDetail NFL and NCAAF: the down and distance before (`down`…) and after (`endDown`…) the play.
+type FootballPlayDetail struct {
+	Distance            *float64 `json:"distance,omitempty"`
+	Down                *float64 `json:"down,omitempty"`
+	DownDistanceText    *string  `json:"downDistanceText,omitempty"`
+	Drive               *string  `json:"drive,omitempty"`
+	EndDistance         *float64 `json:"endDistance,omitempty"`
+	EndDown             *float64 `json:"endDown,omitempty"`
+	EndDownDistanceText *string  `json:"endDownDistanceText,omitempty"`
+	EndYardLine         *float64 `json:"endYardLine,omitempty"`
+	EndYardsToEndzone   *float64 `json:"endYardsToEndzone,omitempty"`
+	IsPenalty           *bool    `json:"isPenalty,omitempty"`
+	IsTurnover          *bool    `json:"isTurnover,omitempty"`
+	PossessionText      *string  `json:"possessionText,omitempty"`
+	ScoreValue          *float64 `json:"scoreValue,omitempty"`
+	YardLine            *float64 `json:"yardLine,omitempty"`
+	Yards               *float64 `json:"yards,omitempty"`
+	YardsToEndzone      *float64 `json:"yardsToEndzone,omitempty"`
 }
 
 // FourcastersV2BookSubscription Per-sport league filter for `v2: { '4casters': {...} }`.
@@ -2059,18 +2351,35 @@ type HistoryPoint struct {
 	Point     *json.RawMessage `json:"point,omitempty"`
 	Price     *float64         `json:"price,omitempty"`
 	Timestamp *string          `json:"timestamp,omitempty"`
+
+	// TimestampUtc `timestamp` in UTC, or `null` when its clock cannot be known; `timestamp` is the stored time (US Eastern for many rows stored before 2026-09-16). Added Oct 2026.
+	TimestampUtc *string `json:"timestampUtc,omitempty"`
+}
+
+// HistoryPropsDataQuality Present on /history/props when any row on the page is flagged: counts per flag and what each means.
+type HistoryPropsDataQuality struct {
+	FlaggedRows *float64 `json:"flaggedRows,omitempty"`
+	Flags       map[string]struct {
+		Meaning *string  `json:"meaning,omitempty"`
+		Rows    *float64 `json:"rows,omitempty"`
+	} `json:"flags,omitempty"`
+	Note         *string  `json:"note,omitempty"`
+	RowsExcluded *float64 `json:"rowsExcluded,omitempty"`
 }
 
 // HistoryPropsResponse defines model for HistoryPropsResponse.
 type HistoryPropsResponse struct {
 	Data *struct {
-		Count     *float64        `json:"count,omitempty"`
-		EventID   *string         `json:"eventId,omitempty"`
-		Limit     *float64        `json:"limit,omitempty"`
-		Offset    *float64        `json:"offset,omitempty"`
-		Opening   *bool           `json:"opening,omitempty"`
-		Snapshots []PropsSnapshot `json:"snapshots,omitempty"`
-		TimeRange *struct {
+		Count *float64 `json:"count,omitempty"`
+
+		// DataQuality Present on /history/props when any row on the page is flagged: counts per flag and what each means.
+		DataQuality *HistoryPropsDataQuality `json:"dataQuality,omitempty"`
+		EventID     *string                  `json:"eventId,omitempty"`
+		Limit       *float64                 `json:"limit,omitempty"`
+		Offset      *float64                 `json:"offset,omitempty"`
+		Opening     *bool                    `json:"opening,omitempty"`
+		Snapshots   []PropsSnapshot          `json:"snapshots,omitempty"`
+		TimeRange   *struct {
 			End   *string `json:"end,omitempty"`
 			Start *string `json:"start,omitempty"`
 		} `json:"timeRange,omitempty"`
@@ -2114,6 +2423,38 @@ type HistoryStatsResponse struct {
 		Stats      []HistoryPlayerStat `json:"stats,omitempty"`
 	} `json:"data,omitempty"`
 	Success *bool `json:"success,omitempty"`
+}
+
+// HockeyPlayDetail NHL: the players involved by role, the ice position, the shot or penalty.
+type HockeyPlayDetail struct {
+	AwayShotsOnGoal *float64 `json:"awayShotsOnGoal,omitempty"`
+
+	// HomeShotsOnGoal On shots: the shots on goal after this one.
+	HomeShotsOnGoal *float64 `json:"homeShotsOnGoal,omitempty"`
+	Penalty         *struct {
+		DescKey  *string  `json:"descKey,omitempty"`
+		Duration *float64 `json:"duration,omitempty"`
+		TypeCode *string  `json:"typeCode,omitempty"`
+	} `json:"penalty,omitempty"`
+	Players  []HockeyPlayer `json:"players,omitempty"`
+	Reason   *string        `json:"reason,omitempty"`
+	ShotType *string        `json:"shotType,omitempty"`
+
+	// SituationCode The league's skaters-and-goalies code for the situation on the ice.
+	SituationCode *string  `json:"situationCode,omitempty"`
+	X             *float64 `json:"x,omitempty"`
+	Y             *float64 `json:"y,omitempty"`
+	Zone          *string  `json:"zone,omitempty"`
+}
+
+// HockeyPlayer One player on an NHL play: `role` is scorer, assist, shooter, goalie, winner, loser, hitter, hittee, blocker, player, committedBy, drawnBy or servedBy.
+type HockeyPlayer struct {
+	ID *float64 `json:"id,omitempty"`
+
+	// Name Null when the league's roster for the game does not list the id.
+	Name    *string  `json:"name,omitempty"`
+	Role    *string  `json:"role,omitempty"`
+	Sweater *float64 `json:"sweater,omitempty"`
 }
 
 // HomeAway defines model for HomeAway.
@@ -2833,8 +3174,22 @@ type OddsFreshness struct {
 // OddsHistoryResponse defines model for OddsHistoryResponse.
 type OddsHistoryResponse struct {
 	Data *struct {
-		Book        *string        `json:"book,omitempty"`
-		DataPoints  *float64       `json:"dataPoints,omitempty"`
+		Book       *string  `json:"book,omitempty"`
+		DataPoints *float64 `json:"dataPoints,omitempty"`
+
+		// DataQuality Which snapshots were withheld as unusable. `allPricesSuppressed` (with its own
+		// `note`) means the market has recorded history but every snapshot in it was withheld.
+		DataQuality *struct {
+			AllPricesSuppressed *bool   `json:"allPricesSuppressed,omitempty"`
+			MainLineNote        *string `json:"mainLineNote,omitempty"`
+
+			// MainLineOnly Each row is one book's main line for that market and side.
+			MainLineOnly *bool   `json:"mainLineOnly,omitempty"`
+			Note         *string `json:"note,omitempty"`
+
+			// SuspectPricesExcluded Unusable rows (a destroyed price, or no market label) are excluded.
+			SuspectPricesExcluded *bool `json:"suspectPricesExcluded,omitempty"`
+		} `json:"dataQuality,omitempty"`
 		EventID     *string        `json:"eventId,omitempty"`
 		History     []HistoryPoint `json:"history,omitempty"`
 		Market      *string        `json:"market,omitempty"`
@@ -2844,6 +3199,9 @@ type OddsHistoryResponse struct {
 			Point     *json.RawMessage `json:"point,omitempty"`
 			Price     *float64         `json:"price,omitempty"`
 			Timestamp *string          `json:"timestamp,omitempty"`
+
+			// TimestampUtc `timestamp` in UTC, or `null` when its clock cannot be known; `timestamp` is the stored time (US Eastern for many rows stored before 2026-09-16). Added Oct 2026.
+			TimestampUtc *string `json:"timestampUtc,omitempty"`
 		} `json:"openingLine,omitempty"`
 		Side      *string `json:"side,omitempty"`
 		TimeRange *struct {
@@ -2858,10 +3216,22 @@ type OddsHistoryResponse struct {
 
 // OddsMeta defines model for OddsMeta.
 type OddsMeta struct {
-	Alternates     *bool          `json:"alternates,omitempty"`
-	AvailableBooks []string       `json:"availableBooks,omitempty"`
-	BooksReturned  []string       `json:"booksReturned,omitempty"`
-	Freshness      *OddsFreshness `json:"freshness,omitempty"`
+	Alternates     *bool    `json:"alternates,omitempty"`
+	AvailableBooks []string `json:"availableBooks,omitempty"`
+
+	// AvailableLeagues Every league key on the sport's board, so a `league` value can be checked.
+	AvailableLeagues []string `json:"available_leagues,omitempty"`
+	BooksReturned    []string `json:"booksReturned,omitempty"`
+
+	// ExchangeBooks The prediction-market exchanges this board can carry (kalshi, polymarket, novig).
+	ExchangeBooks []string `json:"exchangeBooks,omitempty"`
+
+	// ExcludeExchanges Echo of `excludeExchanges`: true when the exchanges were left out.
+	ExcludeExchanges *bool `json:"excludeExchanges,omitempty"`
+
+	// FanduelMarketIds meta.fanduelMarketIds on getOdds (and the per-market routes) with `state`.
+	FanduelMarketIds *FanDuelStateOddsMeta `json:"fanduelMarketIds,omitempty"`
+	Freshness        *OddsFreshness        `json:"freshness,omitempty"`
 
 	// IgnoredParams Query parameters the endpoint did NOT honour, sorted. Present only when
 	// something was ignored, so a clean request carries no key at all (never an
@@ -2923,7 +3293,13 @@ type OddsSnapshot struct {
 	// Available on snapshots archived after the price-precision fix (2026-07).
 	PriceDecimal *float64 `json:"priceDecimal,omitempty"`
 	RecordedAt   *string  `json:"recordedAt,omitempty"`
-	Side         *string  `json:"side,omitempty"`
+
+	// RecordedAtUtc The capture time in UTC (ISO, ends in Z), or `null` when its clock cannot be known (rows stored
+	// before 2026-03-28, and book `pinnacle` before 2026-04-10). `recordedAt` is the time as stored: most
+	// rows stored before 2026-09-16 hold US Eastern wall time even though the value ends in Z. Use this
+	// one for time arithmetic. Added Oct 2026: absent on an API older than that.
+	RecordedAtUtc *string `json:"recordedAtUtc,omitempty"`
+	Side          *string `json:"side,omitempty"`
 }
 
 // OddsUpdatePayload Payload for `odds-update` WebSocket events.
@@ -2994,9 +3370,10 @@ type Outcome struct {
 	//
 	// - **FanDuel** - `nj.sportsbook.fanduel.com/addToBetslip`, adds the selection
 	//   to the existing slip. The NJ host is required, not cosmetic: the
-	//   underlying `marketId` namespace only resolves on that subdomain. Customers
-	//   in other states can still read `marketId` + `selectionId`, but must not
-	//   swap the host.
+	//   underlying `marketId` namespace only resolves on that subdomain. For
+	//   another state, request `state` (getOdds, getProps): `marketId` is then
+	//   that state's and `deepLink` is left out; the `selectionId` is the same
+	//   in every state.
 	// - **DraftKings** - `sportsbook.draftkings.com/event/{eventId}?outcomes=...`,
 	//   which opens the event with the outcome selected. Not region-locked at the
 	//   ID level; DraftKings applies its own state gating once the slip opens.
@@ -3206,6 +3583,42 @@ type PitchingStats struct {
 	WalksAllowed    *float64 `json:"walksAllowed,omitempty"`
 }
 
+// Play One play of an NBA, NHL, NFL or NCAAF game, as GET /{sport}/plays and the
+// `plays-update` event carry it. Merge plays by `id`: a play can be amended after it
+// is first published (a review, an assist added).
+type Play struct {
+	AwayScore *float64 `json:"awayScore,omitempty"`
+
+	// Clock Time left in the period as the venue shows it ("5:32"); null when the source has none.
+	Clock  *string          `json:"clock,omitempty"`
+	Detail *json.RawMessage `json:"detail,omitempty"`
+
+	// HomeScore Score after the play.
+	HomeScore *float64 `json:"homeScore,omitempty"`
+
+	// ID The source's play id, unique within the game.
+	ID               *string  `json:"id,omitempty"`
+	Period           *float64 `json:"period,omitempty"`
+	ScoringPlay      *bool    `json:"scoringPlay,omitempty"`
+	SecondsRemaining *float64 `json:"secondsRemaining,omitempty"`
+
+	// Seq The source's own order within the game: ascending, not contiguous.
+	Seq *float64 `json:"seq,omitempty"`
+
+	// Team The side the play belongs to (the offense, the shooter's team, the team that took the penalty); null for a neutral play.
+	Team *string `json:"team,omitempty"`
+	Text *string `json:"text,omitempty"`
+
+	// Type The source's own type key, unchanged: "Rush", "Pass Reception"; "shot-on-goal", "faceoff"; "2pt/Jump Shot", "rebound/defensive".
+	Type *string `json:"type,omitempty"`
+
+	// UpdatedAt When this version of the play was first seen: an amendment after first publication moves it.
+	UpdatedAt *string `json:"updatedAt,omitempty"`
+
+	// Wallclock When the play happened according to the source; null for the NHL, which publishes none.
+	Wallclock *string `json:"wallclock,omitempty"`
+}
+
 // PlayerAveragesResponse defines model for PlayerAveragesResponse.
 type PlayerAveragesResponse struct {
 	Data *struct {
@@ -3259,7 +3672,17 @@ type PlayerProp struct {
 	// the sportsbook, and tell an unmapped market apart from a genuinely
 	// uncategorisable one. Added Jul 2026.
 	CategoryRaw *string `json:"categoryRaw,omitempty"`
-	LastUpdate  *string `json:"lastUpdate,omitempty"`
+
+	// ComboStat Multi-player markets: the stat, e.g. `shots_on_goal`, `points`, `receiving_yards`.
+	ComboStat *string `json:"comboStat,omitempty"`
+
+	// ComboType Multi-player markets (`category: 'combos'`, Oct 2026): the market kind. `combined` prices the
+	// players' total, `either` prices "either player reaches the line"; `other` for anything else.
+	// The market itself is named in `playerName` as `"<players> - <market>"` (e.g.
+	// `"Charlie McAvoy & JJ Peterka - Either Player Shots on Goal"`), so two markets for one pair never
+	// share a name. A same-name twin in one game carries a stable `" (market <id>)"` suffix.
+	ComboType  *string `json:"comboType,omitempty"`
+	LastUpdate *string `json:"lastUpdate,omitempty"`
 
 	// Line Threshold value as published by the upstream sportsbook. Interpretation
 	// depends on `marketStructure`. As of the DraftKings mapper passthrough
@@ -3342,9 +3765,15 @@ type PlayerProp struct {
 	// Equal to `overPrice` exactly when overPriceBasis is `midpoint`.
 	OverPriceMid *float64 `json:"overPriceMid,omitempty"`
 	PlayerName   *string  `json:"playerName,omitempty"`
-	PropID       *string  `json:"propId,omitempty"`
-	Team         *string  `json:"team,omitempty"`
-	UnderPrice   *float64 `json:"underPrice,omitempty"`
+
+	// Players Multi-player markets: the players the market prices, in the book's order.
+	Players []string `json:"players,omitempty"`
+	PropID  *string  `json:"propId,omitempty"`
+
+	// RawMarketName Multi-player markets: the book's own market name, verbatim.
+	RawMarketName *string  `json:"rawMarketName,omitempty"`
+	Team          *string  `json:"team,omitempty"`
+	UnderPrice    *float64 `json:"underPrice,omitempty"`
 
 	// UnderPriceBasis Under-side counterpart of overPriceBasis. SEPARATE on purpose: a book can
 	// hold a resting ask on one side and not the other, so a single flag derived from
@@ -3354,6 +3783,104 @@ type PlayerProp struct {
 
 	// UnderPriceMid Under-side counterpart of overPriceMid.
 	UnderPriceMid *float64 `json:"underPriceMid,omitempty"`
+}
+
+// PlaysGame One game in the list GET /{sport}/plays returns without an eventId.
+type PlaysGame struct {
+	AsOf      *string  `json:"asOf,omitempty"`
+	Away      *string  `json:"away,omitempty"`
+	EventID   *string  `json:"eventId,omitempty"`
+	Home      *string  `json:"home,omitempty"`
+	PlayCount *float64 `json:"playCount,omitempty"`
+	State     *string  `json:"state,omitempty"`
+}
+
+// PlaysGamesResponse Response from GET /{sport}/plays without an eventId: the games that have play-by-play.
+type PlaysGamesResponse struct {
+	Count *float64    `json:"count,omitempty"`
+	Games []PlaysGame `json:"games,omitempty"`
+	Meta  *struct {
+		Timestamp *string `json:"timestamp,omitempty"`
+	} `json:"meta,omitempty"`
+
+	// Sport Sports served by GET /{sport}/plays and the `plays-update` event.
+	Sport   *PlaysSport `json:"sport,omitempty"`
+	Success *bool       `json:"success,omitempty"`
+}
+
+// PlaysResponse Response from GET /{sport}/plays?eventId=.
+type PlaysResponse struct {
+	Away *string `json:"away,omitempty"`
+
+	// Count Plays in the game (before `since` and `limit`).
+	Count *float64 `json:"count,omitempty"`
+
+	// EventID The event id as `getScores()` names the game.
+	EventID *string `json:"eventId,omitempty"`
+	Home    *string `json:"home,omitempty"`
+
+	// LastSeq The last play's seq; pass it as `since` to poll for new plays. Null when the game has no plays yet.
+	LastSeq *float64 `json:"lastSeq,omitempty"`
+	Meta    *struct {
+		AgeSeconds *float64 `json:"ageSeconds,omitempty"`
+
+		// AmendedWindowSeconds With `since`: plays amended within this many seconds are included whatever their seq.
+		AmendedWindowSeconds *float64 `json:"amendedWindowSeconds,omitempty"`
+
+		// AsOf When the source was read.
+		AsOf     *string  `json:"asOf,omitempty"`
+		Returned *float64 `json:"returned,omitempty"`
+		Since    *float64 `json:"since,omitempty"`
+		Source   *string  `json:"source,omitempty"`
+
+		// SourceAgeSeconds The source's own edge-cache age at that read (NHL about 19 s, ESPN about 7 s); null when it sends none.
+		SourceAgeSeconds *float64 `json:"sourceAgeSeconds,omitempty"`
+		Timestamp        *string  `json:"timestamp,omitempty"`
+		Truncated        *bool    `json:"truncated,omitempty"`
+	} `json:"meta,omitempty"`
+	Plays []Play `json:"plays,omitempty"`
+
+	// Sport Sports served by GET /{sport}/plays and the `plays-update` event.
+	Sport *PlaysSport `json:"sport,omitempty"`
+	State *string     `json:"state,omitempty"`
+
+	// Status `stale` when a game in play has not been read for 30 seconds.
+	Status  *string `json:"status,omitempty"`
+	Success *bool   `json:"success,omitempty"`
+}
+
+// PlaysSport Sports served by GET /{sport}/plays and the `plays-update` event.
+type PlaysSport = string
+
+// PlaysUpdate Payload of the `plays-update` WebSocket event: play-by-play for ONE sport.
+//
+// Opt in with `subscribe({ ..., plays: true })` (nba, nhl, nfl and ncaaf) or
+// `plays: ['nfl', 'nba']`; no `plays` field, no messages. Same access as `scores-update`.
+// There is no full message: call `getPlays(sport, eventId)` once to start, then apply
+// each delta by merging `plays` by `id`.
+type PlaysUpdate struct {
+	Events []PlaysUpdateEvent `json:"events,omitempty"`
+
+	// Sport Sports served by GET /{sport}/plays and the `plays-update` event.
+	Sport *PlaysSport `json:"sport,omitempty"`
+
+	// Timestamp ISO 8601 time the message was built.
+	Timestamp *string `json:"timestamp,omitempty"`
+	Type      *string `json:"type,omitempty"`
+}
+
+// PlaysUpdateEvent One game on the `plays-update` event: the plays new or amended since the previous message.
+type PlaysUpdateEvent struct {
+	Away *string `json:"away,omitempty"`
+
+	// Count Plays in the game after this message.
+	Count   *float64 `json:"count,omitempty"`
+	EventID *string  `json:"eventId,omitempty"`
+	Home    *string  `json:"home,omitempty"`
+	Plays   []Play   `json:"plays,omitempty"`
+
+	// State `post` once more when the game ends.
+	State *string `json:"state,omitempty"`
 }
 
 // PolymarketV2BookSubscription Per-book subscription shape for Polymarket v2 events.
@@ -4028,13 +4555,88 @@ type ProphetXSportSlug = string
 // to "all". See the server's validateSubscription() for exact semantics.
 type ProphetXSubscription = json.RawMessage
 
+// PropsEVOpportunity One +EV price on a player prop (same math as EVOpportunity).
+type PropsEVOpportunity struct {
+	Book             *string  `json:"book,omitempty"`
+	BookImplied      *float64 `json:"bookImplied,omitempty"`
+	BookPrice        *float64 `json:"bookPrice,omitempty"`
+	BooksInConsensus *float64 `json:"booksInConsensus,omitempty"`
+	EdgePp           *float64 `json:"edgePp,omitempty"`
+	EvPct            *float64 `json:"evPct,omitempty"`
+	FairPrice        *float64 `json:"fairPrice,omitempty"`
+
+	// FairProbability The conservative fair (the fair minus 1 point).
+	FairProbability *float64 `json:"fairProbability,omitempty"`
+	FairUnadjusted  *float64 `json:"fairUnadjusted,omitempty"`
+	KellyFraction   *float64 `json:"kellyFraction,omitempty"`
+
+	// Kind `venue` for an exchange (Novig): never tradeable here, its depth is not checked on props.
+	Kind       *string  `json:"kind,omitempty"`
+	QuoteAgeMs *float64 `json:"quoteAgeMs,omitempty"`
+	Reason     *string  `json:"reason,omitempty"`
+	Roi        *float64 `json:"roi,omitempty"`
+	Side       *string  `json:"side,omitempty"`
+	Tradeable  *bool    `json:"tradeable,omitempty"`
+}
+
+// PropsEVResponse Response for `GET /api/v1/{sport}/props/ev` (MVP+). Pre-game only.
+type PropsEVResponse struct {
+	Data []PropsEVRow `json:"data,omitempty"`
+	Meta *struct {
+		All      *bool   `json:"all,omitempty"`
+		Anchor   *string `json:"anchor,omitempty"`
+		Book     *string `json:"book,omitempty"`
+		Coverage *struct {
+			Games         *float64 `json:"games,omitempty"`
+			PinnacleProps *float64 `json:"pinnacleProps,omitempty"`
+			Positive      *float64 `json:"positive,omitempty"`
+			ScoredPrices  *float64 `json:"scoredPrices,omitempty"`
+		} `json:"coverage,omitempty"`
+		FairMethod    *string  `json:"fair_method,omitempty"`
+		MaxEv         *float64 `json:"max_ev,omitempty"`
+		MinEv         *float64 `json:"min_ev,omitempty"`
+		OddsFormat    *string  `json:"odds_format,omitempty"`
+		Opportunities *float64 `json:"opportunities,omitempty"`
+		PregameOnly   *bool    `json:"pregame_only,omitempty"`
+		Rows          *float64 `json:"rows,omitempty"`
+		Sport         *string  `json:"sport,omitempty"`
+		Timestamp     *string  `json:"timestamp,omitempty"`
+		Truncated     *bool    `json:"truncated,omitempty"`
+	} `json:"meta,omitempty"`
+	Success *bool `json:"success,omitempty"`
+}
+
+// PropsEVRow A Pinnacle-priced player prop with its fair line and the prices that beat it.
+type PropsEVRow struct {
+	AwayTeam     *string `json:"awayTeam,omitempty"`
+	Category     *string `json:"category,omitempty"`
+	CommenceTime *string `json:"commenceTime,omitempty"`
+	Fair         *struct {
+		Method  *string    `json:"method,omitempty"`
+		Over    *FairPrice `json:"over,omitempty"`
+		Sources *float64   `json:"sources,omitempty"`
+		Under   *FairPrice `json:"under,omitempty"`
+	} `json:"fair,omitempty"`
+	GameID   *string  `json:"gameId,omitempty"`
+	HomeTeam *string  `json:"homeTeam,omitempty"`
+	Line     *float64 `json:"line,omitempty"`
+
+	// Opportunities Best EV first; empty on a row listed only because `all: true`.
+	Opportunities []PropsEVOpportunity `json:"opportunities,omitempty"`
+	Player        *string              `json:"player,omitempty"`
+	Sport         *string              `json:"sport,omitempty"`
+}
+
 // PropsHistoryPoint defines model for PropsHistoryPoint.
 type PropsHistoryPoint struct {
 	AlternateLines []PropAlternateLine `json:"alternateLines,omitempty"`
 	Line           *float64            `json:"line,omitempty"`
 	OverPrice      *float64            `json:"overPrice,omitempty"`
 	Timestamp      *string             `json:"timestamp,omitempty"`
-	UnderPrice     *float64            `json:"underPrice,omitempty"`
+
+	// TimestampUtc `timestamp` in UTC, or `null` when its clock cannot be known; `timestamp` is the stored time (US Eastern for many rows stored before 2026-09-16). Added Oct 2026.
+	TimestampUtc *string  `json:"timestampUtc,omitempty"`
+	UnderPrice   *float64 `json:"underPrice,omitempty"`
 }
 
 // PropsHistoryResponse defines model for PropsHistoryResponse.
@@ -4046,10 +4648,13 @@ type PropsHistoryResponse struct {
 		GameID      *string             `json:"gameId,omitempty"`
 		History     []PropsHistoryPoint `json:"history,omitempty"`
 		OpeningLine *struct {
-			Line       *float64 `json:"line,omitempty"`
-			OverPrice  *float64 `json:"overPrice,omitempty"`
-			Timestamp  *string  `json:"timestamp,omitempty"`
-			UnderPrice *float64 `json:"underPrice,omitempty"`
+			Line      *float64 `json:"line,omitempty"`
+			OverPrice *float64 `json:"overPrice,omitempty"`
+			Timestamp *string  `json:"timestamp,omitempty"`
+
+			// TimestampUtc `timestamp` in UTC, or `null` when its clock cannot be known. Added Oct 2026.
+			TimestampUtc *string  `json:"timestampUtc,omitempty"`
+			UnderPrice   *float64 `json:"underPrice,omitempty"`
 		} `json:"openingLine,omitempty"`
 		Player    *string `json:"player,omitempty"`
 		Sport     *string `json:"sport,omitempty"`
@@ -4090,14 +4695,24 @@ type PropsResponse struct {
 		} `json:"books,omitempty"`
 
 		// BooksReturned Books that actually contributed props to THIS response. Added Sep 2026.
-		BooksReturned  []string `json:"booksReturned,omitempty"`
-		Filters        *string  `json:"filters,omitempty"`
-		GamesReturned  *float64 `json:"gamesReturned,omitempty"`
-		Message        *string  `json:"message,omitempty"`
-		PropsReturned  *float64 `json:"propsReturned,omitempty"`
-		RequestedBooks []string `json:"requestedBooks,omitempty"`
-		Sport          *string  `json:"sport,omitempty"`
-		Timestamp      *string  `json:"timestamp,omitempty"`
+		BooksReturned []string `json:"booksReturned,omitempty"`
+
+		// FanduelMarketIds meta.fanduelMarketIds (getProps) / meta.marketIds (getBookProps fanduel) when `state` was sent.
+		FanduelMarketIds *FanDuelStateMarketIdsMeta `json:"fanduelMarketIds,omitempty"`
+		Filters          *string                    `json:"filters,omitempty"`
+		GamesReturned    *float64                   `json:"gamesReturned,omitempty"`
+
+		// MarketIds meta.fanduelMarketIds (getProps) / meta.marketIds (getBookProps fanduel) when `state` was sent.
+		MarketIds      *FanDuelStateMarketIdsMeta `json:"marketIds,omitempty"`
+		Message        *string                    `json:"message,omitempty"`
+		PropsReturned  *float64                   `json:"propsReturned,omitempty"`
+		RequestedBooks []string                   `json:"requestedBooks,omitempty"`
+
+		// RetiredBooks Books named in `books` whose props are no longer on this board (bet365, polymarket),
+		// each with where they are served now. Present only when one was named.
+		RetiredBooks map[string]string `json:"retiredBooks,omitempty"`
+		Sport        *string           `json:"sport,omitempty"`
+		Timestamp    *string           `json:"timestamp,omitempty"`
 	} `json:"meta,omitempty"`
 	Success *bool `json:"success,omitempty"`
 }
@@ -4105,18 +4720,36 @@ type PropsResponse struct {
 // PropsSnapshot defines model for PropsSnapshot.
 type PropsSnapshot struct {
 	AlternateLines []PropAlternateLine `json:"alternateLines,omitempty"`
-	Book           *string             `json:"book,omitempty"`
+
+	// AmericanPrice American price for a row whose side the book did not label (some alternate-line rows); null otherwise.
+	AmericanPrice *float64 `json:"americanPrice,omitempty"`
+	Book          *string  `json:"book,omitempty"`
 
 	// Line The line as stored, which may be a decimal string such as `"1.50"`.
 	Line *json.RawMessage `json:"line,omitempty"`
 
 	// LineValue `line` as a number, always present; `null` when it is null or unparseable.
-	LineValue  *float64 `json:"lineValue,omitempty"`
+	LineValue *float64 `json:"lineValue,omitempty"`
+
+	// OverPrice `null` when the book offered no over side.
 	OverPrice  *float64 `json:"overPrice,omitempty"`
 	PlayerName *string  `json:"playerName,omitempty"`
 	PropType   *string  `json:"propType,omitempty"`
-	RecordedAt *string  `json:"recordedAt,omitempty"`
-	UnderPrice *float64 `json:"underPrice,omitempty"`
+
+	// QualityFlags Known issues of this row (Oct 2026); an empty list when none applies. Some NHL rows carry
+	// `prop_other_market_under_label`, `prop_two_markets_alternate`, `prop_two_markets_in_play` or
+	// `prop_market_partly_wrong`: their prices are another market than `propType` and `line` say, or one of
+	// two markets stored alternately under one key. Flagged rows are still returned; leave them out of
+	// models and grading. `prop_two_markets_in_play` affects only rows recorded after the game started.
+	QualityFlags []string `json:"qualityFlags,omitempty"`
+	RecordedAt   *string  `json:"recordedAt,omitempty"`
+
+	// RecordedAtUtc The capture time in UTC (ISO, ends in Z), or `null` when its clock cannot be known (rows stored
+	// before 2026-03-28, and draftkings rows from 2026-03-28 04:00 to 2026-04-10). `recordedAt` is the
+	// time as stored: fanduel and caesars rows before 2026-09-16, and draftkings before 2026-03-28 04:00,
+	// hold US Eastern wall time even though the value ends in Z. Added Oct 2026: absent on an older API.
+	RecordedAtUtc *string  `json:"recordedAtUtc,omitempty"`
+	UnderPrice    *float64 `json:"underPrice,omitempty"`
 }
 
 // PropsStatsResponse defines model for PropsStatsResponse.
@@ -4474,6 +5107,25 @@ type ScheduleResponse struct {
 	Timestamp *string      `json:"timestamp,omitempty"`
 }
 
+// ScoreClock The game clock of an in-play NBA, NHL, NFL or NCAAF game. Absent on every other
+// sport and whenever no clock was read for the game.
+type ScoreClock struct {
+	// AsOf When the clock was read: tick secondsRemaining down from this instant while running.
+	AsOf *string `json:"asOf,omitempty"`
+
+	// Intermission Halftime or between periods.
+	Intermission *bool `json:"intermission,omitempty"`
+
+	// Period The period the clock belongs to, in the source's numbering; status.period is the board's own.
+	Period *float64 `json:"period,omitempty"`
+
+	// Running True while the clock runs, false in a stoppage or intermission, null when the feed cannot say (NFL and NCAAF between plays; any game before its first movement).
+	Running *bool `json:"running,omitempty"`
+
+	// SecondsRemaining Seconds left in the period; null when the source shows no clock (a shootout, for one).
+	SecondsRemaining *float64 `json:"secondsRemaining,omitempty"`
+}
+
 // ScoreEvent defines model for ScoreEvent.
 type ScoreEvent struct {
 	Away *ScoreTeam `json:"away,omitempty"`
@@ -4528,7 +5180,12 @@ type ScoreEvent struct {
 
 // ScoreStatus defines model for ScoreStatus.
 type ScoreStatus struct {
-	Detail       *string  `json:"detail,omitempty"`
+	// Clock The game clock of an in-play NBA, NHL, NFL or NCAAF game. Absent on every other
+	// sport and whenever no clock was read for the game.
+	Clock  *ScoreClock `json:"clock,omitempty"`
+	Detail *string     `json:"detail,omitempty"`
+
+	// DisplayClock Time left in the period for NBA/NHL/NFL/NCAAF games in play (5:32, or 48.3 under a minute); the soccer minute; null otherwise.
 	DisplayClock *string  `json:"displayClock,omitempty"`
 	Period       *float64 `json:"period,omitempty"`
 	State        *string  `json:"state,omitempty"`
@@ -4694,6 +5351,16 @@ type ServerNotice struct {
 //   - `SERVER_RESTART`: sent to open connections just before a restart.
 type ServerNoticeCode = string
 
+// SgpBookSelection The book's own ids for a resolved SGP leg on DraftKings, Hard Rock, BetRivers,
+// Bally Bet and BetMGM. Hard Rock's, BetRivers' and Bally Bet's are strings of
+// digits; BetMGM's `marketId` reads `v1:<fixture>:<market>` or
+// `v2:<fixture>:<market>`, and on NHL `sc:<fixture>:<builderId>` with the
+// option string BetMGM's bet builder lists as `selectionId`.
+type SgpBookSelection struct {
+	MarketID    *string          `json:"marketId,omitempty"`
+	SelectionID *json.RawMessage `json:"selectionId,omitempty"`
+}
+
 // SgpBuildErrorBody The body of a thrown `buildSgp` failure that reached pricing, found on the
 // error as `err.details`; `err.code` is `reasonCode`:
 //   - the no-price 503 (`ServiceBusyError`, `code` `no-price`): no usable answer
@@ -4735,7 +5402,7 @@ type SgpBuildErrorBody struct {
 //
 // The fields marked "API v2.348.0" are absent from older API versions.
 type SgpBuildMeta struct {
-	// Book The book the legs were resolved and priced against (`"fanduel"`).
+	// Book The book the legs were resolved and priced against (`"fanduel"`, `"draftkings"`, ...).
 	Book *string `json:"book,omitempty"`
 
 	// CatalogAgeMs The MINIMUM age, in ms, the catalog data already had at `resolvedAt`; the
@@ -4743,12 +5410,14 @@ type SgpBuildMeta struct {
 	CatalogAgeMs *float64 `json:"catalogAgeMs,omitempty"`
 	CommenceTime *string  `json:"commence_time,omitempty"`
 
-	// EventID The API echoes eventId as the numeric FanDuel event id.
+	// EventID The event id as the API echoes it: a number on FanDuel, a string on every
+	// other book (digits, or BetMGM NFL's `"6:43680"`).
 	EventID *json.RawMessage `json:"eventId,omitempty"`
 
-	// LineUnverified `true` on a 200 that priced at least one leg whose line FanDuel's
-	// response does not confirm (alternate N-or-more strikeout rungs). Absent
-	// when every line was confirmed. API v2.348.0.
+	// LineUnverified `true` on a 200 that priced at least one leg whose line the book's
+	// response does not confirm (FanDuel's alternate N-or-more strikeout rungs;
+	// every BetMGM NHL leg, whose price answer names no leg). Absent when every
+	// line was confirmed. API v2.348.0.
 	LineUnverified *bool `json:"lineUnverified,omitempty"`
 
 	// LineUnverifiedLegs With `lineUnverified`: the indexes of those legs in your `legs` array.
@@ -4825,7 +5494,8 @@ type SgpBuildResponse struct {
 	// The fields marked "API v2.348.0" are absent from older API versions.
 	Meta *SgpBuildMeta `json:"meta,omitempty"`
 
-	// Pricing `"fanduel-slip"` on a 200: the price is FanDuel's own bet-slip answer.
+	// Pricing `"<book>-slip"` on a 200 (`"fanduel-slip"`, `"draftkings-slip"`, ...): the
+	// price is that book's own bet-slip answer.
 	Pricing *string `json:"pricing,omitempty"`
 
 	// ReasonCode Present when `success: false`: `"unresolved"` on a leg-resolution 422,
@@ -4848,8 +5518,9 @@ type SgpEvent struct {
 	// Competition FanDuel's competition name; empty when unknown.
 	Competition *string `json:"competition,omitempty"`
 
-	// EventID FanDuel's numeric event id (a number on the wire). Pass it to `buildSgp`
-	// as `String(event.eventId)`.
+	// EventID The book's event id: a number on the wire on FanDuel, a string on every
+	// other book (digits, or BetMGM NFL's `"6:43680"`). Pass it to `buildSgp` as
+	// `String(event.eventId)`.
 	EventID *json.RawMessage `json:"eventId,omitempty"`
 	Home    *string          `json:"home,omitempty"`
 
@@ -4886,7 +5557,7 @@ type SgpPrice struct {
 	American *float64 `json:"american,omitempty"`
 	Decimal  *float64 `json:"decimal,omitempty"`
 
-	// IsSGM Always `true` on a 200: the price is FanDuel's correlated same-game price
+	// IsSGM Always `true` on a 200: the price is the book's correlated same-game price
 	// for exactly the legs sent.
 	IsSGM *bool    `json:"isSGM,omitempty"`
 	Legs  *float64 `json:"legs,omitempty"`
@@ -4894,6 +5565,13 @@ type SgpPrice struct {
 
 // SgpResolvedLeg A single leg echoed back in a `buildSgp` response, with its resolution.
 type SgpResolvedLeg struct {
+	// BookSelection The book's own ids for a resolved SGP leg on DraftKings, Hard Rock, BetRivers,
+	// Bally Bet and BetMGM. Hard Rock's, BetRivers' and Bally Bet's are strings of
+	// digits; BetMGM's `marketId` reads `v1:<fixture>:<market>` or
+	// `v2:<fixture>:<market>`, and on NHL `sc:<fixture>:<builderId>` with the
+	// option string BetMGM's bet builder lists as `selectionId`.
+	BookSelection *SgpBookSelection `json:"bookSelection,omitempty"`
+
 	// Description Present when `resolved: true`: the FanDuel selection it resolved to.
 	Description *string `json:"description,omitempty"`
 
@@ -5146,13 +5824,13 @@ type StakeBet struct {
 
 // StakeBetLeg One leg of a public Stake bet. `amount` is on the SLIP, not the leg.
 type StakeBetLeg struct {
-	Fixture *struct {
-		ID        *string `json:"id,omitempty"`
-		Name      *string `json:"name,omitempty"`
-		StartTime *string `json:"startTime,omitempty"`
-	} `json:"fixture,omitempty"`
-	ID     *string `json:"id,omitempty"`
-	Market *struct {
+	// Fixture The fixture of a Stake bet leg. `id` is a UUID in a DIFFERENT id space from the
+	// board and joins to nothing there: join a wager to `getStakeV2()` by `slug`, whose
+	// numeric prefix is the board fixture id ("46853667-sporting-galatasaray-istanbul"
+	// is board fixture 46853667).
+	Fixture *StakeBetLegFixture `json:"fixture,omitempty"`
+	ID      *string             `json:"id,omitempty"`
+	Market  *struct {
 		ID   *string `json:"id,omitempty"`
 		Name *string `json:"name,omitempty"`
 	} `json:"market,omitempty"`
@@ -5168,6 +5846,29 @@ type StakeBetLeg struct {
 		Name *string `json:"name,omitempty"`
 	} `json:"outcome,omitempty"`
 	Status *string `json:"status,omitempty"`
+}
+
+// StakeBetLegFixture The fixture of a Stake bet leg. `id` is a UUID in a DIFFERENT id space from the
+// board and joins to nothing there: join a wager to `getStakeV2()` by `slug`, whose
+// numeric prefix is the board fixture id ("46853667-sporting-galatasaray-istanbul"
+// is board fixture 46853667).
+type StakeBetLegFixture struct {
+	ID         *string                `json:"id,omitempty"`
+	Name       *string                `json:"name,omitempty"`
+	Slug       *string                `json:"slug,omitempty"`
+	StartTime  *string                `json:"startTime,omitempty"`
+	Tournament *StakeBetLegTournament `json:"tournament,omitempty"`
+}
+
+// StakeBetLegTournament defines model for StakeBetLegTournament.
+type StakeBetLegTournament struct {
+	Category *struct {
+		ID   *string `json:"id,omitempty"`
+		Name *string `json:"name,omitempty"`
+	} `json:"category,omitempty"`
+	ID   *string `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
+	Slug *string `json:"slug,omitempty"`
 }
 
 // StakeBetsMeta defines model for StakeBetsMeta.
@@ -5485,18 +6186,34 @@ type V2LeaguesResponse struct {
 
 // V2Meta defines model for V2Meta.
 type V2Meta struct {
-	AgeSeconds                *float64 `json:"ageSeconds,omitempty"`
-	CacheTimestamp            *string  `json:"cacheTimestamp,omitempty"`
-	Cached                    *bool    `json:"cached,omitempty"`
+	AgeSeconds     *float64 `json:"ageSeconds,omitempty"`
+	CacheTimestamp *string  `json:"cacheTimestamp,omitempty"`
+	Cached         *bool    `json:"cached,omitempty"`
+
+	// DefaultExcluded On a default request: the entries the book leaves out by default (DraftKings `props-*`, Fanatics Markets `books-*`, Polymarket US `full-*`), with the `marketIds` value that includes them.
+	DefaultExcluded *struct {
+		Count     *float64 `json:"count,omitempty"`
+		Include   *string  `json:"include,omitempty"`
+		MarketIds *string  `json:"marketIds,omitempty"`
+	} `json:"defaultExcluded,omitempty"`
 	DuplicateMarketIdsDropped *float64 `json:"duplicateMarketIdsDropped,omitempty"`
 	LeagueCount               *float64 `json:"leagueCount,omitempty"`
 	LeaguesOmitted            *float64 `json:"leaguesOmitted,omitempty"`
-	MarketsOmitted            *float64 `json:"marketsOmitted,omitempty"`
-	Merged                    *bool    `json:"merged,omitempty"`
-	Source                    *string  `json:"source,omitempty"`
-	Status                    *string  `json:"status,omitempty"`
-	Timestamp                 *string  `json:"timestamp,omitempty"`
-	Truncated                 *bool    `json:"truncated,omitempty"`
+
+	// MarketAges Seconds since each returned entry was last confirmed, by entry id, when the book sends it.
+	MarketAges map[string]float64 `json:"marketAges,omitempty"`
+
+	// MarketIds Echo of the `marketIds` filter you sent (normalized), when you sent one.
+	MarketIds *string `json:"marketIds,omitempty"`
+
+	// MarketsFilteredOut With a `marketIds` filter: how many stored entries it left out.
+	MarketsFilteredOut *float64 `json:"marketsFilteredOut,omitempty"`
+	MarketsOmitted     *float64 `json:"marketsOmitted,omitempty"`
+	Merged             *bool    `json:"merged,omitempty"`
+	Source             *string  `json:"source,omitempty"`
+	Status             *string  `json:"status,omitempty"`
+	Timestamp          *string  `json:"timestamp,omitempty"`
+	Truncated          *bool    `json:"truncated,omitempty"`
 }
 
 // V2OptionAdvisory One entry of ClientSubscription.v2OptionsAdvisory.
