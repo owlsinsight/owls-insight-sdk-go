@@ -103,6 +103,95 @@ func (c *Client) GetEV(ctx context.Context, sport string, p *EVParams) (*EVRespo
 	return getInto[EVResponse](ctx, c, "/api/v1/"+esc(sport)+"/ev", q)
 }
 
+// GetEVLines returns the positive-EV spreads and totals of a sport's upcoming games
+// (MVP and above): GET /api/v1/{sport}/ev with market=spreads, totals or both (the
+// default). The same math as GetEV, scored at Pinnacle's main number against the
+// books that hang exactly that number; every opportunity carries its own Point.
+// Supported for nba, ncaab, nfl, ncaaf, nhl, mlb, wnba and soccer; elsewhere
+// Meta.Unsupported says why nothing is scored.
+//
+// The route answers with the moneyline board (GetEV's shape) unless every market it
+// is sent is spreads or totals, so GetEVLines checks Markets before any request, as
+// the route reads them: split on commas, trimmed and lower-cased, empty entries
+// dropped. Anything other than spreads or totals ("h2h", "spread", "moneyline") is
+// an error, as is a Markets with no entry left. A nil or empty Markets asks for
+// both. An answer that still reports the moneyline market is an error too.
+func (c *Client) GetEVLines(ctx context.Context, sport string, p *EVLinesParams) (*EVLinesResponse, error) {
+	markets := []string{"spreads", "totals"}
+	q := url.Values{}
+	if p != nil {
+		if len(p.Markets) > 0 {
+			var err error
+			if markets, err = evLineMarkets(p.Markets); err != nil {
+				return nil, fmt.Errorf("owls: GetEVLines(%q): %w", sport, err)
+			}
+		}
+		setFloat(q, "min_ev", p.MinEV)
+		setStr(q, "book", p.Book)
+	}
+	q.Set("market", strings.Join(markets, ","))
+	res, err := getInto[EVLinesResponse](ctx, c, "/api/v1/"+esc(sport)+"/ev", q)
+	if err != nil {
+		return nil, err
+	}
+	if res.Meta != nil && res.Meta.Market != nil && *res.Meta.Market == "h2h" {
+		return nil, fmt.Errorf("owls: GetEVLines(%q): the API answered with the moneyline board (market=%s); use GetEV for it", sport, q.Get("market"))
+	}
+	return res, nil
+}
+
+// evLineMarkets normalizes GetEVLines' markets the way the route parses its market
+// parameter (split on commas, trimmed, lower-cased, empty entries dropped,
+// duplicates removed) and refuses anything the route would answer with the
+// moneyline board instead.
+func evLineMarkets(in []string) ([]string, error) {
+	var out []string
+	for _, m := range strings.Split(strings.Join(in, ","), ",") {
+		m = strings.ToLower(strings.TrimSpace(m))
+		switch {
+		case m == "":
+			continue
+		case m != "spreads" && m != "totals":
+			return nil, fmt.Errorf("market %q is not spreads or totals (the moneyline is GetEV)", m)
+		case !slices.Contains(out, m):
+			out = append(out, m)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("markets %q name no market; leave Markets nil for spreads and totals", in)
+	}
+	return out, nil
+}
+
+// GetFair returns the Owls fair line of a sport (MVP and above): every upcoming
+// game's fair moneyline, spread and total, each side as a probability and as
+// American odds, anchored on Pinnacle (GET /api/v1/{sport}/fair). These are the
+// fairs before the 1 percentage point margin GetEV scores against. A market is nil when it
+// has no current fair (Meta.Boards says which board is old). Spreads and totals
+// are priced at Pinnacle's main number for nba, ncaab, nfl, ncaaf, nhl, mlb, wnba
+// and soccer (Meta.Markets); other sports carry the moneyline only.
+func (c *Client) GetFair(ctx context.Context, sport string) (*FairResponse, error) {
+	return getInto[FairResponse](ctx, c, "/api/v1/"+esc(sport)+"/fair", nil)
+}
+
+// GetPropsEV returns the fair line and the positive-EV prices of a sport's player
+// props (MVP and above): GET /api/v1/{sport}/props/ev. For each upcoming prop
+// Pinnacle prices both ways, the fair over and under, and every sportsbook price at
+// the same player, category and line that beats it. Set All to also list the props
+// with no positive-EV price. Supported for nba, ncaab, wnba, nfl, ncaaf, nhl, mlb
+// and soccer.
+func (c *Client) GetPropsEV(ctx context.Context, sport string, p *PropsEVParams) (*PropsEVResponse, error) {
+	q := url.Values{}
+	if p != nil {
+		setFloat(q, "min_ev", p.MinEV)
+		setStr(q, "book", p.Book)
+		setStr(q, "player", p.Player)
+		setStr(q, "category", p.Category)
+		setTrue(q, "all", p.All)
+	}
+	return getInto[PropsEVResponse](ctx, c, "/api/v1/"+esc(sport)+"/props/ev", q)
+}
+
 // GetOneXBetSoccer returns the isolated 1xBet soccer feed, which is not part of GetOdds.
 func (c *Client) GetOneXBetSoccer(ctx context.Context) (*OneXBetSoccerResponse, error) {
 	return getInto[OneXBetSoccerResponse](ctx, c, "/api/v1/1xbet/soccer", nil)
@@ -181,6 +270,56 @@ func (c *Client) GetScores(ctx context.Context, sport string) (*Scores, error) {
 	return &Scores{Sport: one}, nil
 }
 
+// Plays is the result of GetPlays: Game for one game's play-by-play, Games for
+// the list of games that have it.
+type Plays struct {
+	// Game is set when GetPlays was called with an event id.
+	Game *PlaysResponse
+	// Games is set when GetPlays was called with an empty event id.
+	Games *PlaysGamesResponse
+}
+
+// GetPlays returns the play-by-play of one NBA, NHL, NFL or NCAAF game in play (or
+// ended within the last 6 hours), oldest play first, by the event id GetScores
+// gives the game (GET /api/v1/{sport}/plays?eventId=). With an empty eventID it
+// returns the games that have play-by-play; p must then be nil or set neither Since
+// nor Limit (they apply to one game, so GetPlays refuses them without a request).
+// A game with no play-by-play (before tip-off, or any other id) is a 404, an
+// [*APIError].
+//
+// Poll with Since set to the LastSeq you have, at least every 2 minutes, to receive
+// the new plays and every amended one, or opt in to plays-update with
+// Subscription.Plays. Merge plays by ID: a play can be amended after it is first
+// published. Play.Detail is the sport's own fields as raw JSON: decode it with
+// Decode[FootballPlayDetail], Decode[HockeyPlayDetail] or
+// Decode[BasketballPlayDetail].
+func (c *Client) GetPlays(ctx context.Context, sport, eventID string, p *PlaysParams) (*Plays, error) {
+	path := "/api/v1/" + esc(sport) + "/plays"
+	eventID = strings.TrimSpace(eventID)
+	if eventID == "" {
+		if p != nil && (p.Since != nil || p.Limit != 0) {
+			return nil, fmt.Errorf("owls: GetPlays(%q): Since and Limit apply to one game; pass its event id, or nil params to list the games", sport)
+		}
+		games, err := getInto[PlaysGamesResponse](ctx, c, path, nil)
+		if err != nil {
+			return nil, err
+		}
+		return &Plays{Games: games}, nil
+	}
+	q := url.Values{"eventId": {eventID}}
+	if p != nil {
+		if p.Since != nil {
+			q.Set("since", strconv.FormatFloat(*p.Since, 'f', -1, 64))
+		}
+		setInt(q, "limit", p.Limit)
+	}
+	game, err := getInto[PlaysResponse](ctx, c, path, q)
+	if err != nil {
+		return nil, err
+	}
+	return &Plays{Game: game}, nil
+}
+
 // GetInjuries returns player injury designations for a sport (nfl, mlb), one
 // record per source.
 func (c *Client) GetInjuries(ctx context.Context, sport string, p *InjuriesParams) (*InjuriesResponse, error) {
@@ -210,9 +349,10 @@ type BookPropsResult struct {
 	BetMGM *BetMGMPropsResponse
 }
 
-// GetBookProps returns one book's player props for a sport. p.Books is not sent.
-// The bet365 props were retired: that book answers 410 Gone, an [*APIError]
-// (Bet365 game lines are on GetV2).
+// GetBookProps returns one book's player props for a sport. p.Books is not sent;
+// p.State serves another state's FanDuel marketIds on book "fanduel" (see
+// PropsParams.State). The bet365 props were retired: that book answers 410 Gone,
+// an [*APIError] (Bet365 game lines are on GetV2).
 func (c *Client) GetBookProps(ctx context.Context, sport, book string, p *PropsParams) (*BookPropsResult, error) {
 	path := "/api/v1/" + esc(sport) + "/props/" + esc(book)
 	q := p.query(false)
@@ -540,8 +680,9 @@ func (c *Client) GetStakeBets(ctx context.Context) (*StakeBetsResponse, error) {
 
 // ── Same Game Parlay ────────────────────────────────────────
 
-// GetSgpEvents lists the events a book can price parlays for (book defaults to
-// fanduel on the server).
+// GetSgpEvents lists the events a book can price parlays for: fanduel (the
+// server's default when book is empty), draftkings, hardrock, betrivers, ballybet
+// or betmgm.
 func (c *Client) GetSgpEvents(ctx context.Context, sport, book string) (*SgpEventsResponse, error) {
 	q := url.Values{}
 	setStr(q, "book", book)

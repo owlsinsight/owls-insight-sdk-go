@@ -41,6 +41,11 @@ type Subscription struct {
 	// true for every sport, or a list of sport keys such as []string{"nfl"}.
 	// Decode the payload with Decode[ScoresUpdate].
 	Scores any `json:"scores,omitempty"`
+	// Plays opts in to plays-update (play-by-play; nothing is sent without it):
+	// true for nba, nhl, nfl and ncaaf, or a list of those keys such as
+	// []string{"nfl", "nba"}. Same access as Scores. Decode the payload with
+	// Decode[PlaysUpdate]; GetPlays works either way.
+	Plays any `json:"plays,omitempty"`
 	// Realtime opts the connection out of a realtime event. Nil (the default)
 	// gets both pinnacle-realtime and ps3838-realtime for the subscribed sports;
 	// &RealtimeFeeds{PS3838: Ptr(false)} stops ps3838-realtime and keeps

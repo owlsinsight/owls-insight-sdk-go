@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -234,6 +235,66 @@ func TestRequestPaths(t *testing.T) {
 		}, "/api/v1/nfl/ev?book=kalshi&min_ev=2&venues=true"},
 		{func() error { _, err := c.GetEV(ctx, "nfl", &EVParams{Book: "fanduel"}); return err }, "/api/v1/nfl/ev?book=fanduel"},
 		{func() error { _, err := c.GetEV(ctx, "nfl", nil); return err }, "/api/v1/nfl/ev"},
+		// EV lines: market defaults to both; min_ev and book only when given; each
+		// market is trimmed and lower-cased, blanks and repeats dropped.
+		{func() error { _, err := c.GetEVLines(ctx, "nfl", nil); return err }, "/api/v1/nfl/ev?market=spreads%2Ctotals"},
+		{func() error { _, err := c.GetEVLines(ctx, "nfl", &EVLinesParams{}); return err }, "/api/v1/nfl/ev?market=spreads%2Ctotals"},
+		{func() error {
+			_, err := c.GetEVLines(ctx, "nfl", &EVLinesParams{Markets: []string{" Totals ", "", "spreads", "TOTALS"}})
+			return err
+		}, "/api/v1/nfl/ev?market=totals%2Cspreads"},
+		{func() error {
+			_, err := c.GetEVLines(ctx, "nfl", &EVLinesParams{Markets: []string{"spreads, totals,"}})
+			return err
+		},
+			"/api/v1/nfl/ev?market=spreads%2Ctotals"},
+		{func() error {
+			_, err := c.GetEVLines(ctx, "nfl", &EVLinesParams{Markets: []string{"totals"}, MinEV: 2, Book: "fanduel"})
+			return err
+		}, "/api/v1/nfl/ev?book=fanduel&market=totals&min_ev=2"},
+		{func() error { _, err := c.GetFair(ctx, "nfl"); return err }, "/api/v1/nfl/fair"},
+		// Props EV: all=true only when All is set.
+		{func() error { _, err := c.GetPropsEV(ctx, "nba", nil); return err }, "/api/v1/nba/props/ev"},
+		{func() error {
+			_, err := c.GetPropsEV(ctx, "nba", &PropsEVParams{MinEV: 2.5, Book: "fanduel", Player: "Tatum", Category: "points", All: true})
+			return err
+		}, "/api/v1/nba/props/ev?all=true&book=fanduel&category=points&min_ev=2.5&player=Tatum"},
+		{func() error { _, err := c.GetPropsEV(ctx, "nba", &PropsEVParams{All: false}); return err }, "/api/v1/nba/props/ev"},
+		// Play-by-play: no event id lists the games; since=0 is sent, a nil Since is not.
+		{func() error { _, err := c.GetPlays(ctx, "nfl", "", &PlaysParams{}); return err }, "/api/v1/nfl/plays"},
+		{func() error { _, err := c.GetPlays(ctx, "nhl", "  ", nil); return err }, "/api/v1/nhl/plays"},
+		{func() error {
+			_, err := c.GetPlays(ctx, "nfl", "nfl:Cincinnati Bengals@Baltimore Ravens-20261025", &PlaysParams{Since: Ptr(0.0), Limit: 50})
+			return err
+		}, "/api/v1/nfl/plays?eventId=nfl%3ACincinnati+Bengals%40Baltimore+Ravens-20261025&limit=50&since=0"},
+		{func() error { _, err := c.GetPlays(ctx, "nba", "e1", &PlaysParams{Since: Ptr(1234567.0)}); return err }, "/api/v1/nba/plays?eventId=e1&since=1234567"},
+		{func() error { _, err := c.GetPlays(ctx, "nba", "e1", &PlaysParams{}); return err }, "/api/v1/nba/plays?eventId=e1"},
+		// FanDuel state marketIds on the odds routes and the props routes.
+		{func() error {
+			_, err := c.GetOdds(ctx, "nfl", &OddsParams{State: "co", ExcludeExchanges: true})
+			return err
+		}, "/api/v1/nfl/odds?exclude_exchanges=true&state=co"},
+		{func() error { _, err := c.GetSpreads(ctx, "nfl", &OddsParams{State: "ks"}); return err }, "/api/v1/nfl/spreads?state=ks"},
+		{func() error { _, err := c.GetMoneyline(ctx, "nfl", &OddsParams{ExcludeExchanges: true}); return err }, "/api/v1/nfl/moneyline?exclude_exchanges=true"},
+		{func() error {
+			_, err := c.GetTotals(ctx, "nfl", &OddsParams{ExcludeExchanges: false, State: "nj"})
+			return err
+		}, "/api/v1/nfl/totals?state=nj"},
+		{func() error {
+			_, err := c.GetProps(ctx, "nba", &PropsParams{Books: []string{"fanduel"}, State: "ks"})
+			return err
+		}, "/api/v1/nba/props?books=fanduel&state=ks"},
+		{func() error {
+			_, err := c.GetBookProps(ctx, "nba", "fanduel", &PropsParams{Books: []string{"x"}, State: "ks"})
+			return err
+		}, "/api/v1/nba/props/fanduel?state=ks"},
+		// Default-excluded v2 families: Polymarket US full-*, Fanatics Markets books-*.
+		{func() error { _, err := c.GetV2(ctx, "polymarketus", "nfl", "nfl"); return err }, "/api/v2/polymarketus/nfl?league=nfl"},
+		{func() error { _, err := c.GetV2Markets(ctx, "polymarketus", "nfl", "nfl", "full-*"); return err },
+			"/api/v2/polymarketus/nfl?league=nfl&marketIds=full-%2A"},
+		{func() error { _, err := c.GetV2Leagues(ctx, "polymarketus", "nfl"); return err }, "/api/v2/polymarketus/nfl/leagues"},
+		{func() error { _, err := c.GetV2Markets(ctx, "fanaticsmarkets", "nfl", "", "books-*"); return err },
+			"/api/v2/fanaticsmarkets/nfl?marketIds=books-%2A"},
 	}
 	for i, tc := range calls {
 		if err := tc.call(); err != nil {
@@ -327,6 +388,12 @@ func TestUnionResultsPickTheRightType(t *testing.T) {
 	if r, _ := c.GetPropResults(ctx, "mlb", PropResultsParams{GameID: "g", Date: "2026-09-01"}); r.Game == nil || r.Day != nil {
 		t.Errorf("GetPropResults(game) = %+v", r)
 	}
+	if r, _ := c.GetPlays(ctx, "nfl", "", nil); r.Games == nil || r.Game != nil {
+		t.Errorf("GetPlays(list) = %+v", r)
+	}
+	if r, _ := c.GetPlays(ctx, "nfl", "e1", nil); r.Game == nil || r.Games != nil {
+		t.Errorf("GetPlays(game) = %+v", r)
+	}
 }
 
 func TestErrorMapping(t *testing.T) {
@@ -351,6 +418,14 @@ func TestErrorMapping(t *testing.T) {
 			notSentry: []error{ErrForbidden, ErrNotFound, ErrRateLimited, ErrServiceBusy}},
 		{name: "403 error only", status: 403, body: `{"error":"Requires MVP"}`, sentinel: ErrForbidden, code: "FORBIDDEN",
 			message: "Requires MVP", details: `{"error":"Requires MVP"}`, notSentry: []error{ErrUnauthorized}},
+		{name: "403 data-only key keeps its code", status: 403,
+			body:     `{"error":"data_key_forbidden","message":"This is a read-only data key."}`,
+			sentinel: ErrForbidden, code: DataKeyForbiddenCode, message: "This is a read-only data key.",
+			details: `{"error":"data_key_forbidden","message":"This is a read-only data key."}`},
+		// CONTROL: the code is read from error alone, as the TypeScript SDK does; a
+		// code field of that value does not change a 403's FORBIDDEN.
+		{name: "403 code field is not the data-key refusal", status: 403, body: `{"error":"Requires MVP","code":"data_key_forbidden"}`,
+			sentinel: ErrForbidden, code: "FORBIDDEN", message: "Requires MVP", details: `{"error":"Requires MVP","code":"data_key_forbidden"}`},
 		{name: "404 empty body", status: 404, body: ``, sentinel: ErrNotFound, code: "NOT_FOUND", message: "Not Found"},
 		{name: "429 seconds", status: 429, header: http.Header{"Retry-After": {"7"}, "X-Ratelimit-Remaining-Minute": {"0"},
 			"X-Ratelimit-Remaining-Month": {"unlimited"}}, body: `{"error":"Too many","code":"HISTORY_CONCURRENCY"}`,
@@ -1429,7 +1504,7 @@ func TestV2EventName(t *testing.T) {
 	// The event layer knows the events added since the manifest check last ran,
 	// without a manifest; CONTROL: an unknown name is not known.
 	known := knownEvents()
-	for _, name := range []string{"propbuilder-v2-update", EventScoresUpdate} {
+	for _, name := range []string{"propbuilder-v2-update", EventScoresUpdate, "plays-update", "fanaticsmarkets-books-v2-update"} {
 		if !known[name] {
 			t.Errorf("knownEvents lacks %q", name)
 		}
@@ -1458,5 +1533,429 @@ func TestParseRetryAfter(t *testing.T) {
 	}
 	if d, _ := parseRetryAfter(http.Header{"Retry-After": {"1e306"}}, now); d <= 0 {
 		t.Errorf("a huge Retry-After overflowed to %v", d)
+	}
+}
+
+// TestFairAndEVLines decodes the answers of GET /api/v1/{sport}/fair and of
+// GET /api/v1/{sport}/ev?market=spreads (the bodies of the TypeScript SDK's tests).
+func TestFairAndEVLines(t *testing.T) {
+	t.Run("EV lines", func(t *testing.T) {
+		const body = `{"success": true,
+			"data": [{"eventId": "g1", "canonicalEventId": "nfl:Denver Broncos@Arizona Cardinals-20261025", "sport": "nfl",
+				"homeTeam": "Arizona Cardinals", "awayTeam": "Denver Broncos", "commenceTime": "2026-10-25T20:05:00.000Z",
+				"market": "spreads", "point": 4, "pushPossible": true, "fairProbability": {"home": 0.4836, "away": 0.4862},
+				"booksInConsensus": 2, "fair": {"method": "pinnacle", "anchor": "odds", "sources": 2, "home": 0.4936, "away": 0.4962},
+				"opportunities": [{"book": "fanduel", "market": "spreads", "side": "home", "team": "Arizona Cardinals", "point": 4,
+					"bookPrice": 120, "bookImplied": 0.4545, "fairProbability": 0.4836, "fairPrice": 107, "evPct": 6.39, "edgePp": 2.91,
+					"kellyFraction": 0.0533, "booksInConsensus": 2, "kind": "book", "fairUnadjusted": 0.4936, "roi": 0.0639,
+					"tradeable": true, "reason": null, "quoteAgeMs": 4100}]}],
+			"meta": {"sport": "nfl", "market": "spreads", "odds_format": "american", "min_ev": 0, "max_ev": 25, "fair_method": "fair_v1",
+				"line": "pinnacle_main", "pregame_only": true, "events": 1, "opportunities": 1, "timestamp": "2026-10-19T17:00:00.000Z",
+				"freshness": {"ageSeconds": 3, "stale": false}, "board": {"builtAt": "2026-10-19T17:00:01.000Z", "ageMs": 1200, "stale": false}}}`
+		api := newFakeAPI(t, ok(body))
+		res, err := testClient(t, api.URL).GetEVLines(context.Background(), "nfl", &EVLinesParams{Markets: []string{"spreads"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r := api.req(0); r.Path != "/api/v1/nfl/ev" || r.Query != "market=spreads" {
+			t.Errorf("requested %s?%s", r.Path, r.Query)
+		}
+		ev := res.Data[0]
+		if *ev.Market != "spreads" || *ev.Point != 4 || !*ev.PushPossible || *ev.FairProbability.Home != 0.4836 ||
+			ev.FairProbability.Over != nil || *ev.Fair.Anchor != "odds" || *ev.BooksInConsensus != 2 {
+			t.Errorf("event %+v", ev)
+		}
+		o := ev.Opportunities[0]
+		if *o.Book != "fanduel" || *o.Side != "home" || *o.Point != 4 || *o.BookPrice != 120 || *o.EvPct != 6.39 ||
+			!*o.Tradeable || o.Reason != nil || *o.QuoteAgeMs != 4100 {
+			t.Errorf("opportunity %+v", o)
+		}
+		if m := res.Meta; *m.Line != "pinnacle_main" || *m.Market != "spreads" || *m.MaxEv != 25 || *m.Board.AgeMs != 1200 || m.Unsupported != nil {
+			t.Errorf("meta %+v", m)
+		}
+	})
+	t.Run("anything the route would answer with the moneyline is refused without a request", func(t *testing.T) {
+		api := newFakeAPI(t, ok(`{}`))
+		c := testClient(t, api.URL)
+		for _, markets := range [][]string{{"h2h"}, {"H2H"}, {"spreads", "h2h"}, {"spread"}, {"moneyline"}, {"totals", "moneyline"},
+			{""}, {"", " "}, {" , "}, {"spreads,h2h"}} {
+			_, err := c.GetEVLines(context.Background(), "nfl", &EVLinesParams{Markets: markets})
+			if err == nil || !strings.Contains(err.Error(), "GetEVLines") {
+				t.Errorf("GetEVLines(%q) = %v, want an error", markets, err)
+			}
+		}
+		if api.count() != 0 {
+			t.Fatalf("%d requests for refused calls", api.count())
+		}
+		// CONTROL: spreads and totals go through.
+		if _, err := c.GetEVLines(context.Background(), "nfl", &EVLinesParams{Markets: []string{"totals", "spreads"}}); err != nil || api.count() != 1 ||
+			api.req(0).Query != "market=totals%2Cspreads" {
+			t.Fatalf("GetEVLines(totals, spreads) = %v after %d requests", err, api.count())
+		}
+	})
+	t.Run("a moneyline answer is an error", func(t *testing.T) {
+		api := newFakeAPI(t, ok(`{"success": true, "data": [], "meta": {"sport": "nfl", "market": "h2h"}}`))
+		c := testClient(t, api.URL)
+		if _, err := c.GetEVLines(context.Background(), "nfl", nil); err == nil || !strings.Contains(err.Error(), "moneyline board") {
+			t.Fatalf("GetEVLines on an h2h answer = %v, want an error", err)
+		}
+		// CONTROL: the same body through GetEV is the moneyline board it is.
+		if _, err := c.GetEV(context.Background(), "nfl", nil); err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Run("fair line", func(t *testing.T) {
+		const body = `{"success": true,
+			"data": [{"eventId": "g1", "canonicalEventId": null, "sport": "nfl", "league": null, "homeTeam": "Arizona Cardinals",
+				"awayTeam": "Denver Broncos", "commenceTime": "2026-10-25T20:05:00.000Z",
+				"moneyline": {"method": "pinnacle", "sources": 3, "home": {"probability": 0.3333, "american": 200, "booksDisagree": false},
+					"away": {"probability": 0.65, "american": -186, "booksDisagree": false}, "draw": null},
+				"spread": {"point": 4, "pushPossible": true, "sources": 2,
+					"home": {"point": 4, "probability": 0.4936, "american": 103, "booksDisagree": false},
+					"away": {"point": -4, "probability": 0.4962, "american": 102, "booksDisagree": false}},
+				"total": null}],
+			"meta": {"sport": "nfl", "fair_method": "fair_v1", "anchor": "pinnacle", "odds_format": "american", "pregame_only": true,
+				"markets": {"moneyline": true, "spreads": true, "totals": true}, "events": 1, "notes": [],
+				"boards": {"moneyline": {"builtAt": "2026-10-19T17:00:01.000Z", "ageMs": 900, "stale": false},
+					"lines": {"builtAt": "2026-10-19T17:00:01.000Z", "ageMs": 900, "stale": false}}}}`
+		api := newFakeAPI(t, ok(body))
+		res, err := testClient(t, api.URL).GetFair(context.Background(), "nfl")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r := api.req(0); r.Path != "/api/v1/nfl/fair" || r.Query != "" {
+			t.Errorf("requested %s?%s", r.Path, r.Query)
+		}
+		g := res.Data[0]
+		if g.CanonicalEventID != nil || g.League != nil || g.Total != nil || g.Moneyline.Draw != nil {
+			t.Errorf("nulls %+v", g)
+		}
+		if ml := g.Moneyline; *ml.Method != "pinnacle" || *ml.Home.American != 200 || *ml.Away.Probability != 0.65 || *ml.Away.BooksDisagree {
+			t.Errorf("moneyline %+v", ml)
+		}
+		if sp := g.Spread; *sp.Point != 4 || !*sp.PushPossible || *sp.Away.Point != -4 || *sp.Away.American != 102 {
+			t.Errorf("spread %+v", sp)
+		}
+		if m := res.Meta; *m.Anchor != "pinnacle" || !*m.Markets.Totals || *m.Boards.Lines.AgeMs != 900 || m.Notes == nil || len(m.Notes) != 0 {
+			t.Errorf("meta %+v", m)
+		}
+	})
+}
+
+func TestPropsEV(t *testing.T) {
+	const body = `{"success": true,
+		"data": [{"gameId": "nba:Boston Celtics@New York Knicks-20261025", "sport": "nba", "homeTeam": "New York Knicks",
+			"awayTeam": "Boston Celtics", "commenceTime": "2026-10-25T23:30:00.000Z", "player": "Jayson Tatum", "category": "points",
+			"line": 27.5, "fair": {"method": "pinnacle", "sources": 3, "over": {"probability": 0.5123, "american": -105, "booksDisagree": false},
+				"under": {"probability": 0.4791, "american": 109, "booksDisagree": true}},
+			"opportunities": [{"book": "draftkings", "side": "over", "bookPrice": 110, "bookImplied": 0.4762, "fairProbability": 0.5023,
+				"fairPrice": -101, "evPct": 5.48, "edgePp": 2.61, "kellyFraction": 0.0498, "booksInConsensus": 3, "kind": "book",
+				"fairUnadjusted": 0.5123, "roi": 0.0548, "tradeable": true, "reason": null, "quoteAgeMs": 21000}]}],
+		"meta": {"sport": "nba", "fair_method": "fair_v1", "anchor": "pinnacle", "odds_format": "american", "pregame_only": true,
+			"all": false, "min_ev": 0, "max_ev": 25, "rows": 1, "truncated": false, "opportunities": 1,
+			"coverage": {"games": 9, "pinnacleProps": 412, "scoredPrices": 3120, "positive": 37}, "timestamp": "2026-10-25T18:00:00.000Z"}}`
+	api := newFakeAPI(t, ok(body))
+	res, err := testClient(t, api.URL).GetPropsEV(context.Background(), "nba", &PropsEVParams{Player: "Tatum"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := api.req(0); r.Path != "/api/v1/nba/props/ev" || r.Query != "player=Tatum" {
+		t.Errorf("requested %s?%s", r.Path, r.Query)
+	}
+	row := res.Data[0]
+	if *row.Player != "Jayson Tatum" || *row.Category != "points" || *row.Line != 27.5 || *row.Fair.Over.American != -105 ||
+		!*row.Fair.Under.BooksDisagree || *row.Fair.Sources != 3 {
+		t.Errorf("row %+v", row)
+	}
+	if o := row.Opportunities[0]; *o.Book != "draftkings" || *o.Side != "over" || *o.EvPct != 5.48 || o.Reason != nil || !*o.Tradeable {
+		t.Errorf("opportunity %+v", o)
+	}
+	if m := res.Meta; *m.All || *m.Rows != 1 || *m.Truncated || *m.Coverage.PinnacleProps != 412 || *m.Coverage.Positive != 37 {
+		t.Errorf("meta %+v", m)
+	}
+}
+
+// TestPlays decodes both answers of GET /api/v1/{sport}/plays, the sport's own play
+// detail, and a plays-update payload.
+func TestPlays(t *testing.T) {
+	const game = `{"success": true, "sport": "nfl", "eventId": "nfl:Cincinnati Bengals@Baltimore Ravens-20261025",
+		"status": "ok", "state": "in", "home": "Baltimore Ravens", "away": "Cincinnati Bengals", "count": 112, "lastSeq": 4410000123,
+		"plays": [{"id": "4017728371234", "seq": 4410000123, "period": 2, "clock": "5:32", "secondsRemaining": 332, "team": "away",
+			"type": "Pass Reception", "text": "J.Burrow pass short right to J.Chase for 14 yards", "scoringPlay": false,
+			"homeScore": 10, "awayScore": 7, "wallclock": "2026-10-25T18:41:07Z", "updatedAt": "2026-10-25T18:41:15.120Z",
+			"detail": {"drive": "8", "down": 2, "distance": 6, "yardLine": 35, "yardsToEndzone": 65, "downDistanceText": "2nd & 6 at CIN 35",
+				"possessionText": "CIN 35", "endDown": 1, "endDistance": 10, "endYardLine": 49, "endYardsToEndzone": 51,
+				"endDownDistanceText": "1st & 10 at CIN 49", "yards": 14, "scoreValue": 0, "isPenalty": false, "isTurnover": false}},
+			{"id": "p2", "seq": 4410000124, "period": null, "clock": null, "secondsRemaining": null, "team": null, "type": "Timeout",
+			"text": "Timeout", "scoringPlay": false, "homeScore": null, "awayScore": null, "wallclock": null, "detail": {}}],
+		"meta": {"source": "play-by-play", "asOf": "2026-10-25T18:41:16.000Z", "ageSeconds": 2, "sourceAgeSeconds": null,
+			"since": 4410000100, "amendedWindowSeconds": 120, "returned": 2, "truncated": false, "timestamp": "2026-10-25T18:41:18.000Z"}}`
+	const games = `{"success": true, "sport": "nfl", "count": 2,
+		"games": [{"eventId": "nfl:Cincinnati Bengals@Baltimore Ravens-20261025", "home": "Baltimore Ravens", "away": "Cincinnati Bengals",
+			"state": "in", "playCount": 112, "asOf": "2026-10-25T18:41:16.000Z"},
+			{"eventId": "e2", "home": "A", "away": "B", "state": "pre", "playCount": 0, "asOf": null}],
+		"meta": {"timestamp": "2026-10-25T18:41:18.000Z"}}`
+	api := newFakeAPI(t, func(r *http.Request, _ int) (int, http.Header, string) {
+		if r.URL.Query().Get("eventId") == "" {
+			return 200, nil, games
+		}
+		return 200, nil, game
+	})
+	c := testClient(t, api.URL)
+	ctx := context.Background()
+
+	res, err := c.GetPlays(ctx, "nfl", "nfl:Cincinnati Bengals@Baltimore Ravens-20261025", &PlaysParams{Since: Ptr(4410000100.0)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Games != nil || res.Game == nil {
+		t.Fatalf("GetPlays(event) = %+v", res)
+	}
+	g := res.Game
+	if *g.State != "in" || *g.Status != "ok" || *g.Count != 112 || *g.LastSeq != 4410000123 || len(g.Plays) != 2 ||
+		*g.Meta.AmendedWindowSeconds != 120 || g.Meta.SourceAgeSeconds != nil || *g.Meta.Returned != 2 {
+		t.Errorf("game %+v / %+v", g, g.Meta)
+	}
+	// The poll parameter is the response's own LastSeq, unconverted.
+	if q, _ := url.ParseQuery(api.req(0).Query); q.Get("since") != "4410000100" {
+		t.Errorf("since = %q", q.Get("since"))
+	}
+	if next := (&PlaysParams{Since: g.LastSeq}); next.Since == nil || strconv.FormatFloat(*next.Since, 'f', -1, 64) != "4410000123" {
+		t.Errorf("LastSeq does not feed Since: %v", next.Since)
+	}
+	p := g.Plays[0]
+	if *p.ID != "4017728371234" || *p.Clock != "5:32" || *p.Team != "away" || *p.Type != "Pass Reception" || *p.HomeScore != 10 || p.Detail == nil {
+		t.Errorf("play %+v", p)
+	}
+	d, err := Decode[FootballPlayDetail](*p.Detail)
+	if err != nil || *d.Down != 2 || *d.Yards != 14 || *d.EndDownDistanceText != "1st & 10 at CIN 49" || *d.IsTurnover {
+		t.Errorf("detail %+v (%v)", d, err)
+	}
+	neutral := g.Plays[1]
+	if neutral.Period != nil || neutral.Clock != nil || neutral.Team != nil || neutral.Wallclock != nil || neutral.UpdatedAt != nil {
+		t.Errorf("neutral play %+v", neutral)
+	}
+
+	// Since and Limit without an event id are refused, not dropped in favour of the list.
+	before := api.count()
+	for _, p := range []*PlaysParams{{Since: Ptr(0.0)}, {Limit: 5}, {Since: Ptr(9.0), Limit: 1}} {
+		for _, id := range []string{"", "   "} {
+			if _, err := c.GetPlays(ctx, "nfl", id, p); err == nil || !strings.Contains(err.Error(), "event id") {
+				t.Errorf("GetPlays(%q, %+v) = %v, want an error", id, p, err)
+			}
+		}
+	}
+	if api.count() != before {
+		t.Fatalf("%d requests for refused calls", api.count()-before)
+	}
+
+	// CONTROL: nil or zero params list the games.
+	if _, err := c.GetPlays(ctx, "nfl", "", &PlaysParams{}); err != nil {
+		t.Fatal(err)
+	}
+	list, err := c.GetPlays(ctx, "nfl", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list.Game != nil || list.Games == nil || *list.Games.Count != 2 || len(list.Games.Games) != 2 {
+		t.Fatalf("GetPlays(list) = %+v", list)
+	}
+	if first, second := list.Games.Games[0], list.Games.Games[1]; *first.PlayCount != 112 || *first.State != "in" ||
+		*second.State != "pre" || second.AsOf != nil || *list.Games.Meta.Timestamp != "2026-10-25T18:41:18.000Z" {
+		t.Errorf("games %+v", list.Games.Games)
+	}
+	// CONTROL: the game list decoded as one game's answer has no plays and no event id,
+	// which is why GetPlays picks the type by the event id it was given.
+	var wrong PlaysResponse
+	if err := decodeBody([]byte(games), &wrong); err != nil || wrong.EventID != nil || wrong.Plays != nil {
+		t.Fatalf("control: %+v (%v)", wrong, err)
+	}
+
+	update, err := Decode[PlaysUpdate](json.RawMessage(`{"type": "delta", "timestamp": "2026-10-25T18:41:19.000Z", "sport": "nhl",
+		"events": [{"eventId": "nhl:Boston Bruins@Toronto Maple Leafs-20261025", "home": "Toronto Maple Leafs", "away": "Boston Bruins",
+			"state": "in", "count": 201, "plays": [{"id": "251", "seq": 251, "period": 1, "clock": "12:04", "secondsRemaining": 724,
+				"team": "home", "type": "goal", "text": "Goal", "scoringPlay": true, "homeScore": 1, "awayScore": 0, "wallclock": null,
+				"detail": {"situationCode": "1551", "zone": "O", "shotType": "wrist",
+					"players": [{"role": "scorer", "id": 8479318, "name": "Auston Matthews", "sweater": 34}]}}]}]}`))
+	if err != nil || *update.Type != "delta" || *update.Sport != "nhl" || len(update.Events) != 1 || *update.Events[0].Count != 201 {
+		t.Fatalf("plays-update %+v (%v)", update, err)
+	}
+	// The subscribed acknowledgement echoes the plays opt-in as the server kept it.
+	ack, err := Decode[ClientSubscription](json.RawMessage(`{"sports": ["nfl"], "plays": ["nfl", "nba"], "scores": true}`))
+	if err != nil || ack.Plays == nil || string(*ack.Plays) != `["nfl", "nba"]` {
+		t.Errorf("subscribed ack plays %v (%v)", ack.Plays, err)
+	}
+	goal := update.Events[0].Plays[0]
+	hd, err := Decode[HockeyPlayDetail](*goal.Detail)
+	if err != nil || !*goal.ScoringPlay || *hd.ShotType != "wrist" || len(hd.Players) != 1 || *hd.Players[0].Name != "Auston Matthews" {
+		t.Errorf("goal %+v / %+v (%v)", goal, hd, err)
+	}
+}
+
+// fillParams sets every field of the struct p points to, so a field a method does
+// not send shows up as a missing query key.
+func fillParams(t *testing.T, p any) {
+	t.Helper()
+	v := reflect.ValueOf(p).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		switch f.Kind() {
+		case reflect.String:
+			f.SetString("x" + strconv.Itoa(i))
+		case reflect.Int, reflect.Int64:
+			f.SetInt(int64(i + 1))
+		case reflect.Float64:
+			f.SetFloat(float64(i) + 1.5)
+		case reflect.Bool:
+			f.SetBool(true)
+		case reflect.Slice:
+			f.Set(reflect.ValueOf([]string{"a", "b"}))
+		case reflect.Pointer:
+			if f.Type().Elem().Kind() != reflect.Float64 {
+				t.Fatalf("fillParams: field %s of type %s", v.Type().Field(i).Name, f.Type())
+			}
+			f.Set(reflect.ValueOf(Ptr(float64(i + 7))))
+		default:
+			t.Fatalf("fillParams: field %s of kind %s", v.Type().Field(i).Name, f.Kind())
+		}
+	}
+}
+
+// Every field of a params struct reaches the wire: a field added to the struct but
+// not to its query builder would type-check and never be sent.
+func TestParamsReachTheWire(t *testing.T) {
+	api := newFakeAPI(t, ok(`{}`))
+	c := testClient(t, api.URL)
+	ctx := context.Background()
+	var (
+		odds    OddsParams
+		props   PropsParams
+		lines   EVLinesParams
+		propsEV PropsEVParams
+		plays   PlaysParams
+	)
+	for _, p := range []any{&odds, &props, &lines, &propsEV, &plays} {
+		fillParams(t, p)
+	}
+	lines.Markets = []string{"spreads", "totals"}
+	numFields := func(p any) int { return reflect.TypeOf(p).Elem().NumField() }
+	for _, tc := range []struct {
+		name string
+		call func() error
+		want int
+	}{
+		{"GetOdds", func() error { _, err := c.GetOdds(ctx, "nfl", &odds); return err }, numFields(&odds)},
+		{"GetSpreads", func() error { _, err := c.GetSpreads(ctx, "nfl", &odds); return err }, numFields(&odds)},
+		{"GetProps", func() error { _, err := c.GetProps(ctx, "nba", &props); return err }, numFields(&props)},
+		// CONTROL: GetBookProps leaves Books out on purpose, and the count shows it.
+		{"GetBookProps", func() error { _, err := c.GetBookProps(ctx, "nba", "fanduel", &props); return err }, numFields(&props) - 1},
+		{"GetEVLines", func() error { _, err := c.GetEVLines(ctx, "nfl", &lines); return err }, numFields(&lines)},
+		{"GetPropsEV", func() error { _, err := c.GetPropsEV(ctx, "nba", &propsEV); return err }, numFields(&propsEV)},
+		// eventId plus every field.
+		{"GetPlays", func() error { _, err := c.GetPlays(ctx, "nfl", "e1", &plays); return err }, numFields(&plays) + 1},
+	} {
+		n := api.count()
+		if err := tc.call(); err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		q, err := url.ParseQuery(api.req(n).Query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(q) != tc.want {
+			t.Errorf("%s sent %d query keys (%s), want %d", tc.name, len(q), api.req(n).Query, tc.want)
+		}
+	}
+	if odds.State == "" || props.State == "" {
+		t.Fatal("control: fillParams left State empty")
+	}
+}
+
+// TestV2MarketFilterMeta decodes the meta a v2 book adds for the marketIds filter: the
+// default-excluded entries on a default request, the echo and count on a filtered one.
+func TestV2MarketFilterMeta(t *testing.T) {
+	const plain = `{"success": true, "sport": "nfl", "league": "nfl", "marketCount": 1, "etag": "\"e1\"",
+		"data": {"main": {"x": 1}},
+		"meta": {"source": "draftkings-v2", "status": "ok", "ageSeconds": 4, "timestamp": "2026-10-25T18:00:00.000Z",
+			"defaultExcluded": {"marketIds": "props-*", "count": 41, "include": "?marketIds=props-*"},
+			"marketAges": {"main": 4, "live": 1.5}}}`
+	const filtered = `{"success": true, "sport": "nfl", "league": "nfl", "marketCount": 2, "data": {"props-1": {}, "props-2": {}},
+		"meta": {"source": "draftkings-v2", "status": "ok", "marketIds": "props-*", "marketsFilteredOut": 3,
+			"marketAges": {"props-1": 120, "props-2": 95}}}`
+	api := newFakeAPI(t, func(r *http.Request, _ int) (int, http.Header, string) {
+		if r.URL.Query().Get("marketIds") != "" {
+			return 200, nil, filtered
+		}
+		return 200, nil, plain
+	})
+	c := testClient(t, api.URL)
+	ctx := context.Background()
+
+	res, err := c.GetV2(ctx, "draftkings", "nfl", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := res.Meta
+	if m.DefaultExcluded == nil || *m.DefaultExcluded.MarketIds != "props-*" || *m.DefaultExcluded.Count != 41 ||
+		*m.DefaultExcluded.Include != "?marketIds=props-*" || m.MarketIds != nil || m.MarketsFilteredOut != nil ||
+		m.MarketAges["main"] != 4 || m.MarketAges["live"] != 1.5 {
+		t.Errorf("default meta %+v", m)
+	}
+
+	res, err = c.GetV2Markets(ctx, "draftkings", "nfl", "", "props-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = res.Meta
+	if m.DefaultExcluded != nil || *m.MarketIds != "props-*" || *m.MarketsFilteredOut != 3 || len(m.MarketAges) != 2 ||
+		m.MarketAges["props-1"] != 120 {
+		t.Errorf("filtered meta %+v", m)
+	}
+	// CONTROL: the filter fields are read from the body, not invented: a body without
+	// them leaves them unset.
+	var bare V2BookResponse
+	if err := decodeBody([]byte(`{"success": true, "meta": {"source": "x"}}`), &bare); err != nil ||
+		bare.Meta.DefaultExcluded != nil || bare.Meta.MarketIds != nil || bare.Meta.MarketAges != nil {
+		t.Fatalf("control: %+v (%v)", bare.Meta, err)
+	}
+}
+
+// TestBoardMetaFields decodes meta fields the API already sends: the exchange echo and
+// league list of an odds board, the retired props books, and the odds line history's
+// data quality when every snapshot was withheld.
+func TestBoardMetaFields(t *testing.T) {
+	ctx := context.Background()
+	api := newFakeAPI(t, ok(`{"success": true, "data": {}, "meta": {"sport": "nfl", "excludeExchanges": true,
+		"exchangeBooks": ["kalshi", "polymarket", "novig"], "available_leagues": ["nfl"],
+		"fanduelMarketIds": {"state": "co", "available": false, "mapped": 0, "unmapped": 0, "timestamp": null}}}`))
+	odds, err := testClient(t, api.URL).GetOdds(ctx, "nfl", &OddsParams{ExcludeExchanges: true, State: "co"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := odds.Meta; !*m.ExcludeExchanges || len(m.ExchangeBooks) != 3 || m.AvailableLeagues[0] != "nfl" ||
+		*m.FanduelMarketIds.State != "co" || *m.FanduelMarketIds.Available || m.FanduelMarketIds.Timestamp != nil {
+		t.Errorf("odds meta %+v", m)
+	}
+
+	api = newFakeAPI(t, ok(`{"success": true, "data": [], "meta": {"sport": "nba",
+		"retiredBooks": {"bet365": "GET /api/v2/bet365/nba"},
+		"fanduelMarketIds": {"state": "ks", "mapped": 812, "unmapped": 3, "timestamp": "2026-10-25T18:00:00.000Z"}}}`))
+	props, err := testClient(t, api.URL).GetProps(ctx, "nba", &PropsParams{Books: []string{"bet365", "fanduel"}, State: "ks"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := props.Meta; m.RetiredBooks["bet365"] != "GET /api/v2/bet365/nba" || *m.FanduelMarketIds.Mapped != 812 || *m.FanduelMarketIds.Unmapped != 3 {
+		t.Errorf("props meta %+v", m)
+	}
+
+	api = newFakeAPI(t, ok(`{"success": true, "data": {"eventId": "e", "book": "pinnacle", "dataPoints": 0, "history": [],
+		"dataQuality": {"allPricesSuppressed": true, "note": "every snapshot of this market was withheld", "suspectPricesExcluded": true}}}`))
+	hist, err := testClient(t, api.URL).GetOddsHistory(ctx, OddsHistoryParams{EventID: "e", Book: "pinnacle", Market: "h2h", Side: "home"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := hist.Data.DataQuality; q == nil || !*q.AllPricesSuppressed || !*q.SuspectPricesExcluded || q.MainLineOnly != nil ||
+		*q.Note != "every snapshot of this market was withheld" {
+		t.Errorf("history data quality %+v", q)
 	}
 }

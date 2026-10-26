@@ -51,11 +51,27 @@ type OddsParams struct {
 	// Market narrows the board to one market. Only GetOdds reads it; the
 	// per-market routes report a differing value in meta.ignored_params.
 	Market string
-	// ExcludeExchanges drops kalshi, polymarket and novig.
+	// ExcludeExchanges leaves the prediction-market exchanges (kalshi, polymarket
+	// and novig) out of the board, keeping only sportsbooks. It is sent as
+	// exclude_exchanges=true only when set, and Meta.ExcludeExchanges echoes it
+	// (Meta.ExchangeBooks lists the exchanges the board can carry). If it removes
+	// every book named in Books, the API answers 400.
 	ExcludeExchanges bool
 	// Alternates includes alternate lines.
 	Alternates bool
 	League     string
+	// State is a two-letter FanDuel state code (for example "co") whose marketIds
+	// to serve on the FanDuel outcomes. FanDuel issues a different marketId in every
+	// state while the selectionId is the same everywhere, so a bet-slip link is
+	// built with the state's marketId on that state's FanDuel site. FanDuel deepLink
+	// fields are left out of a state response (they point at the New Jersey site),
+	// and an outcome with no id for the state has its marketId omitted.
+	// Meta.FanduelMarketIds reports what was mapped; Available false means the sport
+	// has no ids for that state and every FanDuel marketId is omitted (the other
+	// books are served as usual). A value that is not two letters is named in
+	// meta.ignored_params. Default (empty): New Jersey, the feed's own ids. REST
+	// only: odds-update carries the New Jersey ids.
+	State string
 }
 
 func (p *OddsParams) query() url.Values {
@@ -68,6 +84,7 @@ func (p *OddsParams) query() url.Values {
 	setTrue(q, "exclude_exchanges", p.ExcludeExchanges)
 	setTrue(q, "alternates", p.Alternates)
 	setStr(q, "league", p.League)
+	setStr(q, "state", p.State)
 	return q
 }
 
@@ -83,6 +100,35 @@ type EVParams struct {
 	// set. The first request for a sport starts their prices, which appear within
 	// about 15 seconds and stay on while you keep asking.
 	Venues bool
+}
+
+// EVLinesParams filters GetEVLines.
+type EVLinesParams struct {
+	// Markets is "spreads", "totals" or both, sent as one comma list under
+	// market. Nil or empty asks for both. Any other value is refused before a
+	// request (see GetEVLines).
+	Markets []string
+	// MinEV is the least EV% to include (0 means every positive EV; the API caps
+	// it at meta.max_ev).
+	MinEV float64
+	// Book restricts the result to one sportsbook key.
+	Book string
+}
+
+// PropsEVParams filters GetPropsEV.
+type PropsEVParams struct {
+	// MinEV is the least EV% of an opportunity (0 means every positive EV; at
+	// most meta.max_ev).
+	MinEV float64
+	// Book restricts the opportunities to one sportsbook key.
+	Book string
+	// Player is a partial match on the player name, as on GetProps.
+	Player string
+	// Category is one prop category (the GetProps category names and aliases).
+	Category string
+	// All also lists the props with no positive-EV price, each with its fair
+	// line. It is sent as all=true only when set.
+	All bool
 }
 
 // DayScheduleParams selects GetDaySchedule. Every field is optional: the zero
@@ -107,6 +153,17 @@ type PropsParams struct {
 	Player   string
 	Category string
 	Books    []string
+	// State is a two-letter FanDuel state code (for example "ks") whose marketIds
+	// to serve on the FanDuel props and alternate-line rungs, on GetProps and
+	// GetBookProps(ctx, sport, "fanduel", ...). FanDuel issues a different marketId
+	// in every state while the selectionId is the same everywhere, so a bet-slip
+	// link built with another state's marketId fails. A market with no id for the
+	// state has its marketId omitted rather than served as New Jersey's;
+	// Meta.FanduelMarketIds (GetProps) or Meta.MarketIds (GetBookProps for fanduel)
+	// reports what was mapped. A state the API does not serve is a 404, a code that
+	// is not two letters a 400. Default (empty): New Jersey, the feed's own ids. REST
+	// only: the props WebSocket events carry the New Jersey ids.
+	State string
 }
 
 func (p *PropsParams) query(withBooks bool) url.Values {
@@ -120,7 +177,22 @@ func (p *PropsParams) query(withBooks bool) url.Values {
 	if withBooks {
 		setList(q, "books", p.Books)
 	}
+	setStr(q, "state", p.State)
 	return q
+}
+
+// PlaysParams narrows GetPlays for one game. Without an event id GetPlays refuses
+// a Since or Limit.
+type PlaysParams struct {
+	// Since returns the plays whose Seq is greater than this, plus every play
+	// amended in the last 2 minutes whatever its Seq: pass the LastSeq of the
+	// previous response (Since: res.Game.LastSeq). Nil sends nothing (every play);
+	// 0 is sent. The API takes a non-negative integer and answers 400 to anything
+	// else.
+	Since *float64
+	// Limit returns only the last Limit plays (1 to 5000), after Since. 0 sends
+	// nothing.
+	Limit int
 }
 
 // PropsHistoryParams selects the line history of one prop (GetPropsHistory).
@@ -373,9 +445,12 @@ type InjuriesParams struct {
 
 // SgpBuildParams is the body of BuildSgp.
 type SgpBuildParams struct {
-	// EventID is the book's event id, as a string.
+	// EventID is the book's event id from GetSgpEvents, as a string. SgpEvent.EventID
+	// is raw JSON: a number on FanDuel (send its digits) and a JSON string on every
+	// other book, such as BetMGM NFL's "6:43680" (send it unquoted).
 	EventID string `json:"eventId"`
-	// Book is "fanduel", "draftkings" or "hardrock".
+	// Book is "fanduel", "draftkings", "hardrock", "betrivers", "ballybet" or
+	// "betmgm". Any other value is a 400 with code SGP_BOOK_UNSUPPORTED.
 	Book string `json:"book"`
 	// Legs holds 2 to 12 legs.
 	Legs []SgpLeg `json:"legs"`

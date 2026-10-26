@@ -15,6 +15,19 @@ const (
 	// live board about every 30 seconds and a delta within a few seconds of a
 	// change. Opt in with Subscription.Scores.
 	EventScoresUpdate = "scores-update"
+	// EventPlaysUpdate is play-by-play for one sport (nba, nhl, nfl, ncaaf),
+	// payload PlaysUpdate: within a few seconds of a new play, each game with the
+	// plays new or amended since the previous message. There is no full message:
+	// start from GetPlays and merge plays by ID. Opt in with Subscription.Plays.
+	EventPlaysUpdate = "plays-update"
+	// EventFanaticsMarketsBooksV2Update is the Fanatics Markets live order books,
+	// payload V2Update: books-* entries, whole or patch (merge by symbol; null means
+	// that book is gone), RemovedIds, and about once a minute the league's full list
+	// of books entries. Opt in with "books": true next to the sports of the
+	// fanaticsmarkets v2 subscription, for example
+	// map[string]map[string]any{"fanaticsmarkets": {"nfl": "*", "books": true}}.
+	// The events alone stay on V2EventName("fanaticsmarkets").
+	EventFanaticsMarketsBooksV2Update = "fanaticsmarkets-books-v2-update"
 	// EventSubscribed acknowledges subscribe and update-subscription with the
 	// subscription in force.
 	EventSubscribed = "subscribed"
@@ -61,7 +74,8 @@ func knownEvents() map[string]bool {
 	for _, n := range []string{
 		EventOddsUpdate, EventEsportsUpdate, EventPinnacleRealtime, EventPinnacleRealtimeSync,
 		EventPS3838Realtime, EventServerHeartbeat, EventServerNotice, EventProphetXUpdate,
-		EventOneXBetUpdate, EventScoresUpdate, EventSubscribed, EventError,
+		EventOneXBetUpdate, EventScoresUpdate, EventPlaysUpdate, EventFanaticsMarketsBooksV2Update,
+		EventSubscribed, EventError,
 	} {
 		known[n] = true
 	}

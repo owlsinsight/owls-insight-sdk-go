@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	owls "github.com/owlsinsight/owls-insight-sdk-go"
 )
@@ -74,6 +75,30 @@ func ExampleClient_IterHistoryOdds() {
 			log.Fatal(err)
 		}
 		fmt.Println(*snap.RecordedAt, *snap.Market, *snap.Price)
+	}
+}
+
+func ExampleClient_GetPlays() {
+	c, err := owls.NewClient(os.Getenv("OWLS_INSIGHT_API_KEY"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	plays := map[string]owls.Play{} // by play id: a play can be amended after it is first published
+	p := &owls.PlaysParams{}
+	for {
+		res, err := c.GetPlays(ctx, "nfl", "nfl:Cincinnati Bengals@Baltimore Ravens-20261025", p)
+		if err != nil {
+			log.Fatal(err) // a 404 once the game is no longer covered
+		}
+		for _, play := range res.Game.Plays {
+			plays[*play.ID] = play
+		}
+		if res.Game.State != nil && *res.Game.State == "post" {
+			return
+		}
+		p.Since = res.Game.LastSeq // the new plays and the amended ones next time
+		time.Sleep(10 * time.Second)
 	}
 }
 
