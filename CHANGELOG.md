@@ -4,6 +4,112 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.9.0] - 2026-10-26
+
+### Added
+
+- `GetFair(ctx, sport)`: the Owls fair line, `GET /api/v1/{sport}/fair` (MVP and Hall of
+  Fame). Every upcoming game's fair moneyline, spread and total, each side as a
+  probability and as American odds, anchored on Pinnacle (`FairResponse`, `FairEvent`,
+  `FairPrice`, `FairLineSide`). A market is nil when it has no current fair. Spreads and
+  totals are priced at Pinnacle's main number for nba, ncaab, nfl, ncaaf, nhl, mlb, wnba
+  and soccer (`Meta.Markets`); other sports carry the moneyline only.
+- `GetEVLines(ctx, sport, *EVLinesParams)`: positive EV on spreads and totals,
+  `GET /api/v1/{sport}/ev?market=` with `spreads`, `totals` or both (the default when
+  `Markets` is empty), plus `MinEV` and `Book`. The math of `GetEV`, scored at Pinnacle's
+  main number against books that hang exactly that number; each opportunity has its own
+  `Point` (`EVLinesResponse`, `EVLineEvent`, `EVLineOpportunity`). The route answers
+  with the moneyline board unless every market it is sent is spreads or totals, so
+  `Markets` is checked before any request, as the route reads it (split on commas,
+  trimmed, lower-cased, empty entries dropped): any other value (`h2h`, `spread`,
+  `moneyline`) is an error, and so is a `Markets` with no entry left or an answer that
+  reports the moneyline market. The moneyline is `GetEV`, which is unchanged.
+- `GetPropsEV(ctx, sport, *PropsEVParams)`: the fair line and positive-EV prices of
+  player props, `GET /api/v1/{sport}/props/ev` (`MinEV`, `Book`, `Player`, `Category`,
+  and `All`, sent as `all=true` only when set, to list every Pinnacle-priced prop with
+  its fair line). `PropsEVResponse`, `PropsEVRow`, `PropsEVOpportunity`.
+- Play-by-play for NBA, NHL, NFL and NCAAF: `GetPlays(ctx, sport, eventID, *PlaysParams)`
+  returns `Plays` with exactly one field set: `Game` (`PlaysResponse`, every play of one
+  game in play or ended within the last 6 hours, by the event id `GetScores` gives the
+  game) or, with an empty event id, `Games` (`PlaysGamesResponse`, the games that have
+  play-by-play). `PlaysParams.Since` takes the previous `LastSeq` as it is (nil sends
+  nothing, 0 is sent) and returns the new plays plus every play amended in the last 2
+  minutes; `Limit` the last n. Merge plays by `ID`. `Play.Detail` is the sport's own
+  fields as raw JSON: `Decode[FootballPlayDetail]`, `Decode[HockeyPlayDetail]` or
+  `Decode[BasketballPlayDetail]`. A game with no play-by-play is a 404. Without an event
+  id, a `Since` or `Limit` is an error rather than a silent game list.
+- `Subscription.Plays` and `EventPlaysUpdate`: opt in to `plays-update` with `true` or a
+  list of sport keys and decode it with `Decode[PlaysUpdate]`: one message per sport
+  within a few seconds of a new play, with the plays new or amended since the previous
+  message. There is no full message: start from `GetPlays`. Same access as
+  `scores-update`. The generated `ClientSubscription` (the `subscribed`
+  acknowledgement) has `Plays`, the opt-in as the server kept it.
+- `OddsParams.State` (`GetOdds`, `GetMoneyline`, `GetSpreads`, `GetTotals`) and
+  `PropsParams.State` (`GetProps`, `GetBookProps` for `fanduel`): a two-letter FanDuel
+  state code whose marketIds to serve on the FanDuel prices, since FanDuel issues a
+  different marketId in every state while the selectionId is the same everywhere. An
+  outcome with no id for the state has its marketId omitted, and the odds routes leave
+  the FanDuel `deepLink` out. `OddsMeta.FanduelMarketIds` (`FanDuelStateOddsMeta`, with
+  `Available`) and the props `Meta.FanduelMarketIds` / `Meta.MarketIds`
+  (`FanDuelStateMarketIdsMeta`) report what was mapped. Default New Jersey; REST only.
+- Fanatics Markets live order books: `EventFanaticsMarketsBooksV2Update`
+  (`fanaticsmarkets-books-v2-update`, decodes into `V2Update`), opted in with
+  `"books": true` next to the sports of the `fanaticsmarkets` v2 subscription, for
+  example `{"fanaticsmarkets": {"nfl": "*", "books": true}}` (the generated
+  `FanaticsMarketsV2BookSubscription` has `Books`). On REST the `books-*` entries are
+  left out unless asked for: `GetV2Markets(ctx, "fanaticsmarkets", "nfl", "", "books-*")`.
+- `V2BookResponse.Meta` (`V2Meta`) carries the `marketIds` filter fields of the v2 books
+  that read it: `DefaultExcluded` (`MarketIds`, `Count`, `Include`: on a default request,
+  the entries the book left out and the value that includes them), `MarketIds` (the
+  echo of your filter) and `MarketsFilteredOut`. `MarketAges` (seconds since each
+  returned entry was last confirmed, by entry id) is sent only by the books that opt in:
+  DraftKings, Fanatics Markets and Polymarket US.
+- Polymarket US, book `polymarketus` (the CFTC-regulated US exchange, not global
+  Polymarket), through `GetV2`, `GetV2Markets` and `GetV2Leagues`; `league` is required
+  for every sport. REST only. An event's full market catalog is `full-<eventSlug>`, left
+  out unless asked for: `GetV2Markets(ctx, "polymarketus", "nfl", "nfl", "full-*")`.
+- `DataKeyForbiddenCode`: the `Code` of the 403 that refuses a data-only key (Sign in with
+  Owls) on the webhook API or the betslip parse. Every other 403 stays `FORBIDDEN`; both
+  match `ErrForbidden`.
+- From the spec: `ScoreStatus.Clock` (`ScoreClock`: `SecondsRemaining`, `Running`,
+  `Intermission`, `Period`, `AsOf`) on NBA, NHL, NFL and NCAAF games in play, on
+  `GetScores` and `scores-update`; `RecordedAtUtc` on history odds and props snapshots
+  (most rows stored before 2026-09-16 hold US Eastern wall time in `RecordedAt`);
+  `TimestampUtc` on the odds and props line history, read when the API sends it: API
+  v2.504.0 does not, and the API release after it does, so until then it stays nil;
+  `PropsSnapshot.QualityFlags` and
+  `AmericanPrice`, and `HistoryPropsResponse.Data.DataQuality`
+  (`HistoryPropsDataQuality`) when a row on the page is flagged; `PlayerProp.ComboType`,
+  `ComboStat`, `Players` and `RawMarketName` on multi-player props;
+  `SgpResolvedLeg.BookSelection` (`SgpBookSelection`); the Stake bet feed leg's
+  `Fixture.Slug` and `Fixture.Tournament`. Fields the API already sent: on `OddsMeta`,
+  `ExcludeExchanges` (the echo of `OddsParams.ExcludeExchanges`), `ExchangeBooks` (the
+  exchanges the board can carry) and `AvailableLeagues` (every league key on the board);
+  the props `Meta.RetiredBooks` (a book named in `Books` whose props moved, with where
+  they are served now); and `OddsHistoryResponse.Data.DataQuality` on the odds line
+  history (`AllPricesSuppressed` when every snapshot of the market was withheld).
+
+### Changed
+
+- `spec/` is the TypeScript SDK's 0.87.0 spec and the models are regenerated from it.
+- `StakeBetLeg.Fixture` is now the named type `StakeBetLegFixture`. In 0.8.0 it was an
+  anonymous struct with `ID`, `Name` and `StartTime`: code that spelled out that
+  anonymous struct type, for example a test fake building a `StakeBetLeg`, no longer
+  compiles (build the fixture with `&owls.StakeBetLegFixture{...}`). Reading its fields
+  is unaffected.
+- A 403 that refuses a data-only key now has `Code` `data_key_forbidden`
+  (`DataKeyForbiddenCode`) instead of `FORBIDDEN`. Code that compares `Code` with
+  `FORBIDDEN` sees the new value for those keys; `errors.Is(err, owls.ErrForbidden)`
+  still matches every 403.
+- The same game parlay docs name the six books the API prices: fanduel, draftkings,
+  hardrock, betrivers, ballybet and betmgm. `SgpBuildParams.EventID` is a string for every
+  book: FanDuel's id is a number in `GetSgpEvents`, every other book's a string (BetMGM
+  NFL: `6:43680`).
+- `OddsParams.ExcludeExchanges` (already sent as `exclude_exchanges=true`) documents the
+  400 when it removes every book named in `Books`.
+- README: the fair line, EV on spreads, totals and props, play-by-play, FanDuel state
+  marketIds, Polymarket US and the Fanatics Markets order books.
+
 ## [0.8.0] - 2026-10-15
 
 ### Added

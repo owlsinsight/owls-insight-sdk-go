@@ -62,6 +62,62 @@ the game was not found there, and `Meta.Status` (`ok`, `partial`, `stale` or `no
 says whether the answer is complete and fresh. `GetSchedule(ctx, sport)` is the older
 per-sport list of upcoming games, unchanged.
 
+FanDuel issues a different marketId in every state while the selectionId is the same
+everywhere, so a bet-slip link built with New Jersey's marketId fails in another state.
+Set `State` (a two-letter code such as `"co"`) on `OddsParams` (`GetOdds` and the
+per-market routes) or `PropsParams` (`GetProps`, `GetBookProps` for `fanduel`) to get
+that state's marketIds on the FanDuel prices. An outcome with no id for the state has its
+marketId omitted, and the odds routes leave the FanDuel `deepLink` out.
+`Meta.FanduelMarketIds` reports what was mapped (on the odds routes, `Available` false
+means no ids for that sport and state). The WebSocket events carry the New Jersey ids.
+
+### Fair line and EV
+
+MVP and Hall of Fame plans read the fair line, anchored on Pinnacle's de-vigged price, and
+the prices that beat it:
+
+```go
+fair, err := c.GetFair(ctx, "nfl") // every upcoming game's fair moneyline, spread and total
+for _, g := range fair.Data {
+	if g.Spread != nil && g.Spread.Home != nil { // nil when there is no current fair
+		fmt.Println(*g.AwayTeam, "@", *g.HomeTeam, *g.Spread.Home.Point, *g.Spread.Home.American)
+	}
+}
+
+ml, err := c.GetEV(ctx, "nfl", &owls.EVParams{MinEV: 2})                                   // moneyline
+lines, err := c.GetEVLines(ctx, "nfl", &owls.EVLinesParams{Markets: []string{"spreads"}}) // spreads, totals or both
+props, err := c.GetPropsEV(ctx, "nba", &owls.PropsEVParams{MinEV: 2, Player: "Tatum"})    // player props
+```
+
+`GetEVLines` scores spreads and totals at Pinnacle's main number, against books that hang
+exactly that number, and each opportunity carries its own `Point`. Its `Markets` takes
+`spreads` and `totals` only (nil means both); anything else is refused before a request,
+because the route would answer with the moneyline board. `GetPropsEV` compares
+a price only at the same player, category and line; `All: true` also lists the props with
+no positive-EV price, each with its fair line. Spreads, totals and props are supported for
+nba, ncaab, nfl, ncaaf, nhl, mlb, wnba and soccer.
+
+### Play-by-play
+
+`GetPlays(ctx, sport, eventID, params)` returns every play of an NBA, NHL, NFL or NCAAF
+game in play (or ended within the last 6 hours), oldest first, by the event id `GetScores`
+gives the game; with an empty event id it lists the games that have play-by-play
+(`res.Games`), and a `Since` or `Limit` is refused. Before tip-off, and for any other id,
+it is a 404.
+
+```go
+p := &owls.PlaysParams{}
+res, err := c.GetPlays(ctx, "nfl", eventID, p)
+for _, play := range res.Game.Plays {
+	plays[*play.ID] = play // merge by id: a play can be amended after it is first published
+}
+p.Since = res.Game.LastSeq // next call: the new plays, plus any amended in the last 2 minutes
+```
+
+`Play.Detail` is the sport's own fields as raw JSON: decode it with
+`owls.Decode[owls.FootballPlayDetail]`, `HockeyPlayDetail` or `BasketballPlayDetail`. The
+same plays are pushed on `plays-update` (see WebSocket).
+
 ### Options
 
 | Option | Default | |
@@ -84,13 +140,16 @@ _, err := c.GetRealtime(ctx, "nba", "")
 var apiErr *owls.APIError
 switch {
 case errors.Is(err, owls.ErrUnauthorized): // 401: bad or missing key
-case errors.Is(err, owls.ErrForbidden):    // 403: the plan does not include it
+case errors.Is(err, owls.ErrForbidden):    // 403: the plan does not include it (Code FORBIDDEN), or owls.DataKeyForbiddenCode
 case errors.Is(err, owls.ErrNotFound):     // 404
 case errors.Is(err, owls.ErrRateLimited) && errors.As(err, &apiErr):
 	time.Sleep(apiErr.RetryAfter) // 429; Code is HISTORY_CONCURRENCY or SGP_RATE_LIMIT when the API says so
 case errors.Is(err, owls.ErrServiceBusy):  // 503
 }
 ```
+
+A data-only key (Sign in with Owls) is refused on the webhook API and the betslip parse
+with `Code == owls.DataKeyForbiddenCode`; use a key from your dashboard there.
 
 `Message` is the body's `message`, else its `error`, else the HTTP status text. A
 timeout or network failure is returned wrapped, so `errors.Is(err,
@@ -162,7 +221,7 @@ A new v2 book needs no SDK release; pass its key as the URL has it, including on
 starts with a digit (`4casters`, `888sport`). `owls.V2EventName(book)` gives its
 WebSocket event (`<book>-v2-update`, except BetOnline's `betonline-realtime`). Some
 books are REST only and send no event: 888sport, bookmaker, bovada, hardrock, novig,
-stake, thescore and underdog. `mma` is REST only on kalshi and polymarket, whose events
+polymarketus, stake, thescore and underdog. `mma` is REST only on kalshi and polymarket, whose events
 carry their other sports. Every v2 event decodes into `owls.V2Update`. Books differ
 in what they send, so `Markets` (a list of `{marketId, hash, kind, data}` or a count),
 `Timestamp` (epoch milliseconds or an ISO string), `Events`, `Data`, `Raw` and the
@@ -171,7 +230,32 @@ fields only some books send (`Count`, `TotalCount`, `Leagues`, `Heartbeat`,
 
 `GetV2Markets(ctx, book, sport, league, marketIds)` returns only the entries you name:
 a comma-separated list of market ids and prefixes ending in `*` (at most 50), or `*` for
-every entry. DraftKings leaves its US-sport player props (`props-*`) out unless asked for.
+every entry. Every v2 book except bet365, hardrock, mybookie, stake, thunderpick and
+underdog reads it. It is also how you ask for the entries a book leaves out by default:
+DraftKings `props-*` (its US-sport player props), Fanatics Markets `books-*` (its live
+order books) and Polymarket US `full-*` (each event's full market catalog). On a default
+request `Meta.DefaultExcluded` says how many entries were left out and the `marketIds`
+value that includes them; with a filter, `Meta.MarketIds` echoes it and
+`Meta.MarketsFilteredOut` counts what it left out. DraftKings, Fanatics Markets and
+Polymarket US also send `Meta.MarketAges`, the seconds since each returned entry was
+last confirmed.
+
+```go
+books, err := c.GetV2Markets(ctx, "fanaticsmarkets", "nfl", "", "books-*")
+full, err := c.GetV2Markets(ctx, "polymarketus", "nfl", "nfl", "full-*")
+```
+
+**Polymarket US** (book `polymarketus`) is the CFTC-regulated US exchange, not global
+Polymarket: its own events, ids and prices, probabilities in 0..1 sent as strings. It is
+REST only, and `league` is required for every sport (`GetV2Leagues`; season-long futures
+sit under `<league>-futures`, such as `nfl-futures`).
+
+**Fanatics Markets order books** arrive on their own event,
+`owls.EventFanaticsMarketsBooksV2Update` (`fanaticsmarkets-books-v2-update`, decoded into
+`owls.V2Update`), when the subscription asks for them next to its sports:
+`V2: map[string]map[string]any{"fanaticsmarkets": {"nfl": "*", "books": true}}`. Each
+market is a `books-*` entry, whole or a patch (merge by symbol; null means that book is
+gone), with `RemovedIds`. `fanaticsmarkets-v2-update` keeps carrying the events alone.
 
 **Prop Builder** (book `propbuilder`; sports `nfl`, `ncaaf`, `nba`, `wnba`, `nhl` and
 `mlb`, each one league, so pass an empty league) is a pregame player-props board:
@@ -223,6 +307,10 @@ res, err := c.BuildSgp(ctx, "mlb", owls.SgpBuildParams{
 	},
 })
 ```
+
+The API prices parlays on fanduel, draftkings, hardrock, betrivers, ballybet and betmgm
+(`GetSgpEvents(ctx, sport, book)` lists each book's events). `EventID` is a string for
+every book: FanDuel's id is a number in `GetSgpEvents`, every other book's a string.
 
 A 422 that reports unresolved legs or a refused slip is returned, not an error: check
 `res.Success` and `res.ReasonCode`. A 503 with `Code == owls.SgpNoPriceCode` means no
@@ -365,7 +453,7 @@ These return `owls.ErrNotConnected` while the stream is not connected; use
 already in progress. Once a call has stored its change it writes it before returning
 (within 10 s), so calls reach the server in the order they return.
 
-Two `Subscription` fields are opt-ins rather than filters:
+Three `Subscription` fields are opt-ins rather than filters:
 
 - `Realtime: &owls.RealtimeFeeds{PS3838: owls.Ptr(false)}` stops `ps3838-realtime` for the
   connection and keeps `pinnacle-realtime` (default: both). Only a literal false counts.
@@ -375,6 +463,10 @@ Two `Subscription` fields are opt-ins rather than filters:
 - `Scores: true`, or a list of sport keys such as `[]string{"nfl"}`, opts in to
   `scores-update` (`owls.EventScoresUpdate`, payload `owls.ScoresUpdate`): a full live
   board per sport about every 30 seconds and a delta within a few seconds of a change.
+- `Plays: true`, or a list of `nba`, `nhl`, `nfl` and `ncaaf`, opts in to `plays-update`
+  (`owls.EventPlaysUpdate`, payload `owls.PlaysUpdate`): one message per sport within a
+  few seconds of a new play, each game with the plays new or amended since the previous
+  message. There is no full message: start from `GetPlays` and merge plays by `ID`.
 
 **Events.** `On(name, fn)` receives each event's payload as `json.RawMessage`, in order,
 on one goroutine; `owls.Decode[T]` turns it into a model type. Up to 64 events queue for
@@ -458,6 +550,8 @@ running, and do not restart it in a tight loop.
 | `getEsportsRealtime` | `GetEsportsRealtime(ctx, game, league)` | `GET /api/v1/{cs2,lol,valorant,dota2}/realtime` |
 | `getPS3838Realtime` | `GetPS3838Realtime(ctx, sport, league)` | `GET /api/v1/{sport}/ps3838-realtime` |
 | `getEV` | `GetEV(ctx, sport, *EVParams)` | `GET /api/v1/{sport}/ev` |
+| `getEVLines` | `GetEVLines(ctx, sport, *EVLinesParams)` | `GET /api/v1/{sport}/ev?market=spreads,totals` |
+| `getFair` | `GetFair(ctx, sport)` | `GET /api/v1/{sport}/fair` |
 | `getOneXBetSoccer` | `GetOneXBetSoccer(ctx)` | `GET /api/v1/1xbet/soccer` |
 | `getProphetxOdds` | `GetProphetxOdds(ctx, ProphetXOddsParams)` | `GET /api/v1/prophetx/odds` |
 | `getSchedule` | `GetSchedule(ctx, sport)` | `GET /api/v1/{sport}/schedule` |
@@ -465,11 +559,13 @@ running, and do not restart it in a tight loop.
 | `getResults` | `GetResults(ctx, sport)` | `GET /api/v1/{sport}/results` |
 | `getSplits` | `GetSplits(ctx, sport)` | `GET /api/v1/{sport}/splits` |
 | `getScores` | `GetScores(ctx, sport)` | `GET /api/v1/scores/live` (sport `""`), `GET /api/v1/{sport}/scores/live` |
+| `getPlays` | `GetPlays(ctx, sport, eventID, *PlaysParams)` | `GET /api/v1/{sport}/plays` |
 | `getInjuries` | `GetInjuries(ctx, sport, *InjuriesParams)` | `GET /api/v1/{sport}/injuries` |
 | `normalize` | `Normalize(ctx, name, sport)` | `GET /api/v1/normalize` |
 | `normalizeBatch` | `NormalizeBatch(ctx, names, sport)` | `GET /api/v1/normalize/batch` |
 | `getProps` | `GetProps(ctx, sport, *PropsParams)` | `GET /api/v1/{sport}/props` |
 | `getBookProps` | `GetBookProps(ctx, sport, book, *PropsParams)` | `GET /api/v1/{sport}/props/{book}` |
+| `getPropsEV` | `GetPropsEV(ctx, sport, *PropsEVParams)` | `GET /api/v1/{sport}/props/ev` |
 | `getPropsHistory` | `GetPropsHistory(ctx, sport, PropsHistoryParams)` | `GET /api/v1/{sport}/props/history` |
 | `getPropResults` | `GetPropResults(ctx, sport, PropResultsParams)` | `GET /api/v1/{sport}/props/results` |
 | `getPropTrends` | `GetPropTrends(ctx, sport, PropTrendsParams)` | `GET /api/v1/{sport}/props/trends` |
@@ -517,10 +613,10 @@ running, and do not restart it in a tight loop.
 | `listWebhookDeliveries` | `ListWebhookDeliveries(ctx, id, *WebhookDeliveriesParams)` | `GET /api/v1/webhooks/{id}/deliveries` |
 | `verifyWebhookSignature` | `VerifyWebhookSignature(payload, header, secret)` | checks a delivery's `Owls-Signature` |
 
-Three methods answer with one of several shapes and return a small result struct with
+Four methods answer with one of several shapes and return a small result struct with
 exactly one field set: `GetScores` (`All` or `Sport`), `GetBookProps` (`Props`, or
-`BetMGM` for that book) and `GetPropResults` (`Game`, or `Day` when you pass only a
-date). The bet365 props were retired: `GetBookProps` for `bet365` returns an
+`BetMGM` for that book), `GetPropResults` (`Game`, or `Day` when you pass only a
+date) and `GetPlays` (`Game`, or `Games` for an empty event id). The bet365 props were retired: `GetBookProps` for `bet365` returns an
 `*owls.APIError` with status 410. Bet365 game lines are on `GetV2`.
 
 ## Development
