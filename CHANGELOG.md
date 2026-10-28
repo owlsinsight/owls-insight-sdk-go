@@ -41,10 +41,11 @@ All notable changes to this module are documented here. The format follows
   `QuotedAt` (the book's `Meta.PricedAt`), `Book`, `BookEventID`, `EventID` (ours, or nil),
   `LegsHash`, `Legs` (`SgpHistoryLeg`: the leg as sent, the book's `Description` and
   `SelectionIds`), `Sgp` and `Singles` (`SgpHistoryPrice`, a nil entry for a leg with no
-  price), `Fair` (`SgpHistoryFair`, or nil) and `Via`; `Meta` (`SgpHistoryMeta`) echoes the
-  query as applied. Only priced answers are kept, never a cached quote, and only from the
-  day recording was switched on. A GET, so `WithRetry` retries its 429s and 503s. A test
-  checks that `SgpHistoryParams` sends exactly the query parameters the spec gives the path.
+  price), `Fair` (`SgpHistoryFair`, only on a quote from `BuildSgp` with `Fair` set whose
+  estimate was made, else nil) and `Via`; `Meta` (`SgpHistoryMeta`) echoes the query as applied. Only priced
+  answers are kept, never a cached quote, and only from the day recording was switched on.
+  A GET, so `WithRetry` retries its 429s and 503s. A test checks that `SgpHistoryParams`
+  sends exactly the query parameters the spec gives the path.
 - `SgpBuildMeta.LegsHash` (16 hex characters) on every priced 200 of `BuildSgp`, and on
   each priced book's `Result.Meta` on `CompareSgp` and `BatchSgp`
   (`SgpCompareResultMeta.LegsHash`): the key the price history files the parlay under.

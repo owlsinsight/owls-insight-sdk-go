@@ -2275,6 +2275,10 @@ const sgpHistoryBody = `{"success": true, "sport": "nfl", "quotes": [
 	"meta": {"count": 2, "limit": 100, "from": "2026-10-27T18:00:05.000Z", "to": "2026-10-28T18:00:05.000Z",
 		"eventId": "nfl:Cincinnati Bengals@Baltimore Ravens-20261101"}}`
 
+// concurrentLimitMessage is CONCURRENT_LIMIT_MESSAGE (lib/middleware/concurrent-limit-express.ts).
+const concurrentLimitMessage = "Too many requests in flight at once for this API key. Slow down: wait for a response " +
+	"before sending the next request, and retry after the Retry-After delay (seconds)."
+
 func TestGetSgpHistory(t *testing.T) {
 	t.Run("request: every param in the query, a GET with the key and no body", func(t *testing.T) {
 		api := newFakeAPI(t, ok(sgpHistoryBody))
@@ -2392,9 +2396,10 @@ func TestGetSgpHistory(t *testing.T) {
 		{"503 SGP_HISTORY_UNAVAILABLE", 503, http.Header{"Retry-After": {"5"}},
 			`{"error":"SGP history temporarily unavailable","code":"SGP_HISTORY_UNAVAILABLE","message":"The price history could not be read. Retry in a few seconds."}`,
 			ErrServiceBusy, "SGP_HISTORY_UNAVAILABLE", 5 * time.Second, "The price history could not be read. Retry in a few seconds."},
-		{"429 the concurrent request limit", 429, http.Header{"Retry-After": {"2"}},
-			`{"error":"Concurrent request limit exceeded","code":"CONCURRENCY_LIMIT","retryAfterSeconds":2,"limit":3,"current":3,"tier":"mvp"}`,
-			ErrRateLimited, "CONCURRENCY_LIMIT", 2 * time.Second, "Concurrent request limit exceeded"},
+		// The API's body (routes/sgp.ts gate, lib/middleware/concurrent-limit-express.ts).
+		{"429 the concurrent request limit", 429, http.Header{"Retry-After": {"1"}},
+			`{"error":"Concurrent request limit exceeded","code":"CONCURRENCY_LIMIT","message":"` + concurrentLimitMessage + `","retryAfterSeconds":1,"limit":15,"current":15,"tier":"mvp"}`,
+			ErrRateLimited, "CONCURRENCY_LIMIT", time.Second, concurrentLimitMessage},
 		{"400 carries the API's message", 400, nil,
 			`{"error":"Invalid request","message":"the window from 'from' to 'to' must be at most 7 days"}`,
 			nil, "", 0, "the window from 'from' to 'to' must be at most 7 days"},

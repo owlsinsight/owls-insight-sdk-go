@@ -871,9 +871,11 @@ func (c *Client) BatchSgp(ctx context.Context, sport string, p SgpBatchParams) (
 // kept: a refusal, a no-price or a busy answer is not, and a quote served from
 // the short quote cache is not a new quote. The history holds quotes from the day
 // recording was switched on (nothing earlier is filled in), for 90 days. QuotedAt
-// is when the book priced the parlay (Meta.PricedAt on the answer); Fair is our
-// estimate when the quote carried one (Fair: true), otherwise nil. Via is
-// "build", "compare" or "batch"; more can be added.
+// is when the book priced the parlay (Meta.PricedAt on the answer). Fair is our
+// estimate only on a quote from BuildSgp with Fair set whose answer carried a fair
+// price (Fair.Price not nil); otherwise it is nil (CompareSgp and BatchSgp record
+// each book's quote without it, whatever their Fair). Via is "build", "compare"
+// or "batch"; more can be added.
 //
 // Errors are [*APIError] values: a 403 SGP_TIER_REQUIRED (the plan is below
 // MVP); a 503 SGP_FEATURE_DISABLED (the history is not switched on yet;
