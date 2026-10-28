@@ -565,9 +565,10 @@ type SgpHistoryParams struct {
 	// BookEventID is the book's own event id, as GetSgpEvents lists it and BuildSgp
 	// takes it (SgpBuildParams.EventID): FanDuel's numeric id as its digits, every
 	// other book's id unquoted. SgpEvent.EventID and SgpBuildMeta.EventID are raw
-	// JSON, so decode them (or reuse the EventID you sent to BuildSgp): their bytes
-	// keep a string's quotes, and a quoted id matches no quote, so the history comes
-	// back empty rather than refused.
+	// JSON: take a string id with json.Unmarshal into a string and FanDuel's number
+	// as string(raw), or reuse the EventID you sent to BuildSgp. string(raw) of a
+	// string id keeps its quotes, and a number decoded into any prints as 3.5989831e+07:
+	// either matches no quote, so the history comes back empty rather than refused.
 	BookEventID string
 	// LegsHash narrows the history to one parlay: the 16 hex characters of
 	// Meta.LegsHash on a priced BuildSgp answer (or on CompareSgp and BatchSgp).
