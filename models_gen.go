@@ -5394,48 +5394,6 @@ type SgpBatchMeta struct {
 // book (or `books`), as `compareSgp` prices one.
 type SgpBatchMode = string
 
-// SgpBatchParams Params for `batchSgp`.
-type SgpBatchParams struct {
-	// Book Mode `"book"` (required there): the one book every parlay is priced on.
-	Book *string `json:"book,omitempty"`
-
-	// Books Mode `"compare"`: the books to ask; default every book.
-	Books []string `json:"books,omitempty"`
-
-	// DeadlineMs How long each parlay waits for its books, 1000 to 15000 ms; default 6000.
-	DeadlineMs *float64 `json:"deadlineMs,omitempty"`
-
-	// Fair `true` adds our fair-price estimate to each parlay's result (SgpFairBlock).
-	Fair *bool `json:"fair,omitempty"`
-
-	// Fanduel As on `compareSgp`: `"cold"` (default) or `"skip"`.
-	Fanduel *string `json:"fanduel,omitempty"`
-
-	// Fresh `true` never uses a cached quote.
-	Fresh *bool `json:"fresh,omitempty"`
-
-	// Mode `"book"`: every parlay on the one `book`. `"compare"`: every parlay on every
-	// book (or `books`), as `compareSgp` prices one.
-	Mode *SgpBatchMode `json:"mode,omitempty"`
-
-	// Parlays At most 10 parlays in mode `"book"`, 4 in mode `"compare"`. A parlay
-	// repeated in one batch (same `eventId`, same legs in the same order) is
-	// priced once and reported for each copy.
-	Parlays []SgpBatchParlay `json:"parlays,omitempty"`
-}
-
-// SgpBatchParlay One parlay in a SgpBatchParams.
-type SgpBatchParlay struct {
-	// EventID OUR event id for the game, as `getOdds` gives it (as on `compareSgp`).
-	EventID *string `json:"eventId,omitempty"`
-
-	// Legs The legs `buildSgp` takes, 1 to 12.
-	Legs []SgpLeg `json:"legs,omitempty"`
-
-	// Ref Your label for the parlay (up to 100 characters), returned with its result.
-	Ref *string `json:"ref,omitempty"`
-}
-
 // SgpBatchResponse Response from `POST /api/v1/{sport}/sgp/batch`.
 type SgpBatchResponse struct {
 	// Meta `meta` of a SgpBatchResponse.
@@ -5820,36 +5778,6 @@ type SgpCompareMeta struct {
 	// LegsHash A hash of the sport and legs: the same parlay always hashes the same.
 	LegsHash  *string `json:"legsHash,omitempty"`
 	Timestamp *string `json:"timestamp,omitempty"`
-}
-
-// SgpCompareParams Params for `compareSgp`.
-type SgpCompareParams struct {
-	// Books The books to ask (`"fanduel"`, `"draftkings"`, `"hardrock"`,
-	// `"betrivers"`, `"ballybet"`, `"betmgm"`); default every book.
-	Books []string `json:"books,omitempty"`
-
-	// DeadlineMs How long to wait for the books, 1000 to 15000 ms; default 6000. Keep the
-	// client's `timeout` above it.
-	DeadlineMs *float64 `json:"deadlineMs,omitempty"`
-
-	// EventID OUR event id for the game, as `getOdds` gives it:
-	// `{sport}:{Away}@{Home}-{YYYYMMDD}`, with `-G2` for the second game of a
-	// doubleheader. Not a book's id from `getSgpEvents`.
-	EventID *string `json:"eventId,omitempty"`
-
-	// Fair `true` adds our fair-price estimate as `fair`, built from every book that
-	// priced (SgpFairBlock).
-	Fair *bool `json:"fair,omitempty"`
-
-	// Fanduel `"cold"` (the default): FanDuel prices in a fresh browser session and is
-	// given at least 12000 ms. `"skip"`: FanDuel is left out (`status: "skipped"`).
-	Fanduel *string `json:"fanduel,omitempty"`
-
-	// Fresh `true` never uses a cached quote: every book is priced now.
-	Fresh *bool `json:"fresh,omitempty"`
-
-	// Legs The same legs `buildSgp` takes, 1 to 12, sent to every book.
-	Legs []SgpLeg `json:"legs,omitempty"`
 }
 
 // SgpCompareResponse Response from `POST /api/v1/{sport}/sgp/compare`.

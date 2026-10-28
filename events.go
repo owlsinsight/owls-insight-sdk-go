@@ -15,7 +15,7 @@ const (
 	// live board about every 30 seconds and a delta within a few seconds of a
 	// change. Opt in with Subscription.Scores.
 	EventScoresUpdate = "scores-update"
-	// EventPlaysUpdate is play-by-play for one sport (nba, nhl, nfl, ncaaf),
+	// EventPlaysUpdate is play-by-play for one sport (nba, nhl, nfl, ncaaf, soccer),
 	// payload PlaysUpdate: within a few seconds of a new play, each game with the
 	// plays new or amended since the previous message. There is no full message:
 	// start from GetPlays and merge plays by ID. Opt in with Subscription.Plays.

@@ -4,6 +4,60 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.10.0] - 2026-10-28
+
+### Added
+
+- `CompareSgp(ctx, sport, SgpCompareParams)` (`POST /api/v1/{sport}/sgp/compare`, MVP and
+  Hall of Fame): one same game parlay on every SGP book at once from OUR event id (as
+  `GetOdds` gives it), each book's own answer side by side (`SgpCompareBook`, `Status`
+  priced, refused, unresolved, busy, no-price, timeout, event-not-listed,
+  ambiguous-event, unsupported, disabled or skipped), with `Best`, an optional `Fair`, and
+  the cache label (`Cached`, `Result.Meta.CacheAgeMs`). Options `Books`, `DeadlineMs`
+  (1000-15000), `FanDuel` (`"cold"` or `"skip"`), `Fair` and `Fresh`.
+- `BatchSgp(ctx, sport, SgpBatchParams)` (`POST /api/v1/{sport}/sgp/batch`, MVP and Hall
+  of Fame): several parlays per call, `Mode` `"book"` (one `Book`, at most 10 parlays) or
+  `"compare"` (every book, at most 4). Results come back in request order with your
+  `Ref`; `Status` is `done` or `not-started` (not priced, no fair block: send it again).
+  Each attempt waits at least 45 s whatever a shorter `WithTimeout` says, since a batch
+  can rightly take close to 40 s; a longer timeout, or none, is kept.
+- `SgpBuildParams.Fair`: a priced 200 from `BuildSgp` carries `Fair` (`SgpFairBlock`), our
+  estimate of the parlay's price from de-vigged leg probabilities and the book's own
+  correlation, beside the book's `Sgp`, never in place of it. `Fair.Price` is nil with
+  `Fair.Why` when the estimate cannot be made. On the Rookie plan `Fair` is a 403
+  `SGP_TIER_REQUIRED`; below Rookie the builder itself is a 403 `FORBIDDEN`.
+- `SgpLeg.Team` for `team_total` legs (one team's own full-game total) and `SgpLeg.Period`
+  (`"P1"`, `"P2"` or `"P3"`) on NHL moneyline, spread and total legs. A period moneyline is
+  the period's 3-way result, so its `Selection` is a team or `"Tie"`. Both price on Hard
+  Rock NHL only. Every other book refuses them rather than pricing the full game:
+  `BuildSgp` answers a 422 (`ReasonCode` `unresolved`), and `CompareSgp` and `BatchSgp`
+  report that book with status `unsupported`.
+- Soccer play-by-play: `GetPlays(ctx, "soccer", ...)` and `Subscription.Plays` with
+  `soccer`, for every soccer game on the live board whatever its league. A soccer play is a
+  match incident (goal, own goal, penalty, card, substitution): `Clock` is the match
+  minute as shown (`"45+2"`) and `Detail` decodes with `Decode[SoccerPlayDetail]`
+  (`SoccerPlayer`).
+
+### Changed
+
+- A 403 keeps the API's code when it is `SGP_TIER_REQUIRED` (a same game parlay
+  comparison or batch on a plan below MVP, or the fair price on the Rookie plan), as it
+  already did for `DataKeyForbiddenCode`. Every other 403 is still `FORBIDDEN`, and every
+  403 still matches `ErrForbidden`. `SGP_FEATURE_DISABLED` (503, 60 s),
+  `SGP_COMPARE_TOO_MANY_BOOKS` and `SGP_BATCH_TOO_LARGE` (429 without Retry-After: waiting
+  never helps, ask for fewer books or parlays) arrive as the API sends them.
+- `SgpCompareParams`, `SgpBatchParams` and `SgpBatchParlay` are hand-written like
+  `SgpBuildParams` (value fields), not generated, and a test checks that every SGP input
+  sends exactly the properties the spec gives it.
+- `spec/` is the TypeScript SDK's 0.89.0 spec and the models are regenerated from it:
+  soccer in `PlaysSport` (`SoccerPlayDetail`, `SoccerPlayer`), the SGP fair price, compare
+  and batch types (`SgpFairBlock`, `SgpFairLeg`, `SgpFairPrice`, `SgpCompareResponse`,
+  `SgpCompareBook`, `SgpCompareBookResult`, `SgpCompareResultMeta`, `SgpCompareMeta`,
+  `SgpBatchResponse`, `SgpBatchResult`, `SgpBatchMeta`), `SgpBuildResponse.Fair` and
+  `SgpPeriod`.
+- README: `CompareSgp`, `BatchSgp`, the fair price, the NHL leg shapes and soccer
+  play-by-play.
+
 ## [0.9.0] - 2026-10-26
 
 ### Added

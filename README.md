@@ -99,9 +99,10 @@ nba, ncaab, nfl, ncaaf, nhl, mlb, wnba and soccer.
 
 ### Play-by-play
 
-`GetPlays(ctx, sport, eventID, params)` returns every play of an NBA, NHL, NFL or NCAAF
-game in play (or ended within the last 6 hours), oldest first, by the event id `GetScores`
-gives the game; with an empty event id it lists the games that have play-by-play
+`GetPlays(ctx, sport, eventID, params)` returns every play of an NBA, NHL, NFL, NCAAF or
+soccer game in play (or ended within the last 6 hours), oldest first, by the event id
+`GetScores` gives the game (for soccer, the match incidents: goals, own goals, penalties,
+cards and substitutions); with an empty event id it lists the games that have play-by-play
 (`res.Games`), and a `Since` or `Limit` is refused. Before tip-off, and for any other id,
 it is a 404.
 
@@ -115,7 +116,8 @@ p.Since = res.Game.LastSeq // next call: the new plays, plus any amended in the 
 ```
 
 `Play.Detail` is the sport's own fields as raw JSON: decode it with
-`owls.Decode[owls.FootballPlayDetail]`, `HockeyPlayDetail` or `BasketballPlayDetail`. The
+`owls.Decode[owls.FootballPlayDetail]`, `HockeyPlayDetail`, `BasketballPlayDetail` or
+`SoccerPlayDetail`. The
 same plays are pushed on `plays-update` (see WebSocket).
 
 ### Options
@@ -125,7 +127,7 @@ same plays are pushed on `plays-update` (see WebSocket).
 | `WithBaseURL(url)` | `https://api.owlsinsight.com` | The WebSocket URL follows it unless `WithWSURL` is set. |
 | `WithWSURL(url)` | the base URL | |
 | `WithHTTPClient(hc)` | `http.DefaultClient` | Leave its `Timeout` at zero. |
-| `WithTimeout(d)` | 30 s | Per attempt, through the request context. 0 disables it. |
+| `WithTimeout(d)` | 30 s | Per attempt, through the request context. 0 disables it. `BatchSgp` raises a shorter value to 45 s. |
 | `WithRetry(p)` | no retries | Retries 429 and 503 on GET, see below. |
 | `WithHistoryConcurrency(n)` | 3 | History requests in flight at once. 0 disables the gate. |
 
@@ -140,10 +142,10 @@ _, err := c.GetRealtime(ctx, "nba", "")
 var apiErr *owls.APIError
 switch {
 case errors.Is(err, owls.ErrUnauthorized): // 401: bad or missing key
-case errors.Is(err, owls.ErrForbidden):    // 403: the plan does not include it (Code FORBIDDEN), or owls.DataKeyForbiddenCode
+case errors.Is(err, owls.ErrForbidden):    // 403: the plan does not include it (Code FORBIDDEN, or SGP_TIER_REQUIRED for the SGP tools), or owls.DataKeyForbiddenCode
 case errors.Is(err, owls.ErrNotFound):     // 404
 case errors.Is(err, owls.ErrRateLimited) && errors.As(err, &apiErr):
-	time.Sleep(apiErr.RetryAfter) // 429; Code is HISTORY_CONCURRENCY or SGP_RATE_LIMIT when the API says so
+	time.Sleep(apiErr.RetryAfter) // 429; Code is HISTORY_CONCURRENCY or SGP_RATE_LIMIT when the API says so (never wait out SGP_COMPARE_TOO_MANY_BOOKS or SGP_BATCH_TOO_LARGE)
 case errors.Is(err, owls.ErrServiceBusy):  // 503
 }
 ```
@@ -315,7 +317,37 @@ every book: FanDuel's id is a number in `GetSgpEvents`, every other book's a str
 A 422 that reports unresolved legs or a refused slip is returned, not an error: check
 `res.Success` and `res.ReasonCode`. A 503 with `Code == owls.SgpNoPriceCode` means no
 usable price came back; wait `RetryAfter` (2 s when the server sends no header).
-`BuildSgp` is never retried.
+
+On NHL, Hard Rock also prices `team_total` legs (`{Type: "team_total", Team: "Boston
+Bruins", Selection: "over", Point: owls.Ptr(2.5)}`) and period legs: `Period` `"P1"`,
+`"P2"` or `"P3"` on a moneyline, spread or total leg prices that period. A period
+moneyline is the period's 3-way result, so its `Selection` is a team or `"Tie"`. Every
+other book refuses these legs: `BuildSgp` answers a 422 (`ReasonCode` `unresolved`), and
+`CompareSgp` and `BatchSgp` report that book as `unsupported`.
+
+MVP and Hall of Fame plans also get:
+
+- `Fair: true` on `SgpBuildParams`: a priced 200 carries `res.Fair` (`SgpFairBlock`), our
+  estimate of the parlay's price from de-vigged leg probabilities and the book's own
+  correlation, beside the book's `Sgp`, never in place of it. `Fair.Price` is nil with
+  `Fair.Why` when it cannot be made.
+- `CompareSgp(ctx, sport, owls.SgpCompareParams{EventID, Legs, ...})`: the same legs on
+  every book at once, from OUR event id (as `GetOdds` gives it), each book's own answer in
+  `Books` with a `Status` (`priced`, `refused`, `unresolved`, `busy`, `no-price`, `timeout`,
+  `event-not-listed`, `ambiguous-event`, `unsupported`, `disabled`, `skipped`; more can be
+  added) and `Best`. A book that does not price is not an error. A book that priced the
+  same legs in the last 15 seconds may answer from that quote (`Cached`), unless `Fresh`.
+- `BatchSgp(ctx, sport, owls.SgpBatchParams{Mode: "book", Book: "draftkings", Parlays: ...})`:
+  up to 10 parlays on one book, or with `Mode: "compare"` up to 4 on every book. Results
+  come back in request order with your `Ref`; one with `Status` `not-started` was not
+  priced: send it again. A batch can take close to 40 seconds, so it waits at least 45 s
+  whatever a shorter `WithTimeout` says.
+
+On a lower plan those are a 403 with `Code` `SGP_TIER_REQUIRED` (below Rookie a build is a
+403 `FORBIDDEN` whatever its options); a 503 `SGP_FEATURE_DISABLED` means the feature is
+not switched on yet. A 429 `SGP_COMPARE_TOO_MANY_BOOKS` or `SGP_BATCH_TOO_LARGE` needs more
+builds than the key's limit allows at all: waiting never helps, ask for fewer books or
+parlays. The SGP calls are never retried: every attempt is a real pricing request.
 
 ### Webhooks
 
@@ -463,7 +495,7 @@ Three `Subscription` fields are opt-ins rather than filters:
 - `Scores: true`, or a list of sport keys such as `[]string{"nfl"}`, opts in to
   `scores-update` (`owls.EventScoresUpdate`, payload `owls.ScoresUpdate`): a full live
   board per sport about every 30 seconds and a delta within a few seconds of a change.
-- `Plays: true`, or a list of `nba`, `nhl`, `nfl` and `ncaaf`, opts in to `plays-update`
+- `Plays: true`, or a list of `nba`, `nhl`, `nfl`, `ncaaf` and `soccer`, opts in to `plays-update`
   (`owls.EventPlaysUpdate`, payload `owls.PlaysUpdate`): one message per sport within a
   few seconds of a new play, each game with the plays new or amended since the previous
   message. There is no full message: start from `GetPlays` and merge plays by `ID`.
@@ -603,6 +635,8 @@ running, and do not restart it in a tight loop.
 | `get<Book>V2Leagues` | `GetV2Leagues(ctx, book, sport)` | `GET /api/v2/{book}/{sport}/leagues` |
 | `getSgpEvents` | `GetSgpEvents(ctx, sport, book)` | `GET /api/v1/{sport}/sgp/events` |
 | `buildSgp` | `BuildSgp(ctx, sport, SgpBuildParams)` | `POST /api/v1/{sport}/sgp/build` |
+| `compareSgp` | `CompareSgp(ctx, sport, SgpCompareParams)` | `POST /api/v1/{sport}/sgp/compare` |
+| `batchSgp` | `BatchSgp(ctx, sport, SgpBatchParams)` | `POST /api/v1/{sport}/sgp/batch` |
 | `createWebhook` | `CreateWebhook(ctx, CreateWebhookParams)` | `POST /api/v1/webhooks` |
 | `listWebhooks` | `ListWebhooks(ctx)` | `GET /api/v1/webhooks` |
 | `getWebhook` | `GetWebhook(ctx, id)` | `GET /api/v1/webhooks/{id}` |

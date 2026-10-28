@@ -454,17 +454,97 @@ type SgpBuildParams struct {
 	Book string `json:"book"`
 	// Legs holds 2 to 12 legs.
 	Legs []SgpLeg `json:"legs"`
+	// Fair adds our fair-price estimate as Fair on a priced 200 (SgpFairBlock).
+	// MVP and Hall of Fame plans: on the Rookie plan the build is a 403 with Code
+	// SGP_TIER_REQUIRED, refused before anything is priced and not counted against
+	// any limit (below Rookie the builder itself is a 403 FORBIDDEN); a 503
+	// SGP_FEATURE_DISABLED means the fair price is not switched on yet.
+	Fair bool `json:"fair,omitempty"`
 }
 
-// SgpLeg is one leg of an SGP build. Type is "moneyline" (Selection), "spread"
-// (Selection, Point), "total" (Selection "over" or "under", Point) or
-// "player_prop" (Player, Category, Side, Line).
+// SgpLeg is one leg of a same game parlay. Type is one of:
+//
+//   - "moneyline": Selection, the team. With a Period, the period's 3-way
+//     result: a team or "Tie".
+//   - "spread": Selection and Point.
+//   - "total": Selection "over" or "under", and Point.
+//   - "team_total": one team's own full-game total (Hard Rock NHL): Team,
+//     Selection "over" or "under", and Point, a line Hard Rock lists for that team.
+//   - "player_prop": Player, Category, Side and Line.
+//
+// Period is "P1", "P2" or "P3" on an NHL moneyline, spread or total leg, and
+// prices that period instead of the full game. Only Hard Rock prices period and
+// team_total legs. Every other book refuses them rather than pricing the full
+// game: BuildSgp answers a 422 (ReasonCode "unresolved", the leg's reason says
+// why), and CompareSgp and BatchSgp report that book with status "unsupported".
 type SgpLeg struct {
 	Type      string   `json:"type"`
+	Team      string   `json:"team,omitempty"`
 	Selection string   `json:"selection,omitempty"`
 	Point     *float64 `json:"point,omitempty"`
+	Period    string   `json:"period,omitempty"`
 	Player    string   `json:"player,omitempty"`
 	Category  string   `json:"category,omitempty"`
 	Side      string   `json:"side,omitempty"`
 	Line      *float64 `json:"line,omitempty"`
+}
+
+// SgpCompareParams is the body of CompareSgp.
+type SgpCompareParams struct {
+	// EventID is OUR event id for the game, as GetOdds gives it:
+	// {sport}:{Away}@{Home}-{YYYYMMDD}, with -G2 for the second game of a
+	// doubleheader. Not a book's id from GetSgpEvents.
+	EventID string `json:"eventId"`
+	// Legs holds the same legs BuildSgp takes, 1 to 12, sent to every book.
+	Legs []SgpLeg `json:"legs"`
+	// Books are the books to ask ("fanduel", "draftkings", "hardrock",
+	// "betrivers", "ballybet", "betmgm"). Empty means every book.
+	Books []string `json:"books,omitempty"`
+	// DeadlineMs is how long to wait for the books, 1000 to 15000 ms. 0 sends
+	// nothing: the server's default is 6000. Keep the client's timeout above it.
+	DeadlineMs int `json:"deadlineMs,omitempty"`
+	// FanDuel is "cold" (the server's default: FanDuel prices in a fresh browser
+	// session and is given at least 12000 ms) or "skip" (FanDuel is left out,
+	// status "skipped").
+	FanDuel string `json:"fanduel,omitempty"`
+	// Fair adds our fair-price estimate as Fair, built from every book that
+	// priced (SgpFairBlock).
+	Fair bool `json:"fair,omitempty"`
+	// Fresh never uses a cached quote: every book is priced now.
+	Fresh bool `json:"fresh,omitempty"`
+}
+
+// SgpBatchParlay is one parlay of a BatchSgp call.
+type SgpBatchParlay struct {
+	// Ref is your label for the parlay (up to 100 characters), returned with its
+	// result.
+	Ref string `json:"ref,omitempty"`
+	// EventID is OUR event id for the game, as GetOdds gives it (as on CompareSgp).
+	EventID string `json:"eventId"`
+	// Legs holds the legs BuildSgp takes, 1 to 12.
+	Legs []SgpLeg `json:"legs"`
+}
+
+// SgpBatchParams is the body of BatchSgp.
+type SgpBatchParams struct {
+	// Mode is "book" (every parlay on the one Book) or "compare" (every parlay on
+	// every book, or on Books, as CompareSgp prices one).
+	Mode string `json:"mode"`
+	// Book is the one book every parlay is priced on; required in mode "book".
+	Book string `json:"book,omitempty"`
+	// Books are the books to ask in mode "compare". Empty means every book.
+	Books []string `json:"books,omitempty"`
+	// Parlays holds at most 10 parlays in mode "book", 4 in mode "compare". A
+	// parlay repeated in one batch (same EventID, same legs in the same order) is
+	// priced once and reported for each copy.
+	Parlays []SgpBatchParlay `json:"parlays"`
+	// DeadlineMs is how long each parlay waits for its books, 1000 to 15000 ms.
+	// 0 sends nothing: the server's default is 6000.
+	DeadlineMs int `json:"deadlineMs,omitempty"`
+	// FanDuel is "cold" (the server's default) or "skip", as on CompareSgp.
+	FanDuel string `json:"fanduel,omitempty"`
+	// Fair adds our fair-price estimate to each parlay's result (SgpFairBlock).
+	Fair bool `json:"fair,omitempty"`
+	// Fresh never uses a cached quote.
+	Fresh bool `json:"fresh,omitempty"`
 }

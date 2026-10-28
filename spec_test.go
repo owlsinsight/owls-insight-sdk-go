@@ -207,6 +207,9 @@ var handWrittenInputs = map[string]string{
 	"PropsSubscribeOptions": "PropsFilter",
 	"SgpBuildParams":        "SgpBuildParams",
 	"SgpLeg":                "SgpLeg",
+	"SgpCompareParams":      "SgpCompareParams",
+	"SgpBatchParams":        "SgpBatchParams",
+	"SgpBatchParlay":        "SgpBatchParlay",
 	// Webhook request bodies (webhooks.go): value fields, and nil kept apart from an
 	// empty list where the API reads [] as "all".
 	"CreateWebhookParams":          "CreateWebhookParams",

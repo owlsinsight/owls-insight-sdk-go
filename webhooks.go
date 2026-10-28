@@ -176,24 +176,6 @@ func (p *WebhookDeliveriesParams) query() url.Values {
 	return q
 }
 
-// sendInto sends one request with a JSON body (nil: none) and decodes a 2xx answer.
-// It is never retried: these calls change something, and a retried create could
-// register an endpoint twice.
-func sendInto[T any](ctx context.Context, c *Client, method, path string, body any) (*T, error) {
-	status, header, data, err := c.roundTrip(ctx, method, path, nil, body)
-	if err != nil {
-		return nil, err
-	}
-	if status < 200 || status >= 300 {
-		return nil, newAPIError(status, header, data)
-	}
-	out := new(T)
-	if err := decodeBody(data, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // webhookPath is /api/v1/webhooks/{id} with the id as one escaped path segment. An
 // empty id, "." or ".." is refused before anything is sent: a URL resolves those to
 // another route (the endpoint list, or a parent path).

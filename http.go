@@ -95,9 +95,15 @@ func (c *Client) retryDelay(err error, method string, attempt, maxRetries int) (
 // roundTrip performs one HTTP exchange under the per-attempt timeout and returns
 // the status, headers and whole body.
 func (c *Client) roundTrip(ctx context.Context, method, path string, q url.Values, body any) (int, http.Header, []byte, error) {
-	if c.timeout > 0 {
+	return c.roundTripWithin(ctx, c.timeout, method, path, q, body)
+}
+
+// roundTripWithin is roundTrip under its own timeout instead of the client's (0:
+// none).
+func (c *Client) roundTripWithin(ctx context.Context, timeout time.Duration, method, path string, q url.Values, body any) (int, http.Header, []byte, error) {
+	if timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, c.timeout)
+		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
 	u := c.baseURL + path
@@ -132,6 +138,30 @@ func (c *Client) roundTrip(ctx context.Context, method, path string, q url.Value
 		return 0, nil, nil, fmt.Errorf("owls: %s %s: read body: %w", method, path, err)
 	}
 	return resp.StatusCode, resp.Header, data, nil
+}
+
+// sendInto sends one request with a JSON body (nil: none) and decodes a 2xx answer.
+// It is never retried: these calls change something (a retried create could
+// register an endpoint twice) or price something (every same game parlay attempt
+// is a real pricing request).
+func sendInto[T any](ctx context.Context, c *Client, method, path string, body any) (*T, error) {
+	return sendIntoWithin[T](ctx, c, c.timeout, method, path, body)
+}
+
+// sendIntoWithin is sendInto under its own timeout instead of the client's (0: none).
+func sendIntoWithin[T any](ctx context.Context, c *Client, timeout time.Duration, method, path string, body any) (*T, error) {
+	status, header, data, err := c.roundTripWithin(ctx, timeout, method, path, nil, body)
+	if err != nil {
+		return nil, err
+	}
+	if status < 200 || status >= 300 {
+		return nil, newAPIError(status, header, data)
+	}
+	out := new(T)
+	if err := decodeBody(data, out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // decodeBody decodes a successful response leniently: a value whose JSON type

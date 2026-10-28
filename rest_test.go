@@ -422,6 +422,12 @@ func TestErrorMapping(t *testing.T) {
 			body:     `{"error":"data_key_forbidden","message":"This is a read-only data key."}`,
 			sentinel: ErrForbidden, code: DataKeyForbiddenCode, message: "This is a read-only data key.",
 			details: `{"error":"data_key_forbidden","message":"This is a read-only data key."}`},
+		{name: "403 SGP_TIER_REQUIRED keeps its code", status: 403,
+			body:     `{"error":"Upgrade required","code":"SGP_TIER_REQUIRED","message":"SGP comparisons require the MVP plan or higher.","currentTier":"rookie","requiredTier":"mvp"}`,
+			sentinel: ErrForbidden, code: "SGP_TIER_REQUIRED", message: "SGP comparisons require the MVP plan or higher.",
+			details: `{"error":"Upgrade required","code":"SGP_TIER_REQUIRED","message":"SGP comparisons require the MVP plan or higher.","currentTier":"rookie","requiredTier":"mvp"}`},
+		{name: "CONTROL: 403 with a code that is not an SGP code is FORBIDDEN", status: 403, body: `{"error":"Requires MVP","code":"TIER_REQUIRED"}`,
+			sentinel: ErrForbidden, code: "FORBIDDEN", message: "Requires MVP", details: `{"error":"Requires MVP","code":"TIER_REQUIRED"}`},
 		// CONTROL: the code is read from error alone, as the TypeScript SDK does; a
 		// code field of that value does not change a 403's FORBIDDEN.
 		{name: "403 code field is not the data-key refusal", status: 403, body: `{"error":"Requires MVP","code":"data_key_forbidden"}`,
@@ -1958,4 +1964,296 @@ func TestBoardMetaFields(t *testing.T) {
 		*q.Note != "every snapshot of this market was withheld" {
 		t.Errorf("history data quality %+v", q)
 	}
+}
+
+func TestSoccerPlaysUpdateDecodes(t *testing.T) {
+	// Soccer play-by-play (JS 0.88.0): a match incident, its detail a SoccerPlayDetail.
+	u, err := Decode[PlaysUpdate](json.RawMessage(`{"type": "delta", "timestamp": "2026-10-26T19:00:00Z", "sport": "soccer",
+		"events": [{"eventId": "soccer:Arsenal@Chelsea-20261026", "home": "Chelsea", "away": "Arsenal", "state": "in", "count": 9,
+			"plays": [{"id": "g1", "seq": 6702, "period": 2, "clock": "67", "secondsRemaining": null, "team": "away", "type": "Goal",
+				"text": "Goal", "scoringPlay": true, "homeScore": 0, "awayScore": 1, "wallclock": null,
+				"detail": {"minute": 67, "addedMinutes": null, "player": {"id": "p9", "name": "B. Saka"}, "assist": null, "card": null}}]}]}`))
+	if err != nil || *u.Sport != "soccer" || len(u.Events) != 1 || *u.Events[0].Count != 9 || *u.Events[0].Plays[0].Type != "Goal" {
+		t.Fatalf("plays update %+v (%v)", u, err)
+	}
+	sd, err := Decode[SoccerPlayDetail](*u.Events[0].Plays[0].Detail)
+	if err != nil || *sd.Minute != 67 || *sd.Player.Name != "B. Saka" || sd.Assist != nil {
+		t.Errorf("soccer detail %+v (%v)", sd, err)
+	}
+}
+
+func TestBuildSgpFair(t *testing.T) {
+	api := newFakeAPI(t, ok(`{"success": true, "pricing": "draftkings-slip", "sgp": {"american": 205, "decimal": 3.05, "isSGM": true, "legs": 2},
+		"legs": [], "meta": {"eventId": "33012345", "book": "draftkings", "timestamp": "2026-10-28T18:00:00.100Z"},
+		"fair": {"estimate": true, "label": "Owls Insight estimate, not a sportsbook price", "price": null, "why": "missing-leg-fair",
+			"booksDisagree": false, "basis": {"legs": "fair-v1", "correlation": "book-implied", "correlationFactor": null,
+				"correlationSources": [], "marginAdjusted": false},
+			"coverage": {"legs": 2, "withFair": 1, "missingLegs": [1]},
+			"legs": [{"legIndex": 1, "probability": null, "source": null, "line": 46, "ageMs": null, "booksDisagree": false,
+				"why": "line-not-at-pinnacle-number", "pinnacleLine": 47.5}],
+			"independent": null, "computedAt": "2026-10-28T18:00:00.950Z"}}`))
+	res, err := testClient(t, api.URL).BuildSgp(context.Background(), "nfl", SgpBuildParams{
+		EventID: "33012345", Book: "draftkings", Fair: true,
+		Legs: []SgpLeg{{Type: "moneyline", Selection: "Baltimore Ravens"}, {Type: "total", Selection: "over", Point: Ptr(46.0)}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"eventId":"33012345","book":"draftkings","legs":[{"type":"moneyline","selection":"Baltimore Ravens"},` +
+		`{"type":"total","selection":"over","point":46}],"fair":true}`; api.req(0).Body != want {
+		t.Errorf("body %s, want %s", api.req(0).Body, want)
+	}
+	f := res.Fair
+	if !*f.Estimate || f.Price != nil || *f.Why != "missing-leg-fair" || f.Coverage.MissingLegs[0] != 1 ||
+		*f.Legs[0].PinnacleLine != 47.5 || f.Legs[0].Probability != nil || *res.Sgp.American != 205 {
+		t.Errorf("fair %+v", f)
+	}
+	// CONTROL: without Fair the body carries no fair key.
+	_, _ = testClient(t, api.URL).BuildSgp(context.Background(), "nfl", SgpBuildParams{EventID: "1", Book: "fanduel"})
+	if strings.Contains(api.req(1).Body, "fair") {
+		t.Errorf("control: body %s", api.req(1).Body)
+	}
+}
+
+func TestSgpLegShapes(t *testing.T) {
+	// team_total and period legs (Hard Rock NHL), next to the shapes every book takes.
+	legs := []SgpLeg{
+		{Type: "moneyline", Selection: "Tie", Period: "P1"},
+		{Type: "spread", Selection: "Boston Bruins", Point: Ptr(-0.5), Period: "P2"},
+		{Type: "total", Selection: "under", Point: Ptr(1.5), Period: "P3"},
+		{Type: "team_total", Team: "Boston Bruins", Selection: "over", Point: Ptr(2.5)},
+		{Type: "moneyline", Selection: "Boston Bruins"},
+	}
+	got, err := json.Marshal(legs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `[{"type":"moneyline","selection":"Tie","period":"P1"},` +
+		`{"type":"spread","selection":"Boston Bruins","point":-0.5,"period":"P2"},` +
+		`{"type":"total","selection":"under","point":1.5,"period":"P3"},` +
+		`{"type":"team_total","team":"Boston Bruins","selection":"over","point":2.5},` +
+		`{"type":"moneyline","selection":"Boston Bruins"}]`
+	if string(got) != want {
+		t.Fatalf("legs %s, want %s", got, want)
+	}
+}
+
+const sgpCompareEvent = "nfl:Cincinnati Bengals@Baltimore Ravens-20261101"
+
+func sgpCompareLegs() []SgpLeg {
+	return []SgpLeg{{Type: "moneyline", Selection: "Baltimore Ravens"}, {Type: "total", Selection: "over", Point: Ptr(47.5)}}
+}
+
+func TestCompareSgp(t *testing.T) {
+	t.Run("request and every book's answer", func(t *testing.T) {
+		const body = `{"success": true, "sport": "nfl", "eventId": "nfl:Cincinnati Bengals@Baltimore Ravens-20261101",
+			"legs": [{"type": "moneyline", "selection": "Baltimore Ravens"}, {"type": "total", "selection": "over", "point": 47.5}],
+			"best": {"book": "draftkings", "american": 205, "decimal": 3.05},
+			"books": [
+				{"book": "fanduel", "label": "FanDuel", "status": "skipped", "reason": "fanduel: skip"},
+				{"book": "draftkings", "label": "DraftKings", "status": "priced", "bookEventId": "33012345", "httpStatus": 200, "ms": 912,
+					"result": {"success": true, "pricing": "draftkings-slip", "sgp": {"american": 205, "decimal": 3.05, "isSGM": true, "legs": 2},
+						"legs": [], "meta": {"eventId": "33012345", "book": "draftkings", "pricedAt": "2026-10-28T18:00:00.900Z"}}},
+				{"book": "hardrock", "label": "Hard Rock", "status": "priced", "httpStatus": 200, "cached": true, "ms": 0,
+					"result": {"success": true, "pricing": "hardrock-slip", "sgp": {"american": 190, "decimal": 2.9, "isSGM": true, "legs": 2},
+						"legs": [], "meta": {"eventId": "9001", "book": "hardrock", "cached": true, "cacheAgeMs": 4100}}},
+				{"book": "betmgm", "label": "BetMGM", "status": "refused", "bookEventId": "6:43680", "httpStatus": 422, "ms": 1400,
+					"result": {"success": false, "error": "BetMGM could not price this parlay", "reasonCode": "bet-failure",
+						"code": "bet-failure", "failureCodes": ["REDUNDANT_LEG"], "legs": [], "meta": {"eventId": "6:43680", "book": "betmgm"}}},
+				{"book": "betrivers", "label": "BetRivers", "status": "event-not-listed", "reason": "BetRivers does not list this game", "ms": 300},
+				{"book": "ballybet", "label": "Bally Bet", "status": "a-status-added-later"}],
+			"fair": {"estimate": true, "label": "Owls Insight estimate, not a sportsbook price",
+				"price": {"probability": 0.312345, "decimal": 3.2016, "american": 220}, "why": null, "booksDisagree": false,
+				"basis": {"legs": "fair-v1", "correlation": "book-implied", "correlationFactor": 1.0412,
+					"correlationSources": [{"book": "draftkings", "factor": 1.0412}, {"book": "hardrock", "factor": null}], "marginAdjusted": false},
+				"coverage": {"legs": 2, "withFair": 2, "missingLegs": []}, "legs": [], "independent": {"probability": 0.2989, "decimal": 3.3456, "american": 235},
+				"computedAt": "2026-10-28T18:00:02.000Z"},
+			"meta": {"timestamp": "2026-10-28T18:00:02.100Z", "deadlineMs": 8000, "legsHash": "a1b2c3", "booksAsked": 6,
+				"booksCached": 1, "booksQuoted": 2, "booksPriced": 2}}`
+		api := newFakeAPI(t, ok(body))
+		res, err := testClient(t, api.URL).CompareSgp(context.Background(), "nfl", SgpCompareParams{
+			EventID: sgpCompareEvent, Legs: sgpCompareLegs(), Books: []string{"draftkings", "hardrock", "betmgm"},
+			DeadlineMs: 8000, FanDuel: "skip", Fair: true,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := api.req(0)
+		want := `{"eventId":"nfl:Cincinnati Bengals@Baltimore Ravens-20261101","legs":[{"type":"moneyline","selection":"Baltimore Ravens"},` +
+			`{"type":"total","selection":"over","point":47.5}],"books":["draftkings","hardrock","betmgm"],"deadlineMs":8000,` +
+			`"fanduel":"skip","fair":true}`
+		if r.Method != "POST" || r.Path != "/api/v1/nfl/sgp/compare" || r.Body != want || r.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("request %s %s %q body %s", r.Method, r.Path, r.Header.Get("Content-Type"), r.Body)
+		}
+		var statuses []string
+		for _, b := range res.Books {
+			statuses = append(statuses, *b.Status)
+		}
+		if strings.Join(statuses, ",") != "skipped,priced,priced,refused,event-not-listed,a-status-added-later" {
+			t.Errorf("statuses %v", statuses)
+		}
+		dk, hr, mgm := res.Books[1], res.Books[2], res.Books[3]
+		if *dk.Result.Sgp.American != 205 || dk.Cached != nil || !*hr.Cached || *hr.Result.Meta.CacheAgeMs != 4100 ||
+			*mgm.Result.ReasonCode != "bet-failure" || mgm.Result.FailureCodes[0] != "REDUNDANT_LEG" || mgm.Result.Sgp != nil ||
+			string(*mgm.Result.Meta.EventID) != `"6:43680"` {
+			t.Errorf("books %+v / %+v / %+v", dk, hr, mgm)
+		}
+		if *res.Best.Book != "draftkings" || *res.Fair.Price.American != 220 || res.Fair.Basis.CorrelationSources[1].Factor != nil ||
+			*res.Meta.BooksPriced != 2 || len(res.Legs) != 2 || *res.Legs[1].Point != 47.5 {
+			t.Errorf("best %+v fair %+v meta %+v", res.Best, res.Fair, res.Meta)
+		}
+		// CONTROL: the zero options send only the event and the legs.
+		_, _ = testClient(t, api.URL).CompareSgp(context.Background(), "nfl", SgpCompareParams{EventID: "e", Legs: sgpCompareLegs()[:1]})
+		if got := api.req(1).Body; got != `{"eventId":"e","legs":[{"type":"moneyline","selection":"Baltimore Ravens"}]}` {
+			t.Errorf("control: body %s", got)
+		}
+	})
+	for _, tc := range []struct {
+		name     string
+		status   int
+		header   http.Header
+		body     string
+		sentinel error
+		code     string
+		retry    time.Duration
+		detail   string
+	}{
+		{"403 SGP_TIER_REQUIRED", 403, nil,
+			`{"error":"Upgrade required","code":"SGP_TIER_REQUIRED","message":"SGP comparisons require the MVP plan or higher.","currentTier":"rookie","requiredTier":"mvp"}`,
+			ErrForbidden, "SGP_TIER_REQUIRED", 0, `"requiredTier":"mvp"`},
+		{"503 SGP_FEATURE_DISABLED", 503, http.Header{"Retry-After": {"60"}},
+			`{"error":"SGP feature temporarily unavailable","code":"SGP_FEATURE_DISABLED","message":"x","feature":"compare"}`,
+			ErrServiceBusy, "SGP_FEATURE_DISABLED", 60 * time.Second, `"feature":"compare"`},
+		{"429 SGP_RATE_LIMIT", 429, http.Header{"Retry-After": {"30"}},
+			`{"error":"SGP build rate limit exceeded","code":"SGP_RATE_LIMIT","limit":10,"unitsNeeded":5,"resetAt":"2026-10-28T18:00:30.000Z"}`,
+			ErrRateLimited, "SGP_RATE_LIMIT", 30 * time.Second, `"unitsNeeded":5`},
+		{"429 SGP_COMPARE_TOO_MANY_BOOKS has no Retry-After", 429, nil,
+			`{"error":"Too many books for your SGP build limit","code":"SGP_COMPARE_TOO_MANY_BOOKS","limit":4,"unitsNeeded":6,"maxBooks":4}`,
+			ErrRateLimited, "SGP_COMPARE_TOO_MANY_BOOKS", 60 * time.Second, `"maxBooks":4`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			api := newFakeAPI(t, func(*http.Request, int) (int, http.Header, string) { return tc.status, tc.header, tc.body })
+			c := testClient(t, api.URL, WithRetry(RetryPolicy{MaxRetries: 3, BaseDelay: time.Millisecond}))
+			_, err := c.CompareSgp(context.Background(), "nfl", SgpCompareParams{EventID: sgpCompareEvent, Legs: sgpCompareLegs()})
+			var ae *APIError
+			if !errors.Is(err, tc.sentinel) || !errors.As(err, &ae) || ae.Code != tc.code || ae.RetryAfter != tc.retry ||
+				!strings.Contains(string(ae.Details), tc.detail) {
+				t.Fatalf("err = %#v", err)
+			}
+			// Never retried, whatever the retry policy says.
+			if api.count() != 1 {
+				t.Fatalf("%d requests, want 1", api.count())
+			}
+		})
+	}
+}
+
+func TestBatchSgp(t *testing.T) {
+	const bookBody = `{"success": true, "sport": "nfl", "mode": "book", "results": [
+		{"index": 0, "ref": "a", "eventId": "nfl:Cincinnati Bengals@Baltimore Ravens-20261101", "legsHash": "h1", "status": "done",
+			"book": "draftkings", "bookStatus": "priced", "bookEventId": "33012345", "httpStatus": 200, "fair": null,
+			"result": {"success": true, "pricing": "draftkings-slip", "sgp": {"american": 205, "decimal": 3.05, "isSGM": true, "legs": 2}, "legs": [],
+				"meta": {"eventId": "33012345", "book": "draftkings"}}},
+		{"index": 1, "eventId": "nfl:Denver Broncos@Kansas City Chiefs-20261101", "legsHash": "h2", "status": "not-started",
+			"book": "draftkings", "bookStatus": "timeout", "reason": "not started: the batch ran out of time", "fair": null}],
+		"meta": {"timestamp": "2026-10-28T18:00:21.000Z", "deadlineMs": 6000, "parlays": 2, "quotesCached": 0, "quotesMade": 1, "quotesPriced": 1}}`
+	params := SgpBatchParams{
+		Mode: "book", Book: "draftkings", Fair: true,
+		Parlays: []SgpBatchParlay{
+			{Ref: "a", EventID: sgpCompareEvent, Legs: sgpCompareLegs()},
+			{EventID: "nfl:Denver Broncos@Kansas City Chiefs-20261101", Legs: []SgpLeg{{Type: "moneyline", Selection: "Kansas City Chiefs"}}},
+		},
+	}
+	t.Run("mode book: request and results in order", func(t *testing.T) {
+		api := newFakeAPI(t, ok(bookBody))
+		res, err := testClient(t, api.URL).BatchSgp(context.Background(), "nfl", params)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := api.req(0)
+		want := `{"mode":"book","book":"draftkings","parlays":[{"ref":"a","eventId":"nfl:Cincinnati Bengals@Baltimore Ravens-20261101",` +
+			`"legs":[{"type":"moneyline","selection":"Baltimore Ravens"},{"type":"total","selection":"over","point":47.5}]},` +
+			`{"eventId":"nfl:Denver Broncos@Kansas City Chiefs-20261101","legs":[{"type":"moneyline","selection":"Kansas City Chiefs"}]}],` +
+			`"fair":true}`
+		if r.Method != "POST" || r.Path != "/api/v1/nfl/sgp/batch" || r.Body != want {
+			t.Errorf("request %s %s body %s", r.Method, r.Path, r.Body)
+		}
+		a, b := res.Results[0], res.Results[1]
+		if *res.Mode != "book" || *a.Ref != "a" || *a.Status != "done" || *a.BookStatus != "priced" || *a.Result.Sgp.American != 205 ||
+			a.Fair != nil || b.Ref != nil || *b.Status != "not-started" || *b.BookStatus != "timeout" || b.Result != nil ||
+			*res.Meta.QuotesMade != 1 {
+			t.Errorf("results %+v / %+v", a, b)
+		}
+	})
+	t.Run("mode compare: best and books per parlay", func(t *testing.T) {
+		api := newFakeAPI(t, ok(`{"success": true, "sport": "nfl", "mode": "compare", "results": [{"index": 0,
+			"eventId": "nfl:Cincinnati Bengals@Baltimore Ravens-20261101", "legsHash": "h1", "status": "done",
+			"best": {"book": "draftkings", "american": 205, "decimal": 3.05},
+			"books": [{"book": "fanduel", "label": "FanDuel", "status": "skipped", "reason": "fanduel: skip"},
+				{"book": "draftkings", "label": "DraftKings", "status": "priced", "httpStatus": 200, "ms": 800,
+					"result": {"success": true, "sgp": {"american": 205, "decimal": 3.05, "isSGM": true, "legs": 2}, "legs": []}}]}],
+			"meta": {"timestamp": "2026-10-28T18:00:03.000Z", "deadlineMs": 6000, "parlays": 1}}`))
+		res, err := testClient(t, api.URL).BatchSgp(context.Background(), "nfl", SgpBatchParams{
+			Mode: "compare", FanDuel: "skip", Parlays: []SgpBatchParlay{{EventID: sgpCompareEvent, Legs: sgpCompareLegs()}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(api.req(0).Body, `"mode":"compare"`) || strings.Contains(api.req(0).Body, `"book":`) {
+			t.Errorf("body %s", api.req(0).Body)
+		}
+		p := res.Results[0]
+		if *p.Best.Book != "draftkings" || len(p.Books) != 2 || *p.Books[1].Status != "priced" || p.BookStatus != nil {
+			t.Errorf("result %+v", p)
+		}
+	})
+	t.Run("each attempt waits at least the batch minimum, and keeps a longer timeout", func(t *testing.T) {
+		defer func(d time.Duration) { sgpBatchMinTimeout = d }(sgpBatchMinTimeout)
+		sgpBatchMinTimeout = 400 * time.Millisecond
+		slow := func(d time.Duration) *fakeAPI {
+			return newFakeAPI(t, func(r *http.Request, _ int) (int, http.Header, string) {
+				select {
+				case <-time.After(d):
+				case <-r.Context().Done():
+				}
+				return 200, nil, bookBody
+			})
+		}
+		api := slow(150 * time.Millisecond)
+		short := testClient(t, api.URL, WithTimeout(50*time.Millisecond))
+		if _, err := short.BatchSgp(context.Background(), "nfl", params); err != nil {
+			t.Fatalf("a 50ms client timeout aborted the batch: %v", err)
+		}
+		// CONTROL: CompareSgp keeps the client's own timeout.
+		if _, err := short.CompareSgp(context.Background(), "nfl", SgpCompareParams{EventID: "e"}); !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("control: CompareSgp err = %v, want context.DeadlineExceeded", err)
+		}
+		// The minimum is a floor, not unlimited.
+		api = slow(1500 * time.Millisecond)
+		start := time.Now()
+		_, err := testClient(t, api.URL, WithTimeout(50*time.Millisecond)).BatchSgp(context.Background(), "nfl", params)
+		if !errors.Is(err, context.DeadlineExceeded) || time.Since(start) < 350*time.Millisecond || time.Since(start) > 1200*time.Millisecond {
+			t.Fatalf("err %v after %v, want a timeout after about 400ms", err, time.Since(start))
+		}
+		// A longer client timeout is kept, and 0 still means none.
+		api = slow(600 * time.Millisecond)
+		for _, d := range []time.Duration{2 * time.Second, 0} {
+			if _, err := testClient(t, api.URL, WithTimeout(d)).BatchSgp(context.Background(), "nfl", params); err != nil {
+				t.Fatalf("WithTimeout(%v): %v", d, err)
+			}
+		}
+	})
+	t.Run("429 SGP_BATCH_TOO_LARGE, never retried", func(t *testing.T) {
+		api := newFakeAPI(t, func(*http.Request, int) (int, http.Header, string) {
+			return 429, nil, `{"error":"Batch too large for your SGP build limit","code":"SGP_BATCH_TOO_LARGE","limit":10,"unitsNeeded":24,` +
+				`"message":"This batch needs 24 builds (one per book and parlay) and your per-minute build limit is 10. Send fewer parlays or books."}`
+		})
+		c := testClient(t, api.URL, WithRetry(RetryPolicy{MaxRetries: 3, BaseDelay: time.Millisecond}))
+		_, err := c.BatchSgp(context.Background(), "nfl", params)
+		var ae *APIError
+		if !errors.Is(err, ErrRateLimited) || !errors.As(err, &ae) || ae.Code != "SGP_BATCH_TOO_LARGE" ||
+			!strings.Contains(string(ae.Details), `"unitsNeeded":24`) || api.count() != 1 {
+			t.Fatalf("err = %#v after %d requests", err, api.count())
+		}
+	})
 }

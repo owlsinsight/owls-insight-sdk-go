@@ -189,3 +189,73 @@ func TestSubscriptionMatchesTheSpec(t *testing.T) {
 		t.Error("control: a property the spec gained was not reported")
 	}
 }
+
+// The hand-written same game parlay inputs send exactly the properties the spec
+// gives their schemas, so a field the API adds (fair, team, period) cannot go
+// missing from Go. SgpLeg is a union: Go sends the properties of every branch.
+func TestSgpInputsMatchTheSpec(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("spec", "openapi.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	type object struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+		AnyOf      []struct {
+			Properties map[string]json.RawMessage `json:"properties"`
+		} `json:"anyOf"`
+	}
+	var spec struct {
+		Components struct {
+			Schemas map[string]object `json:"schemas"`
+		} `json:"components"`
+	}
+	if err := json.Unmarshal(b, &spec); err != nil {
+		t.Fatal(err)
+	}
+	schemas := map[string]map[string]json.RawMessage{}
+	for name, s := range spec.Components.Schemas {
+		props := map[string]json.RawMessage{}
+		for k, v := range s.Properties {
+			props[k] = v
+		}
+		for _, branch := range s.AnyOf {
+			for k, v := range branch.Properties {
+				props[k] = v
+			}
+		}
+		schemas[name] = props
+	}
+	leg := SgpLeg{Type: "spread", Team: "t", Selection: "s", Point: Ptr(1.5), Period: "P1", Player: "p", Category: "c", Side: "over", Line: Ptr(0.5)}
+	legs := []SgpLeg{leg}
+	full := map[string]any{
+		"SgpLeg":           leg,
+		"SgpBuildParams":   SgpBuildParams{EventID: "e", Book: "hardrock", Legs: legs, Fair: true},
+		"SgpCompareParams": SgpCompareParams{EventID: "e", Legs: legs, Books: []string{"hardrock"}, DeadlineMs: 8000, FanDuel: "skip", Fair: true, Fresh: true},
+		"SgpBatchParlay":   SgpBatchParlay{Ref: "r", EventID: "e", Legs: legs},
+		"SgpBatchParams": SgpBatchParams{Mode: "book", Book: "hardrock", Books: []string{"hardrock"},
+			Parlays: []SgpBatchParlay{{EventID: "e", Legs: legs}}, DeadlineMs: 8000, FanDuel: "skip", Fair: true, Fresh: true},
+	}
+	for schema, value := range full {
+		if len(schemas[schema]) == 0 {
+			t.Fatalf("the spec has no properties for %s", schema)
+		}
+		if bad := subscriptionKeyMismatch(t, schemas, schema, value); bad != "" {
+			t.Error(bad)
+		}
+	}
+	// CONTROL: a leg without the period field is reported.
+	type oldLeg struct {
+		Type      string   `json:"type"`
+		Team      string   `json:"team,omitempty"`
+		Selection string   `json:"selection,omitempty"`
+		Point     *float64 `json:"point,omitempty"`
+		Player    string   `json:"player,omitempty"`
+		Category  string   `json:"category,omitempty"`
+		Side      string   `json:"side,omitempty"`
+		Line      *float64 `json:"line,omitempty"`
+	}
+	if subscriptionKeyMismatch(t, schemas, "SgpLeg", oldLeg{Type: "spread", Team: "t", Selection: "s", Point: Ptr(1.5), Player: "p",
+		Category: "c", Side: "over", Line: Ptr(0.5)}) == "" {
+		t.Error("control: a leg without period was not reported")
+	}
+}

@@ -42,7 +42,7 @@ type Subscription struct {
 	// Decode the payload with Decode[ScoresUpdate].
 	Scores any `json:"scores,omitempty"`
 	// Plays opts in to plays-update (play-by-play; nothing is sent without it):
-	// true for nba, nhl, nfl and ncaaf, or a list of those keys such as
+	// true for nba, nhl, nfl, ncaaf and soccer, or a list of those keys such as
 	// []string{"nfl", "nba"}. Same access as Scores. Decode the payload with
 	// Decode[PlaysUpdate]; GetPlays works either way.
 	Plays any `json:"plays,omitempty"`

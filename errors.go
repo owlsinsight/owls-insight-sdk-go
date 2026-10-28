@@ -27,6 +27,15 @@ const SgpNoPriceCode = "no-price"
 
 const sgpNoPriceRetryAfter = 2 * time.Second
 
+// sgpErrorCodes are the same game parlay endpoints' SGP_* codes. A 403 keeps its
+// code when it is one of these (SGP_TIER_REQUIRED), as the TypeScript SDK does.
+var sgpErrorCodes = map[string]bool{
+	"SGP_RATE_LIMIT": true, "SGP_RATE_LIMIT_UNAVAILABLE": true, "SGP_BUSY": true,
+	"SGP_BOOK_DISABLED": true, "SGP_BOOK_UNSUPPORTED": true, "SGP_BOOK_SPORT_UNSUPPORTED": true,
+	"SGP_TIER_REQUIRED": true, "SGP_FEATURE_DISABLED": true, "SGP_COMPARE_TOO_MANY_BOOKS": true,
+	"SGP_BATCH_TOO_LARGE": true,
+}
+
 // DataKeyForbiddenCode is the Code of a 403 refusing a data-only key (one minted by
 // Sign in with Owls) on the webhook API or the betslip parse, which take a key from
 // the dashboard. Every other 403 carries FORBIDDEN (the plan does not include the
@@ -39,9 +48,11 @@ type APIError struct {
 	Status int
 	// Code is the API's own code when it sent one. 401 and 404 always carry
 	// UNAUTHORIZED and NOT_FOUND, and 403 FORBIDDEN, except a data-only key's
-	// refusal, which carries DataKeyForbiddenCode; a 429 without a code is
-	// RATE_LIMITED (HISTORY_CONCURRENCY and SGP_RATE_LIMIT are the API's own), a
-	// 503 without one is SERVICE_BUSY.
+	// refusal, which carries DataKeyForbiddenCode, and a same game parlay call or
+	// fair price the plan does not include, which carries SGP_TIER_REQUIRED; a 429
+	// without a code is RATE_LIMITED (HISTORY_CONCURRENCY, SGP_RATE_LIMIT,
+	// SGP_COMPARE_TOO_MANY_BOOKS and SGP_BATCH_TOO_LARGE are the API's own), a 503
+	// without one is SERVICE_BUSY.
 	Code string
 	// Message is the body's message, else its error, else the HTTP status text.
 	Message string
@@ -108,10 +119,13 @@ func newAPIError(status int, header http.Header, body []byte) *APIError {
 		e.Code = "UNAUTHORIZED"
 	case http.StatusForbidden:
 		// A data-only key is refused with its own code in the body's error, so it
-		// is told apart from a plan refusal.
+		// is told apart from a plan refusal. The SGP tools' plan refusal
+		// (SGP_TIER_REQUIRED) keeps its code, as every other SGP_* error does.
 		e.Code = "FORBIDDEN"
 		if str("error") == DataKeyForbiddenCode {
 			e.Code = DataKeyForbiddenCode
+		} else if sgpErrorCodes[code] {
+			e.Code = code
 		}
 	case http.StatusNotFound:
 		e.Code = "NOT_FOUND"

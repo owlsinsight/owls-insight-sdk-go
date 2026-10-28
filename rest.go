@@ -279,9 +279,11 @@ type Plays struct {
 	Games *PlaysGamesResponse
 }
 
-// GetPlays returns the play-by-play of one NBA, NHL, NFL or NCAAF game in play (or
-// ended within the last 6 hours), oldest play first, by the event id GetScores
-// gives the game (GET /api/v1/{sport}/plays?eventId=). With an empty eventID it
+// GetPlays returns the play-by-play of one NBA, NHL, NFL, NCAAF or soccer game in
+// play (or ended within the last 6 hours), oldest play first, by the event id
+// GetScores gives the game (GET /api/v1/{sport}/plays?eventId=). For soccer the
+// plays are the match incidents (goals, own goals, penalties, cards,
+// substitutions) of every game on the live board, whatever its league. With an empty eventID it
 // returns the games that have play-by-play; p must then be nil or set neither Since
 // nor Limit (they apply to one game, so GetPlays refuses them without a request).
 // A game with no play-by-play (before tip-off, or any other id) is a 404, an
@@ -291,8 +293,8 @@ type Plays struct {
 // the new plays and every amended one, or opt in to plays-update with
 // Subscription.Plays. Merge plays by ID: a play can be amended after it is first
 // published. Play.Detail is the sport's own fields as raw JSON: decode it with
-// Decode[FootballPlayDetail], Decode[HockeyPlayDetail] or
-// Decode[BasketballPlayDetail].
+// Decode[FootballPlayDetail], Decode[HockeyPlayDetail], Decode[BasketballPlayDetail]
+// or Decode[SoccerPlayDetail].
 func (c *Client) GetPlays(ctx context.Context, sport, eventID string, p *PlaysParams) (*Plays, error) {
 	path := "/api/v1/" + esc(sport) + "/plays"
 	eventID = strings.TrimSpace(eventID)
@@ -689,14 +691,24 @@ func (c *Client) GetSgpEvents(ctx context.Context, sport, book string) (*SgpEven
 	return getInto[SgpEventsResponse](ctx, c, "/api/v1/"+esc(sport)+"/sgp/events", q)
 }
 
-// BuildSgp prices a same game parlay. It is never retried: every attempt is a
-// real pricing request.
+// BuildSgp prices a same game parlay on one book: "fanduel", "draftkings",
+// "hardrock", "betrivers", "ballybet" or "betmgm". It is never retried: every
+// attempt is a real pricing request.
 //
 // A 422 whose body has success false and a legs array is RETURNED, not an error:
 // branch on ReasonCode ("unresolved" means a leg did not resolve and legs[i].reason
 // says why; any other code means the book refused the slip). Every other 422 is an
 // [*APIError]. A 503 with Code [SgpNoPriceCode] means no usable price came back;
 // its RetryAfter is the server's, or 2 s when the header is missing.
+//
+// With p.Fair (MVP and Hall of Fame plans) a priced 200 also carries Fair, our
+// estimate of the parlay's price from de-vigged leg probabilities and the book's
+// own correlation (SgpFairBlock), beside the book's Sgp, never in place of it.
+// Fair.Price is nil, with Fair.Why, when the estimate cannot be made. On the
+// Rookie plan the call is a 403 with Code SGP_TIER_REQUIRED, refused before
+// anything is priced (below Rookie the builder itself is a 403 FORBIDDEN); a 503
+// with Code SGP_FEATURE_DISABLED means the fair price is not switched on yet. To
+// price the same legs on every book at once, see CompareSgp.
 func (c *Client) BuildSgp(ctx context.Context, sport string, p SgpBuildParams) (*SgpBuildResponse, error) {
 	status, header, body, err := c.roundTrip(ctx, http.MethodPost, "/api/v1/"+esc(sport)+"/sgp/build", nil, p)
 	if err != nil {
@@ -731,4 +743,113 @@ func (c *Client) BuildSgp(ctx context.Context, sport string, p SgpBuildParams) (
 		return nil, e
 	}
 	return nil, newAPIError(status, header, body)
+}
+
+// sgpBatchMinTimeout is the shortest per-attempt timeout BatchSgp uses. The API
+// starts a batch's last parlay up to about 20 s after the call began and gives it
+// up to DeadlineMs (15 s at most) plus about 2.5 s more, so a batch can rightly
+// take about 38 s: the 30 s default would abort it while the builds it reserved are
+// still being priced. A variable only so the tests can shorten it.
+var sgpBatchMinTimeout = 45 * time.Second
+
+// CompareSgp prices one same game parlay on every SGP book at once (FanDuel,
+// DraftKings, Hard Rock, BetRivers, Bally Bet and BetMGM), from OUR event id, and
+// returns each book's own answer side by side with the best price (MVP and Hall of
+// Fame).
+//
+// p.EventID is our id for the game, as GetOdds gives it
+// ({sport}:{Away}@{Home}-{YYYYMMDD}, -G2 for the second game of a doubleheader),
+// not a book's id from GetSgpEvents. The same legs go to every book; books price
+// game legs at the lines they list (the main line, and on NHL the alternates Hard
+// Rock, Bally Bet and, before the game, DraftKings list), so a spread or total at a
+// number one book does not list comes back "unresolved" on that book. A team_total
+// or period leg is "unsupported" on every book except Hard Rock on NHL.
+//
+// A 200 always carries every book asked, each with a Status: "priced" books have
+// Result.Sgp (exactly the body BuildSgp returns for that book), "refused" and
+// "unresolved" books have the 422 body in Result, and the others a Reason. Best is
+// the highest decimal price among the priced books (nil when none priced). Branch
+// on each book's Status; a book that did not price is not an error. New statuses
+// can appear: treat one you do not know as no price.
+//
+// Before a game starts, a book that priced exactly these legs for this game in the
+// last 15 seconds may be answered from that quote (Cached, Result.Meta.CacheAgeMs),
+// which costs no build; p.Fresh prices every book now. Every other book asked
+// counts one build against the key's per-minute SGP build limit; a book that is
+// never asked for a price (not listed, a different game, not reached in time, a leg
+// that does not resolve) is given back at once, while the minute it was counted in
+// is still running. p.Fair adds our estimate (SgpFairBlock), built from every book
+// that priced.
+//
+// The call can take up to p.DeadlineMs (default 6000; FanDuel, unless p.FanDuel is
+// "skip", is given at least 12000) plus about a second: keep the client's timeout
+// ([WithTimeout], default 30 s) above that.
+//
+// Errors are [*APIError] values with these codes: a 403 SGP_TIER_REQUIRED (the plan
+// is below MVP); a 503 SGP_FEATURE_DISABLED (compare, or with p.Fair the fair
+// price, is not switched on yet; RetryAfter 60 s); a 429 SGP_RATE_LIMIT (the books
+// this call needs exceed what is left of the per-minute build limit: wait
+// RetryAfter; Details carries unitsNeeded); a 429 SGP_COMPARE_TOO_MANY_BOOKS (the
+// comparison needs more builds than the limit allows at all, sent without
+// Retry-After, so RetryAfter is the 60 s default and waiting never helps: resend
+// with at most Details' maxBooks books); a 503 SGP_RATE_LIMIT_UNAVAILABLE (2 s) or
+// a code-less 503 (SERVICE_BUSY): retry later; a 400 for a malformed body (Message
+// says which field).
+//
+// It is never retried: every attempt is a real pricing request.
+func (c *Client) CompareSgp(ctx context.Context, sport string, p SgpCompareParams) (*SgpCompareResponse, error) {
+	return sendInto[SgpCompareResponse](ctx, c, http.MethodPost, "/api/v1/"+esc(sport)+"/sgp/compare", p)
+}
+
+// BatchSgp prices several same game parlays in one call (MVP and Hall of Fame).
+//
+//   - Mode "book": each parlay on the one p.Book (at most 10 parlays). Each result
+//     carries Book, BookStatus and, when the book answered, Result: exactly the
+//     body BuildSgp returns for it.
+//   - Mode "compare": each parlay on every book, or on p.Books (at most 4
+//     parlays). Each result carries Best and Books: exactly what CompareSgp
+//     returns for it.
+//
+// Every parlay names OUR event id for its game, as on CompareSgp. Parlays are
+// priced one after the other, in request order (in mode "compare" the books price
+// each parlay side by side), and results come back in that order with your Ref. A
+// result's Status is "done", or "not-started" when that parlay's pricing would have
+// begun more than about 20 seconds after the call began: it was not priced (except
+// by any book answered from a cached quote) and carries no fair block, so send it
+// again. BookStatus and Books[].Status take the values a CompareSgp book's Status
+// takes. A repeated parlay (same EventID, same legs in the same order) is priced
+// once and reported for each copy.
+//
+// Every quote not answered from a cached quote counts one build against the key's
+// per-minute SGP build limit (one per parlay in mode "book", one per book and
+// parlay in mode "compare"), reserved for the whole batch up front. A quote that
+// never reaches the book (not listed, a different game, a leg that does not
+// resolve, no time left, a parlay not started) is given back at once, while the
+// minute it was counted in is still running.
+//
+// A batch can rightly take close to 40 seconds, so each attempt waits at least
+// 45 s whatever a shorter client timeout ([WithTimeout]) says; a longer one, or
+// none, is kept. A deadline on ctx still applies.
+//
+// Errors are [*APIError] values with these codes: a 403 SGP_TIER_REQUIRED (the plan
+// is below MVP); a 503 SGP_FEATURE_DISABLED (batches, or with p.Fair the fair
+// price, are not switched on yet; RetryAfter 60 s); a 429 SGP_RATE_LIMIT (the
+// builds this batch needs exceed what is left of the per-minute limit: wait
+// RetryAfter; Details carries unitsNeeded); a 429 SGP_BATCH_TOO_LARGE (the batch
+// needs more builds than the limit allows at all, sent without Retry-After, so
+// waiting never helps: send fewer parlays or books; Details carries unitsNeeded
+// and limit). Mode "book" checks p.Book before pricing, as BuildSgp does: a 400
+// SGP_BOOK_UNSUPPORTED (Details lists supportedBooks) or SGP_BOOK_SPORT_UNSUPPORTED
+// (Details lists the sports that book prices), and a 503 SGP_BOOK_DISABLED when
+// that book's pricing is paused (60 s). A 503 SGP_RATE_LIMIT_UNAVAILABLE (2 s) or a
+// code-less 503 (SERVICE_BUSY): retry later. A 400 for a malformed body (Message
+// says which field).
+//
+// It is never retried: every attempt is a real pricing request.
+func (c *Client) BatchSgp(ctx context.Context, sport string, p SgpBatchParams) (*SgpBatchResponse, error) {
+	timeout := c.timeout
+	if timeout > 0 && timeout < sgpBatchMinTimeout {
+		timeout = sgpBatchMinTimeout
+	}
+	return sendIntoWithin[SgpBatchResponse](ctx, c, timeout, http.MethodPost, "/api/v1/"+esc(sport)+"/sgp/batch", p)
 }

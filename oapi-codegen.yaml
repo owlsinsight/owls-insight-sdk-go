@@ -16,6 +16,9 @@ output-options:
     - PropsSubscribeOptions
     - SgpBuildParams
     - SgpLeg
+    - SgpCompareParams
+    - SgpBatchParams
+    - SgpBatchParlay
     - CreateWebhookParams
     - UpdateWebhookParams
     - RotateWebhookSecretParams
