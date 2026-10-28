@@ -853,3 +853,38 @@ func (c *Client) BatchSgp(ctx context.Context, sport string, p SgpBatchParams) (
 	}
 	return sendIntoWithin[SgpBatchResponse](ctx, c, timeout, http.MethodPost, "/api/v1/"+esc(sport)+"/sgp/batch", p)
 }
+
+// GetSgpHistory returns the same game parlay prices YOUR account was quoted for
+// one game, newest first: the legs, the book's price and each leg's own price,
+// from BuildSgp, CompareSgp and BatchSgp (MVP and Hall of Fame).
+//
+// Name the game by OUR event id (p.EventID, as GetOdds gives it), or by a book
+// and that book's own event id (p.Book and p.BookEventID, as GetSgpEvents lists
+// it), never both. p.LegsHash narrows it to one parlay: every priced answer
+// carries it as Meta.LegsHash (on CompareSgp and BatchSgp also beside the
+// results), and the same parlay sent the same way always has the same hash.
+// p.From and p.To (ISO 8601) set the window, at most 7 days, by default the last
+// 24 hours; p.Limit is 1 to 500, default 100. Meta echoes the query as the API
+// applied it.
+//
+// Only the calling account's own quotes are returned, and only priced answers are
+// kept: a refusal, a no-price or a busy answer is not, and a quote served from
+// the short quote cache is not a new quote. The history holds quotes from the day
+// recording was switched on (nothing earlier is filled in), for 90 days. QuotedAt
+// is when the book priced the parlay (Meta.PricedAt on the answer); Fair is our
+// estimate when the quote carried one (Fair: true), otherwise nil. Via is
+// "build", "compare" or "batch"; more can be added.
+//
+// Errors are [*APIError] values: a 403 SGP_TIER_REQUIRED (the plan is below
+// MVP); a 503 SGP_FEATURE_DISABLED (the history is not switched on yet;
+// RetryAfter 60 s); a 503 SGP_HISTORY_UNAVAILABLE (the history could not be read
+// just then; RetryAfter 5 s); a 429 (the plan rate limit, or the concurrent
+// request limit); a 400 for the game named both ways or not at all, a window
+// over 7 days, a Limit outside 1 to 500 or a malformed LegsHash (Message says
+// which).
+//
+// It is a read, so with [WithRetry] its 429s and 503s are retried like any other
+// GET.
+func (c *Client) GetSgpHistory(ctx context.Context, sport string, p SgpHistoryParams) (*SgpHistoryResponse, error) {
+	return getInto[SgpHistoryResponse](ctx, c, "/api/v1/"+esc(sport)+"/sgp/history", p.query())
+}

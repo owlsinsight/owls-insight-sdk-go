@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -2256,4 +2257,236 @@ func TestBatchSgp(t *testing.T) {
 			t.Fatalf("err = %#v after %d requests", err, api.count())
 		}
 	})
+}
+
+// The bodies below are the API's (nba-odds-app routes/sgp.ts, sgpHistoryQuote and
+// the history handler; lib/sgp/access.ts for the refusals).
+const sgpHistoryBody = `{"success": true, "sport": "nfl", "quotes": [
+	{"quotedAt": "2026-10-28T18:00:00.900Z", "book": "draftkings", "bookEventId": "33012345",
+		"eventId": "nfl:Cincinnati Bengals@Baltimore Ravens-20261101", "legsHash": "0123456789abcdef",
+		"legs": [{"type": "moneyline", "selection": "Baltimore Ravens", "description": "Baltimore Ravens", "selection_ids": {"marketId": "m1", "selectionId": "s1"}},
+			{"type": "total", "selection": "over", "point": 47.5, "description": "Over 47.5", "selection_ids": {"marketId": "m2", "selectionId": "s2"}}],
+		"sgp": {"american": 205, "decimal": 3.05}, "singles": [{"american": -160, "decimal": 1.625}, null],
+		"fair": {"decimal": 3.2016, "correlationFactor": 1.0412}, "via": "compare"},
+	{"quotedAt": "2026-10-28T17:30:00.400Z", "book": "fanduel", "bookEventId": "34567890", "eventId": null, "legsHash": "0123456789abcdef",
+		"legs": [{"type": "moneyline", "selection": "Baltimore Ravens", "description": "Baltimore Ravens", "selection_ids": {"marketId": "734.1", "selectionId": 1234567}},
+			{"type": "total", "selection": "over", "point": 47.5, "description": "Over 47.5"}],
+		"sgp": {"american": 200, "decimal": 3.0}, "singles": null, "fair": null, "via": "build"}],
+	"meta": {"count": 2, "limit": 100, "from": "2026-10-27T18:00:05.000Z", "to": "2026-10-28T18:00:05.000Z",
+		"eventId": "nfl:Cincinnati Bengals@Baltimore Ravens-20261101"}}`
+
+func TestGetSgpHistory(t *testing.T) {
+	t.Run("request: every param in the query, a GET with the key and no body", func(t *testing.T) {
+		api := newFakeAPI(t, ok(sgpHistoryBody))
+		_, err := testClient(t, api.URL).GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{
+			EventID: sgpCompareEvent, LegsHash: "0123456789abcdef", From: "2026-10-27T00:00:00Z", To: "2026-10-28T00:00:00Z", Limit: 500,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := api.req(0)
+		q, _ := url.ParseQuery(r.Query)
+		want := url.Values{"eventId": {sgpCompareEvent}, "legsHash": {"0123456789abcdef"},
+			"from": {"2026-10-27T00:00:00Z"}, "to": {"2026-10-28T00:00:00Z"}, "limit": {"500"}}
+		if r.Method != "GET" || r.Path != "/api/v1/nfl/sgp/history" || !reflect.DeepEqual(q, want) || r.Body != "" ||
+			r.Header.Get("Authorization") != "Bearer test-key" {
+			t.Errorf("request %s %s ?%s body %q auth %q", r.Method, r.Path, r.Query, r.Body, r.Header.Get("Authorization"))
+		}
+		// By a book and its own event id.
+		_, _ = testClient(t, api.URL).GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{Book: "fanduel", BookEventID: "34567890"})
+		if q, _ := url.ParseQuery(api.req(1).Query); !reflect.DeepEqual(q, url.Values{"book": {"fanduel"}, "bookEventId": {"34567890"}}) {
+			t.Errorf("by book: ?%s", api.req(1).Query)
+		}
+		// CONTROL: the zero options send nothing but the game.
+		_, _ = testClient(t, api.URL).GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{EventID: sgpCompareEvent})
+		if q, _ := url.ParseQuery(api.req(2).Query); !reflect.DeepEqual(q, url.Values{"eventId": {sgpCompareEvent}}) {
+			t.Errorf("control: ?%s", api.req(2).Query)
+		}
+	})
+	t.Run("the 200: quotes newest first with legs, prices, singles, fair and via", func(t *testing.T) {
+		api := newFakeAPI(t, ok(sgpHistoryBody))
+		res, err := testClient(t, api.URL).GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{EventID: sgpCompareEvent})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !*res.Success || len(res.Quotes) != 2 {
+			t.Fatalf("response %+v", res)
+		}
+		dk, fd := res.Quotes[0], res.Quotes[1]
+		if *dk.Book != "draftkings" || *dk.Via != "compare" || *dk.Sgp.American != 205 || *dk.LegsHash != "0123456789abcdef" ||
+			*dk.QuotedAt != "2026-10-28T18:00:00.900Z" || *dk.EventID != sgpCompareEvent || *dk.Legs[1].Point != 47.5 ||
+			*dk.Legs[1].Description != "Over 47.5" || *dk.Legs[0].SelectionIds.MarketID != "m1" ||
+			string(*dk.Legs[0].SelectionIds.SelectionID) != `"s1"` {
+			t.Errorf("draftkings quote %+v", dk)
+		}
+		if len(dk.Singles) != 2 || *dk.Singles[0].American != -160 || *dk.Singles[0].Decimal != 1.625 || dk.Singles[1] != nil {
+			t.Errorf("singles %+v", dk.Singles)
+		}
+		if *dk.Fair.Decimal != 3.2016 || *dk.Fair.CorrelationFactor != 1.0412 {
+			t.Errorf("fair %+v", dk.Fair)
+		}
+		if *fd.Book != "fanduel" || *fd.Via != "build" || fd.EventID != nil || fd.Singles != nil || fd.Fair != nil ||
+			string(*fd.Legs[0].SelectionIds.SelectionID) != "1234567" || fd.Legs[1].SelectionIds != nil {
+			t.Errorf("fanduel quote %+v", fd)
+		}
+		m := res.Meta
+		if *m.Count != 2 || *m.Limit != 100 || *m.From != "2026-10-27T18:00:05.000Z" || *m.To != "2026-10-28T18:00:05.000Z" ||
+			*m.EventID != sgpCompareEvent || m.Book != nil || m.BookEventID != nil || m.LegsHash != nil {
+			t.Errorf("meta %+v", m)
+		}
+	})
+	t.Run("an empty history, named by a book; an unknown via is kept", func(t *testing.T) {
+		api := newFakeAPI(t, ok(`{"success": true, "sport": "nfl", "quotes": [], "meta": {"count": 0, "limit": 10,
+			"from": "2026-10-27T18:00:05.000Z", "to": "2026-10-28T18:00:05.000Z", "book": "draftkings", "bookEventId": "33012345",
+			"legsHash": "0123456789abcdef"}}`))
+		res, err := testClient(t, api.URL).GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{
+			Book: "draftkings", BookEventID: "33012345", LegsHash: "0123456789abcdef", Limit: 10,
+		})
+		if err != nil || len(res.Quotes) != 0 || *res.Meta.Book != "draftkings" || *res.Meta.BookEventID != "33012345" ||
+			*res.Meta.LegsHash != "0123456789abcdef" || res.Meta.EventID != nil {
+			t.Fatalf("response %+v (%v)", res, err)
+		}
+		api = newFakeAPI(t, ok(strings.Replace(sgpHistoryBody, `"via": "compare"`, `"via": "combo", "region": "nj"`, 1)))
+		res, err = testClient(t, api.URL).GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{EventID: sgpCompareEvent})
+		if err != nil || *res.Quotes[0].Via != "combo" || *res.Quotes[0].Sgp.American != 205 {
+			t.Fatalf("unknown via: %+v (%v)", res, err)
+		}
+	})
+	t.Run("a GET: a 503 is retried when the client retries", func(t *testing.T) {
+		api := newFakeAPI(t, func(_ *http.Request, n int) (int, http.Header, string) {
+			if n == 1 {
+				return 503, nil, `{"error":"SGP history temporarily unavailable","code":"SGP_HISTORY_UNAVAILABLE","message":"x"}`
+			}
+			return 200, nil, sgpHistoryBody
+		})
+		c := testClient(t, api.URL, WithRetry(RetryPolicy{MaxRetries: 1, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond}))
+		res, err := c.GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{EventID: sgpCompareEvent})
+		if err != nil || api.count() != 2 || len(res.Quotes) != 2 {
+			t.Fatalf("%d requests, %v", api.count(), err)
+		}
+		// CONTROL: without retries the same 503 is returned after one request.
+		api = newFakeAPI(t, func(*http.Request, int) (int, http.Header, string) {
+			return 503, nil, `{"error":"SGP history temporarily unavailable","code":"SGP_HISTORY_UNAVAILABLE","message":"x"}`
+		})
+		_, err = testClient(t, api.URL).GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{EventID: sgpCompareEvent})
+		if !errors.Is(err, ErrServiceBusy) || api.count() != 1 {
+			t.Fatalf("control: %v after %d requests", err, api.count())
+		}
+	})
+	for _, tc := range []struct {
+		name     string
+		status   int
+		header   http.Header
+		body     string
+		sentinel error
+		code     string
+		retry    time.Duration
+		message  string
+	}{
+		{"403 SGP_TIER_REQUIRED", 403, nil,
+			`{"error":"Upgrade required","code":"SGP_TIER_REQUIRED","message":"SGP price history requires the MVP plan or higher.","upgradeUrl":"https://owlsinsight.com/pricing","currentTier":"rookie","requiredTier":"mvp"}`,
+			ErrForbidden, "SGP_TIER_REQUIRED", 0, "SGP price history requires the MVP plan or higher."},
+		{"503 SGP_FEATURE_DISABLED (feature history)", 503, http.Header{"Retry-After": {"60"}},
+			`{"error":"SGP feature temporarily unavailable","code":"SGP_FEATURE_DISABLED","message":"SGP price history is not available right now. Retry later.","feature":"history"}`,
+			ErrServiceBusy, "SGP_FEATURE_DISABLED", 60 * time.Second, "SGP price history is not available right now. Retry later."},
+		{"503 SGP_HISTORY_UNAVAILABLE", 503, http.Header{"Retry-After": {"5"}},
+			`{"error":"SGP history temporarily unavailable","code":"SGP_HISTORY_UNAVAILABLE","message":"The price history could not be read. Retry in a few seconds."}`,
+			ErrServiceBusy, "SGP_HISTORY_UNAVAILABLE", 5 * time.Second, "The price history could not be read. Retry in a few seconds."},
+		{"429 the concurrent request limit", 429, http.Header{"Retry-After": {"2"}},
+			`{"error":"Concurrent request limit exceeded","code":"CONCURRENCY_LIMIT","retryAfterSeconds":2,"limit":3,"current":3,"tier":"mvp"}`,
+			ErrRateLimited, "CONCURRENCY_LIMIT", 2 * time.Second, "Concurrent request limit exceeded"},
+		{"400 carries the API's message", 400, nil,
+			`{"error":"Invalid request","message":"the window from 'from' to 'to' must be at most 7 days"}`,
+			nil, "", 0, "the window from 'from' to 'to' must be at most 7 days"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			api := newFakeAPI(t, func(*http.Request, int) (int, http.Header, string) { return tc.status, tc.header, tc.body })
+			_, err := testClient(t, api.URL).GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{EventID: sgpCompareEvent})
+			var ae *APIError
+			if !errors.As(err, &ae) || ae.Status != tc.status || ae.Code != tc.code || ae.RetryAfter != tc.retry || ae.Message != tc.message ||
+				(tc.sentinel != nil && !errors.Is(err, tc.sentinel)) || string(ae.Details) != tc.body {
+				t.Fatalf("err = %#v", err)
+			}
+		})
+	}
+}
+
+func TestSgpLegsHashIntoHistory(t *testing.T) {
+	api := newFakeAPI(t, ok(`{"success": true, "pricing": "draftkings-slip", "sgp": {"american": 205, "decimal": 3.05, "isSGM": true, "legs": 2},
+		"legs": [], "meta": {"eventId": "33012345", "book": "draftkings", "timestamp": "2026-10-28T18:00:00.100Z",
+			"pricedAt": "2026-10-28T18:00:00.900Z", "legsHash": "0123456789abcdef"}}`))
+	c := testClient(t, api.URL)
+	built, err := c.BuildSgp(context.Background(), "nfl", SgpBuildParams{EventID: "33012345", Book: "draftkings", Legs: sgpCompareLegs()})
+	if err != nil || built.Meta.LegsHash == nil || *built.Meta.LegsHash != "0123456789abcdef" {
+		t.Fatalf("build meta %+v (%v)", built, err)
+	}
+	_, _ = c.GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{Book: *built.Meta.Book, BookEventID: "33012345", LegsHash: *built.Meta.LegsHash})
+	if q, _ := url.ParseQuery(api.req(1).Query); q.Get("legsHash") != "0123456789abcdef" {
+		t.Errorf("history query ?%s", api.req(1).Query)
+	}
+	// And on each priced book of a comparison.
+	cmp, err := Decode[SgpCompareResponse](json.RawMessage(`{"books": [{"book": "draftkings", "status": "priced",
+		"result": {"success": true, "legs": [], "meta": {"eventId": "33012345", "book": "draftkings", "legsHash": "0123456789abcdef"}}}],
+		"meta": {"legsHash": "0123456789abcdef"}}`))
+	if err != nil || *cmp.Books[0].Result.Meta.LegsHash != "0123456789abcdef" || *cmp.Meta.LegsHash != "0123456789abcdef" {
+		t.Fatalf("compare %+v (%v)", cmp, err)
+	}
+	// CONTROL: a body without it (an older API, or a refusal) leaves it nil.
+	old, err := Decode[SgpBuildResponse](json.RawMessage(`{"success": false, "legs": [], "meta": {"eventId": "1", "book": "fanduel"}}`))
+	if err != nil || old.Meta.LegsHash != nil {
+		t.Fatalf("control: %+v (%v)", old, err)
+	}
+}
+
+// sgpHistoryQueryDrift lists the query parameters the spec gives an operation that
+// SgpHistoryParams does not send, and the ones it sends that the spec lacks.
+func sgpHistoryQueryDrift(t *testing.T, specJSON []byte, sent url.Values) (missing, extra []string) {
+	t.Helper()
+	var s struct {
+		Paths map[string]map[string]struct {
+			Parameters []struct {
+				In   string `json:"in"`
+				Name string `json:"name"`
+			} `json:"parameters"`
+		} `json:"paths"`
+	}
+	if err := json.Unmarshal(specJSON, &s); err != nil {
+		t.Fatal(err)
+	}
+	spec := map[string]bool{}
+	for _, p := range s.Paths["/api/v1/{sport}/sgp/history"]["get"].Parameters {
+		if p.In == "query" {
+			spec[p.Name] = true
+			if _, ok := sent[p.Name]; !ok {
+				missing = append(missing, p.Name)
+			}
+		}
+	}
+	for k := range sent {
+		if !spec[k] {
+			extra = append(extra, k)
+		}
+	}
+	sort.Strings(missing)
+	sort.Strings(extra)
+	return missing, extra
+}
+
+// SgpHistoryParams is hand-written: it sends exactly the query parameters the spec
+// gives the history path, so one the API adds cannot go missing from Go.
+func TestSgpHistoryParamsMatchTheSpec(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("spec", "openapi.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	full := SgpHistoryParams{EventID: "e", Book: "b", BookEventID: "1", LegsHash: "h", From: "f", To: "t", Limit: 1}.query()
+	if missing, extra := sgpHistoryQueryDrift(t, b, full); len(missing)+len(extra) > 0 {
+		t.Fatalf("SgpHistoryParams: not sent %v, not in the spec %v", missing, extra)
+	}
+	// CONTROL: a parameter the spec gains, and one it drops, are reported.
+	fake := []byte(`{"paths": {"/api/v1/{sport}/sgp/history": {"get": {"parameters": [{"in": "path", "name": "sport"},
+		{"in": "query", "name": "eventId"}, {"in": "query", "name": "cursor"}]}}}}`)
+	if missing, extra := sgpHistoryQueryDrift(t, fake, full); !reflect.DeepEqual(missing, []string{"cursor"}) || len(extra) != 6 {
+		t.Fatalf("control: missing %v, extra %v", missing, extra)
+	}
 }

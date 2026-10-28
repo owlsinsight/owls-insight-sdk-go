@@ -33,7 +33,7 @@ var sgpErrorCodes = map[string]bool{
 	"SGP_RATE_LIMIT": true, "SGP_RATE_LIMIT_UNAVAILABLE": true, "SGP_BUSY": true,
 	"SGP_BOOK_DISABLED": true, "SGP_BOOK_UNSUPPORTED": true, "SGP_BOOK_SPORT_UNSUPPORTED": true,
 	"SGP_TIER_REQUIRED": true, "SGP_FEATURE_DISABLED": true, "SGP_COMPARE_TOO_MANY_BOOKS": true,
-	"SGP_BATCH_TOO_LARGE": true,
+	"SGP_BATCH_TOO_LARGE": true, "SGP_HISTORY_UNAVAILABLE": true,
 }
 
 // DataKeyForbiddenCode is the Code of a 403 refusing a data-only key (one minted by

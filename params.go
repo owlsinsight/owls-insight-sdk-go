@@ -548,3 +548,45 @@ type SgpBatchParams struct {
 	// Fresh never uses a cached quote.
 	Fresh bool `json:"fresh,omitempty"`
 }
+
+// SgpHistoryParams selects GetSgpHistory. Name the game one way, never both: by
+// OUR event id (EventID), or by a book and that book's own event id (Book and
+// BookEventID). The API checks the fields and answers a 400 (Message says which)
+// for the game named both ways or not at all, a window over 7 days, a Limit
+// outside 1 to 500 or a malformed LegsHash.
+type SgpHistoryParams struct {
+	// EventID is OUR event id for the game, as GetOdds gives it
+	// ({sport}:{Away}@{Home}-{YYYYMMDD}).
+	EventID string
+	// Book, with BookEventID, names the game by one book's own event id
+	// ("fanduel", "draftkings", "hardrock", "betrivers", "ballybet", "betmgm"):
+	// that book's quotes for it.
+	Book string
+	// BookEventID is the book's own event id, as GetSgpEvents lists it and BuildSgp
+	// takes it (SgpBuildParams.EventID): FanDuel's numeric id as its digits.
+	BookEventID string
+	// LegsHash narrows the history to one parlay: the 16 hex characters of
+	// Meta.LegsHash on a priced BuildSgp answer (or on CompareSgp and BatchSgp).
+	LegsHash string
+	// From is the ISO 8601 start of the window (inclusive). Empty: 24 hours
+	// before To.
+	From string
+	// To is the ISO 8601 end of the window (exclusive). Empty: now (or 24 hours
+	// after From, if that is earlier). The window is at most 7 days.
+	To string
+	// Limit is at most this many quotes, 1 to 500. 0 sends nothing: the server's
+	// default is 100.
+	Limit int
+}
+
+func (p SgpHistoryParams) query() url.Values {
+	q := url.Values{}
+	setStr(q, "eventId", p.EventID)
+	setStr(q, "book", p.Book)
+	setStr(q, "bookEventId", p.BookEventID)
+	setStr(q, "legsHash", p.LegsHash)
+	setStr(q, "from", p.From)
+	setStr(q, "to", p.To)
+	setInt(q, "limit", p.Limit)
+	return q
+}

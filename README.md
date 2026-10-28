@@ -342,12 +342,20 @@ MVP and Hall of Fame plans also get:
   come back in request order with your `Ref`; one with `Status` `not-started` was not
   priced: send it again. A batch can take close to 40 seconds, so it waits at least 45 s
   whatever a shorter `WithTimeout` says.
+- `GetSgpHistory(ctx, sport, owls.SgpHistoryParams{EventID: ...})` (or `Book` and
+  `BookEventID`): the prices YOUR account was quoted for one game, newest first, from the
+  three calls above. Every priced answer carries `Meta.LegsHash`; pass it as `LegsHash` to
+  see one parlay's quotes. `From` / `To` (ISO 8601) set the window, at most 7 days, default
+  the last 24 hours; `Limit` is 1 to 500, default 100. Only priced answers are kept, never a
+  cached quote, from the day recording was switched on, for 90 days.
 
 On a lower plan those are a 403 with `Code` `SGP_TIER_REQUIRED` (below Rookie a build is a
 403 `FORBIDDEN` whatever its options); a 503 `SGP_FEATURE_DISABLED` means the feature is
 not switched on yet. A 429 `SGP_COMPARE_TOO_MANY_BOOKS` or `SGP_BATCH_TOO_LARGE` needs more
 builds than the key's limit allows at all: waiting never helps, ask for fewer books or
-parlays. The SGP calls are never retried: every attempt is a real pricing request.
+parlays. The pricing calls are never retried: every attempt is a real pricing request.
+`GetSgpHistory` is a read: `WithRetry` retries its 429s and 503s, including
+`SGP_HISTORY_UNAVAILABLE` (the history could not be read just then, `RetryAfter` 5 s).
 
 ### Webhooks
 
@@ -637,6 +645,7 @@ running, and do not restart it in a tight loop.
 | `buildSgp` | `BuildSgp(ctx, sport, SgpBuildParams)` | `POST /api/v1/{sport}/sgp/build` |
 | `compareSgp` | `CompareSgp(ctx, sport, SgpCompareParams)` | `POST /api/v1/{sport}/sgp/compare` |
 | `batchSgp` | `BatchSgp(ctx, sport, SgpBatchParams)` | `POST /api/v1/{sport}/sgp/batch` |
+| `getSgpHistory` | `GetSgpHistory(ctx, sport, SgpHistoryParams)` | `GET /api/v1/{sport}/sgp/history` |
 | `createWebhook` | `CreateWebhook(ctx, CreateWebhookParams)` | `POST /api/v1/webhooks` |
 | `listWebhooks` | `ListWebhooks(ctx)` | `GET /api/v1/webhooks` |
 | `getWebhook` | `GetWebhook(ctx, id)` | `GET /api/v1/webhooks/{id}` |

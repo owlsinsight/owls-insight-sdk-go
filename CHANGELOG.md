@@ -32,6 +32,26 @@ All notable changes to this module are documented here. The format follows
   Rock NHL only. Every other book refuses them rather than pricing the full game:
   `BuildSgp` answers a 422 (`ReasonCode` `unresolved`), and `CompareSgp` and `BatchSgp`
   report that book with status `unsupported`.
+- `GetSgpHistory(ctx, sport, SgpHistoryParams)` (`GET /api/v1/{sport}/sgp/history`, MVP and
+  Hall of Fame): the same game parlay prices YOUR account was quoted for one game, newest
+  first, from `BuildSgp`, `CompareSgp` and `BatchSgp`. Name the game by our `EventID`, or by
+  `Book` and `BookEventID` (FanDuel's numeric id as its digits), never both; `LegsHash`
+  narrows it to one parlay; `From` / `To` (ISO 8601) set the window, at most 7 days, default
+  the last 24 hours; `Limit` 1 to 500, default 100. Each `SgpHistoryQuote` carries
+  `QuotedAt` (the book's `Meta.PricedAt`), `Book`, `BookEventID`, `EventID` (ours, or nil),
+  `LegsHash`, `Legs` (`SgpHistoryLeg`: the leg as sent, the book's `Description` and
+  `SelectionIds`), `Sgp` and `Singles` (`SgpHistoryPrice`, a nil entry for a leg with no
+  price), `Fair` (`SgpHistoryFair`, or nil) and `Via`; `Meta` (`SgpHistoryMeta`) echoes the
+  query as applied. Only priced answers are kept, never a cached quote, and only from the
+  day recording was switched on. A GET, so `WithRetry` retries its 429s and 503s. A test
+  checks that `SgpHistoryParams` sends exactly the query parameters the spec gives the path.
+- `SgpBuildMeta.LegsHash` (16 hex characters) on every priced 200 of `BuildSgp`, and on
+  each priced book's `Result.Meta` on `CompareSgp` and `BatchSgp`
+  (`SgpCompareResultMeta.LegsHash`): the key the price history files the parlay under.
+- `SGP_HISTORY_UNAVAILABLE` (503, `ErrServiceBusy`, `RetryAfter` 5 s: the history could not
+  be read just then) joins the SGP codes. A plan below MVP is a 403 `SGP_TIER_REQUIRED`, and
+  a 503 `SGP_FEATURE_DISABLED` (`"feature": "history"`) means the history is not switched
+  on yet.
 - Soccer play-by-play: `GetPlays(ctx, "soccer", ...)` and `Subscription.Plays` with
   `soccer`, for every soccer game on the live board whatever its league. A soccer play is a
   match incident (goal, own goal, penalty, card, substitution): `Clock` is the match
@@ -49,14 +69,17 @@ All notable changes to this module are documented here. The format follows
 - `SgpCompareParams`, `SgpBatchParams` and `SgpBatchParlay` are hand-written like
   `SgpBuildParams` (value fields), not generated, and a test checks that every SGP input
   sends exactly the properties the spec gives it.
-- `spec/` is the TypeScript SDK's 0.89.0 spec and the models are regenerated from it:
-  soccer in `PlaysSport` (`SoccerPlayDetail`, `SoccerPlayer`), the SGP fair price, compare
-  and batch types (`SgpFairBlock`, `SgpFairLeg`, `SgpFairPrice`, `SgpCompareResponse`,
-  `SgpCompareBook`, `SgpCompareBookResult`, `SgpCompareResultMeta`, `SgpCompareMeta`,
-  `SgpBatchResponse`, `SgpBatchResult`, `SgpBatchMeta`), `SgpBuildResponse.Fair` and
-  `SgpPeriod`.
-- README: `CompareSgp`, `BatchSgp`, the fair price, the NHL leg shapes and soccer
-  play-by-play.
+- `spec/` is the TypeScript SDK's 0.89.0 spec (at its `getSgpHistory` commit) and the
+  models are regenerated from it: soccer in `PlaysSport` (`SoccerPlayDetail`,
+  `SoccerPlayer`), the SGP fair price, compare and batch types (`SgpFairBlock`,
+  `SgpFairLeg`, `SgpFairPrice`, `SgpCompareResponse`, `SgpCompareBook`,
+  `SgpCompareBookResult`, `SgpCompareResultMeta`, `SgpCompareMeta`, `SgpBatchResponse`,
+  `SgpBatchResult`, `SgpBatchMeta`), the price history types (`SgpHistoryResponse`,
+  `SgpHistoryQuote`, `SgpHistoryLeg`, `SgpHistorySelectionIds`, `SgpHistoryPrice`,
+  `SgpHistoryFair`, `SgpHistoryMeta`), `SgpBuildResponse.Fair`, `LegsHash` on the build
+  meta and `SgpPeriod`.
+- README: `CompareSgp`, `BatchSgp`, `GetSgpHistory`, the fair price, the NHL leg shapes
+  and soccer play-by-play.
 
 ## [0.9.0] - 2026-10-26
 
