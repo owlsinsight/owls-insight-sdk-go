@@ -99,7 +99,9 @@ func TestCompareSgpCombo(t *testing.T) {
 						strings.HasPrefix(*r.Combo.Legs[1].Why, "KXNBA1HSPREAD") && r.VenuePrice == nil && r.Compare == nil
 				}},
 			{"COMBO_MULTI_GAME", `{"success":false,"error":"The combo spans more than one game","code":"COMBO_MULTI_GAME","message":"x",
-				"venue":"kalshi","combo":{"ticker":null,"legs":[]},"venuePrice":null,
+				"venue":"kalshi","combo":{"ticker":null,"legs":[
+					{"marketTicker":"KXNHLGAME-26OCT28PHIWSH-WSH","side":"yes","title":null,"translated":null,"why":null},
+					{"marketTicker":"KXNBATOTAL-26OCT28CHADET-197","side":"yes","title":null,"translated":null,"why":null}]},"venuePrice":null,
 				"games":[{"sport":"nhl","teams":["Philadelphia Flyers","Washington Capitals"],"eventDateEt":"2026-10-28","legs":[0]},
 					{"sport":"nba","teams":["Charlotte Hornets","Detroit Pistons"],"eventDateEt":"2026-10-28","legs":[1]}]}`,
 				"COMBO_MULTI_GAME", func(r *SgpComboCompareResponse) bool {
@@ -129,7 +131,8 @@ func TestCompareSgpCombo(t *testing.T) {
 		}
 		// CONTROL: a 422 that is not a coded refusal is an error.
 		for _, body := range []string{`<html>Unprocessable</html>`, `{"detail":[{"msg":"field required"}]}`,
-			`{"success":true,"error":"x","code":"COMBO_MULTI_GAME"}`} {
+			`{"success":true,"error":"x","code":"COMBO_MULTI_GAME"}`, `{"code":"COMBO_MULTI_GAME"}`, `{"error":"x"}`,
+			`{"code":5,"error":"x"}`} {
 			api := newFakeAPI(t, func(*http.Request, int) (int, http.Header, string) { return 422, nil, body })
 			res, err := testClient(t, api.URL).CompareSgpCombo(context.Background(), SgpComboCompareParams{ComboTicker: sgpComboTicker})
 			var ae *APIError

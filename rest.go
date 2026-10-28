@@ -830,18 +830,20 @@ var sgpComboMinTimeout = 45 * time.Second
 // line market must be greater-than at a half point. A NO on a game winner, other
 // periods, soccer and non-sports markets are not translated.
 //
-// A 422 refusal with a code is RETURNED, not an error: Success is false and
-// Code says why. COMBO_NOT_A_COMBO: the market does not list 2 to 12 legs.
+// A 422 whose body carries a code and an error is RETURNED, not an error:
+// Success is false and Code says why. COMBO_NOT_A_COMBO: the market does not list 2 to 12 legs.
 // COMBO_LEGS_UNSUPPORTED: a leg has no sportsbook equivalent (Combo.Legs[].Why
 // says why). COMBO_MULTI_GAME: the legs span games (Games groups them by index
 // into Combo.Legs: send one game's legs). COMBO_EVENT_NOT_FOUND: the game is not
 // on our pregame board, or cannot be told from another game of the pair that
-// day. The API sends COMBO_NOT_A_COMBO without success; the SDK sets it to false.
-// Every other 422 is an [*APIError].
+// day. A code added later is returned the same way. The API sends
+// COMBO_NOT_A_COMBO without success; the SDK sets it to false. A 422 that is not
+// JSON, lacks a string code or error, or claims success is an [*APIError].
 //
 // Errors are [*APIError] values with these codes: a 400 COMBO_INVALID (a
 // malformed body: Message says which field); a 404 COMBO_NOT_FOUND (Kalshi has no
-// such market; it matches [ErrNotFound]); a 503 COMBO_VENUE_UNAVAILABLE (Kalshi
+// market p.ComboTicker; it matches [ErrNotFound]; with p.Legs, a leg market Kalshi
+// does not have is a returned COMBO_LEGS_UNSUPPORTED instead); a 503 COMBO_VENUE_UNAVAILABLE (Kalshi
 // could not be read just then: wait RetryAfter); a 403 SGP_TIER_REQUIRED (the plan
 // is below MVP, refused before anything is read from Kalshi); a 503
 // SGP_FEATURE_DISABLED (combos, compare or, with p.Fair, the fair price are not
@@ -946,7 +948,7 @@ func (c *Client) BatchSgp(ctx context.Context, sport string, p SgpBatchParams) (
 
 // GetSgpHistory returns the same game parlay prices YOUR account was quoted for
 // one game, newest first: the legs, the book's price and each leg's own price,
-// from BuildSgp, CompareSgp and BatchSgp (MVP and Hall of Fame).
+// from BuildSgp, CompareSgp, CompareSgpCombo and BatchSgp (MVP and Hall of Fame).
 //
 // Name the game by OUR event id (p.EventID, as GetOdds gives it), or by a book
 // and that book's own event id (p.Book and p.BookEventID, as GetSgpEvents lists
@@ -954,8 +956,8 @@ func (c *Client) BatchSgp(ctx context.Context, sport string, p SgpBatchParams) (
 // carries it as Meta.LegsHash (on CompareSgp and BatchSgp also beside the
 // results), and the same parlay sent the same way always has the same hash.
 // p.From and p.To (ISO 8601) set the window, at most 7 days, by default the last
-// 24 hours (p.From alone: the 24 hours from it, so set p.To too for a longer
-// window); p.Limit is 1 to 500, default 100. Meta echoes the query as the API
+// 24 hours (p.From alone: the 24 hours from it, up to now, so set p.To too for a
+// longer window); p.Limit is 1 to 500, default 100. Meta echoes the query as the API
 // applied it.
 //
 // Only the calling account's own quotes are returned, and only priced answers are

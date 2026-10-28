@@ -85,7 +85,7 @@ func WithHTTPClient(hc *http.Client) Option { return func(c *config) { c.httpCli
 
 // WithTimeout sets how long one REST attempt may take, response body included
 // (default 30 s). It is applied through the request context; 0 disables it.
-// BatchSgp raises a shorter value to 45 s for its own calls.
+// BatchSgp and CompareSgpCombo raise a shorter value to 45 s for their own calls.
 func WithTimeout(d time.Duration) Option { return func(c *config) { c.timeout = d } }
 
 // WithRetry enables retries of 429 and 503 responses on GET requests. Zero

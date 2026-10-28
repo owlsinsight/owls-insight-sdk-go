@@ -354,7 +354,7 @@ MVP and Hall of Fame plans also get:
   `BookEventID`): the prices YOUR account was quoted for one game, newest first, from the
   calls above. Every priced answer carries `Meta.LegsHash`; pass it as `LegsHash` to
   see one parlay's quotes. `From` / `To` (ISO 8601) set the window, at most 7 days, default
-  the last 24 hours (`From` alone: the 24 hours from it); `Limit` is 1 to 500, default 100. Only priced answers are kept, never a
+  the last 24 hours (`From` alone: the 24 hours from it, up to now); `Limit` is 1 to 500, default 100. Only priced answers are kept, never a
   cached quote, from the day recording was switched on, for 90 days.
 
 On a lower plan those are a 403 with `Code` `SGP_TIER_REQUIRED` (below Rookie a build is a

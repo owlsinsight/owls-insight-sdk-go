@@ -68,10 +68,11 @@ All notable changes to this module are documented here. The format follows
   each an `SgpComboLeg` with Kalshi's `Title`, the `Translated` leg as an `SgpLeg`, or `Why`
   it has none), `VenuePrice` (`SgpComboVenuePrice`: the combo's own quote on Kalshi, for
   context), OUR `EventID`, and `Compare`, exactly the `CompareSgp` 200 body for those legs.
-  A 422 refusal with a code is returned, not an error: `Success` false and `Code`
+  A 422 whose body carries a code and an error is returned, not an error: `Success` false and `Code`
   `COMBO_NOT_A_COMBO`, `COMBO_LEGS_UNSUPPORTED` (`Combo.Legs[].Why`), `COMBO_MULTI_GAME`
   (`Games`, `SgpComboGame`), `COMBO_EVENT_NOT_FOUND` or a code added later (the API sends
-  `COMBO_NOT_A_COMBO` without `success`; the SDK sets it to false). Errors keep their code:
+  `COMBO_NOT_A_COMBO` without `success`; the SDK sets it to false); one that is not JSON,
+  lacks a string code or error, or claims success is an `*APIError`. Errors keep their code:
   400 `COMBO_INVALID`, 404 `COMBO_NOT_FOUND`, 503 `COMBO_VENUE_UNAVAILABLE` (wait
   `RetryAfter`), and `CompareSgp`'s SGP codes. Never retried; each attempt waits at least
   45 s whatever a shorter `WithTimeout` says, since Kalshi is read before the books are
@@ -101,7 +102,9 @@ All notable changes to this module are documented here. The format follows
   `SgpHistoryFair`, `SgpHistoryMeta`), the combo types (`SgpComboCompareResponse`,
   `SgpCombo`, `SgpComboLeg`, `SgpComboVenuePrice`, `SgpComboGame`), `SgpBuildResponse.Fair`,
   `LegsHash` on the build meta, `SgpPeriod`, and the play-by-play `FirstSeenAt`, `Withdrawn`
-  and `Replaces`. The spec's docs now say a price-history quote's `Fair` comes only from
+  and `Replaces`; the clock docs now say `ScoreClock.AsOf` is the instant the clock was true
+  at the venue (the read less the feed's edge-cache age) and that the status period and
+  detail follow the clock while it is present. The spec's docs now say a price-history quote's `Fair` comes only from
   `BuildSgp` with `Fair` set (`SgpHistoryFair`, `SgpHistoryQuote.Fair`).
 - README: `CompareSgp`, `CompareSgpCombo`, `BatchSgp`, `GetSgpHistory`, the fair price, the NHL leg shapes
   and soccer play-by-play.

@@ -2351,9 +2351,9 @@ func TestGetSgpHistory(t *testing.T) {
 			*res.Meta.LegsHash != "0123456789abcdef" || res.Meta.EventID != nil {
 			t.Fatalf("response %+v (%v)", res, err)
 		}
-		api = newFakeAPI(t, ok(strings.Replace(sgpHistoryBody, `"via": "build"`, `"via": "combo", "region": "nj"`, 1)))
+		api = newFakeAPI(t, ok(strings.Replace(sgpHistoryBody, `"via": "build"`, `"via": "relay", "region": "nj"`, 1)))
 		res, err = testClient(t, api.URL).GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{EventID: sgpCompareEvent})
-		if err != nil || *res.Quotes[0].Via != "combo" || *res.Quotes[0].Sgp.American != 205 {
+		if err != nil || *res.Quotes[0].Via != "relay" || *res.Quotes[0].Sgp.American != 205 {
 			t.Fatalf("unknown via: %+v (%v)", res, err)
 		}
 	})
