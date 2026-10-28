@@ -5464,7 +5464,9 @@ type SgpBatchResult struct {
 	// Index The parlay's index in your `parlays` array.
 	Index *float64 `json:"index,omitempty"`
 
-	// LegsHash A hash of the sport and legs (as `meta.legsHash` on `compareSgp`).
+	// LegsHash A hash of the sport and legs (as `meta.legsHash` on `compareSgp`), 16 hex
+	// characters: the `legsHash` RestClient.getSgpHistory files this
+	// parlay's quotes under.
 	LegsHash *string `json:"legsHash,omitempty"`
 
 	// Reason Mode `"book"`: why the book was left out or not priced, when there is no `result`.
@@ -5551,6 +5553,14 @@ type SgpBuildMeta struct {
 	// EventID The event id as the API echoes it: a number on FanDuel, a string on every
 	// other book (digits, or BetMGM NFL's `"6:43680"`).
 	EventID *json.RawMessage `json:"eventId,omitempty"`
+
+	// LegsHash On a priced 200 only (from `buildSgp`, and each priced book's `result` on
+	// `compareSgp` and `batchSgp`): a hash of the sport and the legs as sent, 16
+	// hex characters. The same parlay sent the same way always has the same hash,
+	// so passing it as `legsHash` to RestClient.getSgpHistory narrows the
+	// price history to this parlay. Absent on a refusal, a leg-resolution 422 and
+	// the no-price and busy 503s. API v2.522.0.
+	LegsHash *string `json:"legsHash,omitempty"`
 
 	// LineUnverified `true` on a 200 that priced at least one leg whose line the book's
 	// response does not confirm (FanDuel's alternate N-or-more strikeout rungs;
@@ -5775,7 +5785,9 @@ type SgpCompareMeta struct {
 	// DeadlineMs The deadline used, in ms.
 	DeadlineMs *float64 `json:"deadlineMs,omitempty"`
 
-	// LegsHash A hash of the sport and legs: the same parlay always hashes the same.
+	// LegsHash A hash of the sport and legs, 16 hex characters: the same parlay always
+	// hashes the same. Each priced book's `result.meta.legsHash` carries the same
+	// value; pass it to RestClient.getSgpHistory as `legsHash`.
 	LegsHash  *string `json:"legsHash,omitempty"`
 	Timestamp *string `json:"timestamp,omitempty"`
 }
@@ -5829,6 +5841,14 @@ type SgpCompareResultMeta struct {
 	// EventID The event id as the API echoes it: a number on FanDuel, a string on every
 	// other book (digits, or BetMGM NFL's `"6:43680"`).
 	EventID *json.RawMessage `json:"eventId,omitempty"`
+
+	// LegsHash On a priced 200 only (from `buildSgp`, and each priced book's `result` on
+	// `compareSgp` and `batchSgp`): a hash of the sport and the legs as sent, 16
+	// hex characters. The same parlay sent the same way always has the same hash,
+	// so passing it as `legsHash` to RestClient.getSgpHistory narrows the
+	// price history to this parlay. Absent on a refusal, a leg-resolution 422 and
+	// the no-price and busy 503s. API v2.522.0.
+	LegsHash *string `json:"legsHash,omitempty"`
 
 	// LineUnverified `true` on a 200 that priced at least one leg whose line the book's
 	// response does not confirm (FanDuel's alternate N-or-more strikeout rungs;
@@ -6020,9 +6040,128 @@ type SgpFdSelection struct {
 	SelectionID *float64 `json:"selectionId,omitempty"`
 }
 
+// SgpHistoryFair Our fair-price estimate stored with a quote (`fair: true` on the call that
+// priced it): the decimal price and the correlation factor it used.
+type SgpHistoryFair struct {
+	// CorrelationFactor The book-implied correlation factor (SgpFairBlock `basis`), or `null`.
+	CorrelationFactor *float64 `json:"correlationFactor,omitempty"`
+	Decimal           *float64 `json:"decimal,omitempty"`
+}
+
+// SgpHistoryLeg One leg of a quote in the price history: the leg as sent (`type`,
+// `selection`, `point`, `team`, `period`, `player`, `category`, `side`,
+// `line`, whichever it had), the book's `description` of it, and the book's
+// own ids for the selection.
+type SgpHistoryLeg struct {
+	Category *string `json:"category,omitempty"`
+
+	// Description How the book named the selection it priced.
+	Description *string  `json:"description,omitempty"`
+	Line        *float64 `json:"line,omitempty"`
+	Period      *string  `json:"period,omitempty"`
+	Player      *string  `json:"player,omitempty"`
+	Point       *float64 `json:"point,omitempty"`
+	Selection   *string  `json:"selection,omitempty"`
+
+	// SelectionIds The book's ids for a leg's selection in the price history.
+	SelectionIds *SgpHistorySelectionIds `json:"selection_ids,omitempty"`
+	Side         *string                 `json:"side,omitempty"`
+	Team         *string                 `json:"team,omitempty"`
+	Type         *string                 `json:"type,omitempty"`
+}
+
+// SgpHistoryMeta `meta` of a SgpHistoryResponse: the query as the API applied it.
+type SgpHistoryMeta struct {
+	// Book When the game was named by a book and its event id (lowercased).
+	Book *string `json:"book,omitempty"`
+
+	// BookEventID With `book`.
+	BookEventID *string `json:"bookEventId,omitempty"`
+
+	// Count Quotes returned.
+	Count *float64 `json:"count,omitempty"`
+
+	// EventID When the game was named by our event id.
+	EventID *string `json:"eventId,omitempty"`
+
+	// From ISO 8601: the window's start (inclusive).
+	From *string `json:"from,omitempty"`
+
+	// LegsHash When the call named one parlay.
+	LegsHash *string `json:"legsHash,omitempty"`
+
+	// Limit The limit applied (100 when none was sent).
+	Limit *float64 `json:"limit,omitempty"`
+
+	// To ISO 8601: the window's end (exclusive).
+	To *string `json:"to,omitempty"`
+}
+
+// SgpHistoryPrice A price in the SGP price history: American and decimal odds. Either is
+// `null` only when the stored value is unreadable.
+type SgpHistoryPrice struct {
+	American *float64 `json:"american,omitempty"`
+	Decimal  *float64 `json:"decimal,omitempty"`
+}
+
+// SgpHistoryQuote One priced quote in the price history.
+type SgpHistoryQuote struct {
+	// Book The book that priced it.
+	Book *string `json:"book,omitempty"`
+
+	// BookEventID The book's own event id for the game, as a string.
+	BookEventID *string `json:"bookEventId,omitempty"`
+
+	// EventID OUR event id for the game, or `null` when it could not be derived.
+	EventID *string `json:"eventId,omitempty"`
+
+	// Fair Our estimate, when the quote carried one (`fair: true`), otherwise `null`.
+	Fair *SgpHistoryFair `json:"fair,omitempty"`
+	Legs []SgpHistoryLeg `json:"legs,omitempty"`
+
+	// LegsHash The parlay's legs hash (`meta.legsHash` on the quote).
+	LegsHash *string `json:"legsHash,omitempty"`
+
+	// QuotedAt ISO 8601: when the book priced the parlay (`meta.pricedAt` on the quote).
+	QuotedAt *string `json:"quotedAt,omitempty"`
+
+	// Sgp A price in the SGP price history: American and decimal odds. Either is
+	// `null` only when the stored value is unreadable.
+	Sgp *SgpHistoryPrice `json:"sgp,omitempty"`
+
+	// Singles Each leg's own price, in `legs` order (`null` for a leg with none), or
+	// `null` when none was stored.
+	Singles []*SgpHistoryPrice `json:"singles,omitempty"`
+
+	// Via The call that priced it.
+	Via *string `json:"via,omitempty"`
+}
+
+// SgpHistoryResponse Response from `GET /api/v1/{sport}/sgp/history`.
+type SgpHistoryResponse struct {
+	// Meta `meta` of a SgpHistoryResponse: the query as the API applied it.
+	Meta *SgpHistoryMeta `json:"meta,omitempty"`
+
+	// Quotes Newest first. Only the calling account's own priced quotes.
+	Quotes  []SgpHistoryQuote `json:"quotes,omitempty"`
+	Sport   *string           `json:"sport,omitempty"`
+	Success *bool             `json:"success,omitempty"`
+}
+
+// SgpHistorySelectionIds The book's ids for a leg's selection in the price history.
+type SgpHistorySelectionIds struct {
+	MarketID *string `json:"marketId,omitempty"`
+
+	// SelectionID A number on FanDuel, a string on most other books.
+	SelectionID *json.RawMessage `json:"selectionId,omitempty"`
+}
+
 // SgpPeriod One period of an NHL game: the 1st, 2nd or 3rd period. A moneyline, spread or
 // total leg with a `period` prices that period instead of the full game; only
-// Hard Rock prices period legs, and every other book refuses them (422).
+// Hard Rock prices period legs: on RestClient.buildSgp every other
+// book refuses them (422), and RestClient.compareSgp and
+// RestClient.batchSgp report such a book as `unsupported`. A
+// period on a sport other than NHL is a 400.
 type SgpPeriod = string
 
 // SgpPrice The computed parlay price from a successful `buildSgp` call.
