@@ -2260,14 +2260,15 @@ func TestBatchSgp(t *testing.T) {
 }
 
 // The bodies below are the API's (nba-odds-app routes/sgp.ts, sgpHistoryQuote and
-// the history handler; lib/sgp/access.ts for the refusals).
+// the history handler; lib/sgp/access.ts for the refusals). Both quotes are BuildSgp's:
+// only a build stores a fair price, and a build may have no event id of ours.
 const sgpHistoryBody = `{"success": true, "sport": "nfl", "quotes": [
 	{"quotedAt": "2026-10-28T18:00:00.900Z", "book": "draftkings", "bookEventId": "33012345",
 		"eventId": "nfl:Cincinnati Bengals@Baltimore Ravens-20261101", "legsHash": "0123456789abcdef",
 		"legs": [{"type": "moneyline", "selection": "Baltimore Ravens", "description": "Baltimore Ravens", "selection_ids": {"marketId": "m1", "selectionId": "s1"}},
 			{"type": "total", "selection": "over", "point": 47.5, "description": "Over 47.5", "selection_ids": {"marketId": "m2", "selectionId": "s2"}}],
 		"sgp": {"american": 205, "decimal": 3.05}, "singles": [{"american": -160, "decimal": 1.625}, null],
-		"fair": {"decimal": 3.2016, "correlationFactor": 1.0412}, "via": "compare"},
+		"fair": {"decimal": 3.2016, "correlationFactor": 1.0412}, "via": "build"},
 	{"quotedAt": "2026-10-28T17:30:00.400Z", "book": "fanduel", "bookEventId": "34567890", "eventId": null, "legsHash": "0123456789abcdef",
 		"legs": [{"type": "moneyline", "selection": "Baltimore Ravens", "description": "Baltimore Ravens", "selection_ids": {"marketId": "734.1", "selectionId": 1234567}},
 			{"type": "total", "selection": "over", "point": 47.5, "description": "Over 47.5"}],
@@ -2317,7 +2318,7 @@ func TestGetSgpHistory(t *testing.T) {
 			t.Fatalf("response %+v", res)
 		}
 		dk, fd := res.Quotes[0], res.Quotes[1]
-		if *dk.Book != "draftkings" || *dk.Via != "compare" || *dk.Sgp.American != 205 || *dk.LegsHash != "0123456789abcdef" ||
+		if *dk.Book != "draftkings" || *dk.Via != "build" || *dk.Sgp.American != 205 || *dk.LegsHash != "0123456789abcdef" ||
 			*dk.QuotedAt != "2026-10-28T18:00:00.900Z" || *dk.EventID != sgpCompareEvent || *dk.Legs[1].Point != 47.5 ||
 			*dk.Legs[1].Description != "Over 47.5" || *dk.Legs[0].SelectionIds.MarketID != "m1" ||
 			string(*dk.Legs[0].SelectionIds.SelectionID) != `"s1"` {
@@ -2350,7 +2351,7 @@ func TestGetSgpHistory(t *testing.T) {
 			*res.Meta.LegsHash != "0123456789abcdef" || res.Meta.EventID != nil {
 			t.Fatalf("response %+v (%v)", res, err)
 		}
-		api = newFakeAPI(t, ok(strings.Replace(sgpHistoryBody, `"via": "compare"`, `"via": "combo", "region": "nj"`, 1)))
+		api = newFakeAPI(t, ok(strings.Replace(sgpHistoryBody, `"via": "build"`, `"via": "combo", "region": "nj"`, 1)))
 		res, err = testClient(t, api.URL).GetSgpHistory(context.Background(), "nfl", SgpHistoryParams{EventID: sgpCompareEvent})
 		if err != nil || *res.Quotes[0].Via != "combo" || *res.Quotes[0].Sgp.American != 205 {
 			t.Fatalf("unknown via: %+v (%v)", res, err)

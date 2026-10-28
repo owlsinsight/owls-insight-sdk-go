@@ -8017,6 +8017,10 @@
               }
             ]
           },
+          "firstSeenAt": {
+            "description": "When the play was first read under this id; never moves. For the NHL and soccer (no wallclock) the nearest thing to an event time.",
+            "type": "string"
+          },
           "homeScore": {
             "description": "Score after the play.",
             "format": "double",
@@ -8035,6 +8039,10 @@
               "number",
               "null"
             ]
+          },
+          "replaces": {
+            "description": "The id of the play this one replaced on the same read (the NHL's shot that became this goal under a new id).",
+            "type": "string"
           },
           "scoringPlay": {
             "type": "boolean"
@@ -8080,6 +8088,10 @@
               "string",
               "null"
             ]
+          },
+          "withdrawn": {
+            "description": "The source no longer lists the play (a goal overturned on review, a shot the NHL replaced with a goal): sent once, kept 10 minutes, then dropped.",
+            "type": "boolean"
           }
         },
         "type": "object",
@@ -11977,7 +11989,7 @@
         "description": "The game clock of an in-play NBA, NHL, NFL or NCAAF game. Absent on every other\nsport and whenever no clock was read for the game.",
         "properties": {
           "asOf": {
-            "description": "When the clock was read: tick secondsRemaining down from this instant while running.",
+            "description": "The instant the clock was true at the venue (the read, less the league feed's own edge-cache age): tick secondsRemaining down from it while running.",
             "type": "string"
           },
           "intermission": {
@@ -11985,7 +11997,7 @@
             "type": "boolean"
           },
           "period": {
-            "description": "The period the clock belongs to, in the source's numbering; status.period is the board's own.",
+            "description": "The period the clock belongs to, in the source's numbering; status.period and status.detail follow it while the clock is present.",
             "format": "double",
             "type": [
               "number",
@@ -13079,6 +13091,291 @@
           "meta"
         ]
       },
+      "SgpCombo": {
+        "description": "The combo of a {@link SgpComboCompareResponse}.",
+        "properties": {
+          "legs": {
+            "description": "Every leg, in the combo's order.",
+            "items": {
+              "$ref": "#/components/schemas/SgpComboLeg"
+            },
+            "type": "array"
+          },
+          "ticker": {
+            "description": "The combo ticker sent (upper case), or `null` when `legs` were sent.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "ticker",
+          "legs"
+        ]
+      },
+      "SgpComboCompareParams": {
+        "description": "Params for `compareSgpCombo`. Send `comboTicker` OR `legs`, never both (a 400\n`COMBO_INVALID` otherwise).",
+        "properties": {
+          "books": {
+            "description": "As on `compareSgp`: the books to ask; default every book.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "comboTicker": {
+            "description": "A Kalshi combo market's ticker (a multivariate market, for example\n`\"KXMVECROSSCATEGORY-S2026ZJDATBFMVOSS4HNQ-QRB4CF6A6\"`): its legs are read\nfrom Kalshi. Lower case is accepted.",
+            "type": "string"
+          },
+          "deadlineMs": {
+            "description": "As on `compareSgp`: how long to wait for the books, 1000 to 15000 ms;\ndefault 6000.",
+            "format": "double",
+            "type": "number"
+          },
+          "fair": {
+            "description": "As on `compareSgp`: `true` adds our fair-price estimate as `compare.fair`.",
+            "type": "boolean"
+          },
+          "fanduel": {
+            "description": "As on `compareSgp`: `\"cold\"` (the default) or `\"skip\"`.",
+            "type": "string",
+            "x-extensible-enum": [
+              "cold",
+              "skip"
+            ]
+          },
+          "fresh": {
+            "description": "As on `compareSgp`: `true` never uses a cached quote.",
+            "type": "boolean"
+          },
+          "legs": {
+            "description": "The combo's legs named one by one, 2 to 12, each a different market.",
+            "items": {
+              "$ref": "#/components/schemas/SgpComboLegInput"
+            },
+            "type": "array"
+          },
+          "venue": {
+            "description": "The prediction market the combo is on. Only `\"kalshi\"`.",
+            "type": "string",
+            "x-extensible-enum": [
+              "kalshi"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "venue"
+        ]
+      },
+      "SgpComboCompareResponse": {
+        "description": "Response from `POST /api/v1/sgp/combo-compare`: a 200, or a returned 422\nrefusal. Branch on `success` first.\n\n- `success: true`: `venue`, `combo`, `venuePrice`, `eventId` and `compare`\n  are set. `compare` is exactly what {@link RestClient.compareSgp } returns for\n  the translated legs (`combo.legs[].translated`) on `eventId`.\n- `success: false` (a 422): `code` says which refusal\n  ({@link SgpComboErrorCode}), `error` and `message` say it in words. `combo`\n  (and `venuePrice`) come with every refusal but `COMBO_NOT_A_COMBO`, and\n  `games` with `COMBO_MULTI_GAME`. The API sends `COMBO_NOT_A_COMBO` without\n  a `success` field; the SDK sets it to `false` there too.",
+        "properties": {
+          "code": {
+            "description": "A refusal only: which one. New codes can appear.",
+            "type": "string",
+            "x-extensible-enum": [
+              "COMBO_EVENT_NOT_FOUND",
+              "COMBO_INVALID",
+              "COMBO_LEGS_UNSUPPORTED",
+              "COMBO_MULTI_GAME",
+              "COMBO_NOT_A_COMBO",
+              "COMBO_NOT_FOUND",
+              "COMBO_VENUE_UNAVAILABLE"
+            ]
+          },
+          "combo": {
+            "$ref": "#/components/schemas/SgpCombo"
+          },
+          "compare": {
+            "$ref": "#/components/schemas/SgpCompareResponse",
+            "description": "Exactly the `compareSgp` 200 body for the translated legs."
+          },
+          "error": {
+            "description": "A refusal only.",
+            "type": "string"
+          },
+          "eventId": {
+            "description": "OUR event id for the game the legs were matched to.",
+            "type": "string"
+          },
+          "games": {
+            "description": "`COMBO_MULTI_GAME` only: the legs grouped by game, in first-seen order.",
+            "items": {
+              "$ref": "#/components/schemas/SgpComboGame"
+            },
+            "type": "array"
+          },
+          "message": {
+            "description": "A refusal only: human-readable prose.",
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "venue": {
+            "description": "`\"kalshi\"`.",
+            "type": "string",
+            "x-extensible-enum": [
+              "kalshi"
+            ]
+          },
+          "venuePrice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SgpComboVenuePrice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The combo market's own quote on Kalshi when `comboTicker` was sent;\n`null` when `legs` were sent."
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success"
+        ]
+      },
+      "SgpComboGame": {
+        "description": "One game of a `COMBO_MULTI_GAME` refusal: the legs (by index) that name it.",
+        "properties": {
+          "eventDateEt": {
+            "description": "The game's US Eastern date, `YYYY-MM-DD`.",
+            "type": "string"
+          },
+          "legs": {
+            "description": "Indexes into `combo.legs`.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "sport": {
+            "type": "string"
+          },
+          "teams": {
+            "description": "Kalshi's two clubs, in ticker order (away, home in US sports).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "sport",
+          "teams",
+          "eventDateEt",
+          "legs"
+        ]
+      },
+      "SgpComboLeg": {
+        "description": "One Kalshi leg of a combo as the API read and translated it.",
+        "properties": {
+          "marketTicker": {
+            "description": "The leg's market ticker, upper case.",
+            "type": "string"
+          },
+          "side": {
+            "type": "string",
+            "x-extensible-enum": [
+              "no",
+              "yes"
+            ]
+          },
+          "title": {
+            "description": "Kalshi's own wording of the YES outcome (`\"Jackson Chourio: 2+\"`) when the\nleg's market was read, otherwise `null`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "translated": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SgpLeg"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The same game parlay leg it stands for (what `buildSgp` and `compareSgp`\ntake), or `null` when it has none. A game winner YES is that team's\nmoneyline; a spread YES the team at minus the line (NO: the other team at\nplus it); a total or team total YES the over (NO the under); a player\n`\"N+\"` market YES the over N - 0.5 (NO the under)."
+          },
+          "why": {
+            "description": "Why the leg has no translation, or `null`. A leg whose market was not\nread, because the call stopped on the tickers alone (`COMBO_MULTI_GAME`,\n`COMBO_EVENT_NOT_FOUND`, or `COMBO_LEGS_UNSUPPORTED` for another leg's\nseries or clubs), has `translated` and `why` both `null`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "marketTicker",
+          "side",
+          "title",
+          "translated",
+          "why"
+        ]
+      },
+      "SgpComboLegInput": {
+        "description": "One leg of a Kalshi combo, named by its own market in {@link SgpComboCompareParams}.",
+        "properties": {
+          "marketTicker": {
+            "description": "The leg's Kalshi market ticker, for example `\"KXNHLGAME-26OCT28PHIWSH-WSH\"`\n(lower case is accepted).",
+            "type": "string"
+          },
+          "side": {
+            "description": "The side of that market the combo takes.",
+            "type": "string",
+            "x-extensible-enum": [
+              "no",
+              "yes"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "marketTicker",
+          "side"
+        ]
+      },
+      "SgpComboVenuePrice": {
+        "description": "The combo market's own public quote on Kalshi, in dollars per contract (0 to\n1), as context. Never a sportsbook price. A combo usually has no resting\nquote, and then both prices are `null`.",
+        "properties": {
+          "status": {
+            "description": "The market's status on Kalshi (`\"active\"`, ...), or `null`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "yesAsk": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yesBid": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "yesBid",
+          "yesAsk",
+          "status"
+        ]
+      },
       "SgpCompareBook": {
         "description": "One book's answer in a {@link SgpCompareResponse}.",
         "properties": {
@@ -13841,7 +14138,7 @@
         ]
       },
       "SgpHistoryFair": {
-        "description": "Our fair-price estimate stored with a quote (`fair: true` on the call that\npriced it): the decimal price and the correlation factor it used.",
+        "description": "Our fair-price estimate stored with a quote: the decimal price and the\ncorrelation factor it used. Only a `buildSgp` quote made with `fair: true`\ncan carry one: `compareSgp`, `compareSgpCombo` and `batchSgp` record their\nquotes before the fair price is worked out, so theirs never do, whatever\n`fair` was sent.",
         "properties": {
           "correlationFactor": {
             "description": "The book-implied correlation factor ({@link SgpFairBlock} `basis`), or `null`.",
@@ -14017,7 +14314,7 @@
                 "type": "null"
               }
             ],
-            "description": "Our estimate, when the quote carried one (`fair: true`), otherwise `null`."
+            "description": "Our estimate, when the quote carried one, otherwise `null`. Only a\n`buildSgp` quote made with `fair: true` can (and only when the estimate\nwas made): quotes from `compareSgp`, `compareSgpCombo` and `batchSgp`\nare recorded before the fair price exists, so theirs are always `null`."
           },
           "legs": {
             "items": {
@@ -17886,7 +18183,7 @@
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
     "version": "0.89.0",
-    "x-owls-manifest-commit": "49155ee4"
+    "x-owls-manifest-commit": "f1edb339b"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -19636,7 +19933,7 @@
     },
     "/api/v1/scores/live": {
       "get": {
-        "description": "Returns live games across every supported sport in one call, with current score, period and status.\n\nScore changes for games in play are also pushed on the scores-update WebSocket event, opt-in with scores in the subscription, using this endpoint's event ids. That event carries a lean view (status with the clock, teams, score); this endpoint has the full event. A push fires when the score, the state, the period or the running flag of the clock changes, never on every clock tick.\n\n503 until the first scoreboard has been collected.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (around the restart, status.period can already be the next period), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute) and status.clock carries it as secondsRemaining with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL and NCAAF between plays, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was read: tick secondsRemaining down from asOf locally while running. The clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half) and the match minute is status.displayClock, e.g. 67 or 45+2. A phase without a label, soccer half-time included, reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
+        "description": "Returns live games across every supported sport in one call, with current score, period and status.\n\nScore changes for games in play are also pushed on the scores-update WebSocket event, opt-in with scores in the subscription, using this endpoint's event ids. That event carries a lean view (status with the clock, teams, score); this endpoint has the full event. A push fires when the score, the state, the period or the running flag of the clock changes, never on every clock tick.\n\n503 until the first scoreboard has been collected.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), Intermission (any other break between periods) or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (status.period stays the period just played), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute; 0:00 in an intermission) and status.clock carries it as secondsRemaining (0 in an intermission) with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL and NCAAF between plays, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was true at the venue (the read, less the league feed's own edge-cache age, which for the NHL is up to 19 seconds): tick secondsRemaining down from asOf locally while running. While status.clock is present, status.period and status.detail are taken from the same clock read, so the three always agree; the clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half; the match minute is status.displayClock, e.g. 67 or 45+2), Half Time (status.period 1), Extra Time (status.period null: the feed does not say which of its two periods is on; the play-by-play does), Break (between the periods of extra time, status.period null) or Penalties (status.period 5). A phase without a label reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
         "operationId": "getScores",
         "responses": {
           "200": {
@@ -19656,6 +19953,50 @@
         ],
         "x-owls-access": "All paying tiers",
         "x-owls-sdk-method": "getScores"
+      }
+    },
+    "/api/v1/sgp/combo-compare": {
+      "post": {
+        "description": "Prices a Kalshi combo as the same game parlay it is: each Kalshi leg is translated to the leg a sportsbook prices, the game is matched to our event id, and the legs are priced on every same game parlay book exactly as /sgp/compare does. It never returns a Kalshi price for the combo itself.\n\nA game winner YES is that team's moneyline, a spread YES the team at minus the line (NO: the other team at plus it), a total or team total YES the over, and a player \"N+\" market YES the over N - 0.5 (NO the under); a line market must be greater-than at a half point. A NO on a game winner, other periods, soccer and non-sports markets are not translated.\n\nRefusals: a 400 COMBO_INVALID for a malformed body; a 404 COMBO_NOT_FOUND for an unknown comboTicker and a 422 COMBO_NOT_A_COMBO for a market that does not list 2 to 12 legs; a 422 COMBO_LEGS_UNSUPPORTED when a leg has no equivalent (combo.legs[].why says why), COMBO_MULTI_GAME when the legs span games (games[] groups them), COMBO_EVENT_NOT_FOUND when the game is not on our pregame board or cannot be told from another game of the pair that day; a 503 COMBO_VENUE_UNAVAILABLE (Retry-After) when Kalshi could not be read.\n\nvenuePrice is the combo market's own quote on Kalshi in dollars, for context (null without a resting quote). Builds count against your SGP build limit as on /sgp/compare. MVP and Hall of Fame plans (403 SGP_TIER_REQUIRED below); a 503 SGP_FEATURE_DISABLED means combos, comparisons or (with fair) the fair price are not switched on yet.",
+        "operationId": "compareSgpCombo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SgpComboCompareParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SgpComboCompareResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SgpComboCompareResponse"
+                }
+              }
+            },
+            "description": "Refused: the body's code says why (returned by the SDK, not thrown)"
+          }
+        },
+        "summary": "Prices a Kalshi combo as the same game parlay it is: each Kalshi leg is translated to the leg a sportsbook prices, the game is matched to our event id, and the legs are priced on every same game parlay book exactly as /sgp/compare does. It never returns a Kalshi price for the combo itself.",
+        "tags": [
+          "Same Game Parlay"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "compareSgpCombo"
       }
     },
     "/api/v1/webhooks": {
@@ -20567,7 +20908,7 @@
     },
     "/api/v1/{sport}/plays": {
       "get": {
-        "description": "Returns the play-by-play of one NBA, NHL, NFL, NCAAF or soccer game in play (or ended within the last 6 hours), oldest play first, or without eventId the list of games that have play-by-play. For soccer the plays are the match incidents: goals, own goals, penalties, cards and substitutions.\n\neventId is the id GET /api/v1/{sport}/scores/live gives the game. Play-by-play exists while a game is in play and for 6 hours after it ends; before tip-off, and for any other id, the response is 404 with a hint. Without eventId the response lists the games that have play-by-play, with their state and play count.\n\nEach play carries the source's own id and order (seq, ascending, not contiguous), the period and the time left in it (clock as the venue shows it, secondsRemaining), team (home or away: the offense, the shooter's team, the team that committed the penalty; null for a neutral play such as a period start), type (the source's own type key, unchanged: NFL and NCAAF Rush, Pass Reception, Punt, Field Goal Good; NHL shot-on-goal, faceoff, hit, penalty, goal; NBA 2pt/Jump Shot, rebound/defensive, turnover/bad pass, freethrow/1 of 2), text, scoringPlay, the score after the play (homeScore, awayScore), wallclock (when the play happened per the source; null for the NHL, which publishes none) and detail, the sport's own fields.\n\ndetail for NFL and NCAAF: drive, down, distance, yardLine, yardsToEndzone, downDistanceText, possessionText before the play, endDown, endDistance, endYardLine, endYardsToEndzone, endDownDistanceText after it, yards, scoreValue, isPenalty, isTurnover. For the NHL: situationCode (skaters and goalies on the ice, the league's code), zone, x, y, shotType, reason, penalty {descKey, typeCode, duration}, players [{role, id, name, sweater}] with the roles scorer, assist, shooter, goalie, winner, loser, hitter, hittee, blocker, player, committedBy, drawnBy, servedBy, and homeShotsOnGoal and awayShotsOnGoal on shots; the NHL feed scores only goal plays, so every other play carries the running tally. For the NBA: subType, descriptor, qualifiers, playerId, playerName, teamTricode, shotResult (Made or Missed), shotDistance (feet), x, y, isFieldGoal, possession. For soccer: minute, addedMinutes (stoppage time, e.g. 2 for 45+2), player {id, name}, assist (on a goal), playerOut (on a substitution, whose player is the one coming on), card (yellow, red or yellow-red), note, code; clock is the match minute as shown (45+2), seq is derived from the period and minute (the source has no sequence of its own, so an inserted or withdrawn incident renumbers only the plays of its own minute), secondsRemaining and wallclock are null, period is the half (1, 2; 3 and 4 extra time; 5 penalties), type is the incident label (Goal, Own goal, Penalty, Yellow Card, Red Card, Substitution) and team the side credited with it, the scoring side on an own goal; every soccer game on /scores/live is covered, whatever its league.\n\nA play can be amended after it is first published (a review, an assist added, a scorer corrected), so merge plays by id; each play's updatedAt is when its current content was first seen. since=<seq> returns the plays after that seq plus any play amended in the last 2 minutes whatever its seq (meta.amendedWindowSeconds), so a poller that passes the lastSeq it has every two minutes or sooner sees every amendment; limit=<n> returns the last n plays, applied after since. A since or limit that is not an integer in range is a 400. meta.returned and meta.truncated say what the filters did.\n\nmeta.asOf is when the source was read and meta.ageSeconds how long ago that was; status is stale when a game in play has not been read for 30 seconds (the reader runs every few seconds). meta.sourceAgeSeconds is the source's own edge-cache age at that read, null when it sends none: NHL plays can be up to about 20 seconds behind the ice, NFL and NCAAF plays about 7 seconds, NBA plays are not cached. Soccer incidents are read every 20 seconds per match and at once when the match score changes, so a goal shows within a few seconds and a card or substitution within about 20; a soccer game is stale after 60 seconds without a read.\n\nThe same plays are pushed on the plays-update WebSocket event, opt-in with plays in the subscription (true, or an array of nba, nhl, nfl, ncaaf, soccer), same access as scores-update: one message per sport within a few seconds of a new play, carrying only the plays new or amended since the previous message.",
+        "description": "Returns the play-by-play of one NBA, NHL, NFL, NCAAF or soccer game in play (or ended within the last 6 hours), oldest play first, or without eventId the list of games that have play-by-play. For soccer the plays are the match incidents: goals, own goals, penalties, cards and substitutions.\n\neventId is the id GET /api/v1/{sport}/scores/live gives the game. Play-by-play exists while a game is in play and for 6 hours after it ends; before tip-off, and for any other id, the response is 404 with a hint. Without eventId the response lists the games that have play-by-play, with their state and play count.\n\nEach play carries the source's own id and order (seq, ascending, not contiguous), the period and the time left in it (clock as the venue shows it, secondsRemaining), team (home or away: the offense, the shooter's team, the team that committed the penalty; null for a neutral play such as a period start), type (the source's own type key, unchanged: NFL and NCAAF Rush, Pass Reception, Punt, Field Goal Good; NHL shot-on-goal, faceoff, hit, penalty, goal; NBA 2pt/Jump Shot, rebound/defensive, turnover/bad pass, freethrow/1 of 2), text, scoringPlay, the score after the play (homeScore, awayScore), wallclock (when the play happened per the source; null for the NHL, which publishes none) and detail, the sport's own fields.\n\ndetail for NFL and NCAAF: drive, down, distance, yardLine, yardsToEndzone, downDistanceText, possessionText before the play, endDown, endDistance, endYardLine, endYardsToEndzone, endDownDistanceText after it, yards, scoreValue, isPenalty, isTurnover. For the NHL: situationCode (skaters and goalies on the ice, the league's code), zone, x, y, shotType, reason, penalty {descKey, typeCode, duration}, players [{role, id, name, sweater}] with the roles scorer, assist, shooter, goalie, winner, loser, hitter, hittee, blocker, player, committedBy, drawnBy, servedBy, and homeShotsOnGoal and awayShotsOnGoal on shots; the NHL feed scores only goal plays, so every other play carries the running tally. For the NBA: subType, descriptor, qualifiers, playerId, playerName, teamTricode, shotResult (Made or Missed), shotDistance (feet), x, y, isFieldGoal, possession. For soccer: minute, addedMinutes (stoppage time, e.g. 2 for 45+2), player {id, name}, assist (on a goal), playerOut (on a substitution, whose player is the one coming on), card (yellow, red or yellow-red), note, code; clock is the match minute as shown (45+2), seq is derived from the period and minute (the source has no sequence of its own, so an inserted or withdrawn incident renumbers only the plays of its own minute), secondsRemaining and wallclock are null, period is the half (1, 2; 3 and 4 extra time; 5 penalties), type is the incident label (Goal, Own goal, Penalty, Yellow Card, Red Card, Substitution) and team the side credited with it, the scoring side on an own goal; every soccer game on /scores/live is covered, whatever its league.\n\nTwo stamps on every play: firstSeenAt is when the play was first read, under that id, and never moves (for the NHL and soccer, which publish no event time, it is the nearest thing to one: the play reached us within the reader's cadence and the source's edge cache of happening); updatedAt is when the play's current content was first seen and moves on every amendment (a review, an assist added, a scorer corrected), so merge plays by id. A play the source withdraws (a goal overturned on review; a shot the NHL replaces with a goal under a new id) is sent once more with withdrawn: true (updatedAt the read that found it gone), stays in the log for 10 minutes so a since poller meets it, then is dropped; count counts live plays only. The NHL publishes a goal first as a shot, then withdraws the shot and lists the goal under a new id within about 20 seconds: the goal then carries replaces, the withdrawn shot's id, and the goal is the play to keep. since=<seq> returns the plays after that seq plus any play amended or withdrawn in the last 2 minutes whatever its seq (meta.amendedWindowSeconds), so a poller that passes the lastSeq it has every two minutes or sooner sees every amendment; limit=<n> returns the last n plays, applied after since. A since or limit that is not an integer in range is a 400. meta.returned and meta.truncated say what the filters did.\n\nSoccer also carries phase markers, recorded as the reader observes each change on the live board and in the incidents feed (which opens a period's header the moment it starts): type period-start (Kick-off, Second half under way, Extra time under way, Second period of extra time under way, Penalty shoot-out under way), period-end (Half-time, End of the second half, the ends of the extra-time periods and of the shoot-out) and game-end (Full-time), with ids phase:p1:start, phase:p1:end ... phase:end, team null, the match minute as shown when the board had one, the score at that moment, and firstSeenAt the observation. They sort before and after the incidents of their period. Nothing is recorded for a phase already behind the first sight of a match: a match first seen in its 20th minute gets no kick-off marker, and a reader restart records nothing late.\n\nmeta.asOf is when the source was read and meta.ageSeconds how long ago that was; status is stale when a game in play has not been read for 30 seconds (the reader runs every few seconds). meta.sourceAgeSeconds is the source's own edge-cache age at that read, null when it sends none: NHL plays can be up to about 20 seconds behind the ice, NFL and NCAAF plays about 7 seconds, NBA plays are not cached. Soccer incidents are read every 20 seconds per match and at once when the match score changes, so a goal shows within a few seconds and a card or substitution within about 20; a soccer game is stale after 60 seconds without a read.\n\nThe same plays are pushed on the plays-update WebSocket event, opt-in with plays in the subscription (true, or an array of nba, nhl, nfl, ncaaf, soccer), same access as scores-update: one message per sport within a few seconds of a new play, carrying only the plays new or amended since the previous message.",
         "operationId": "getPlays",
         "parameters": [
           {
@@ -22061,7 +22402,7 @@
     },
     "/api/v1/{sport}/scores/live": {
       "get": {
-        "description": "Returns live games for one sport with current score, period and status.\n\nScore changes for games in play are also pushed on the scores-update WebSocket event, opt-in with scores in the subscription, using this endpoint's event ids. That event carries a lean view (status with the clock, teams, score); this endpoint has the full event. A push fires when the score, the state, the period or the running flag of the clock changes, never on every clock tick.\n\nAn empty events array with hasScheduledGames true means games are scheduled but none has started.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (around the restart, status.period can already be the next period), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute) and status.clock carries it as secondsRemaining with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL and NCAAF between plays, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was read: tick secondsRemaining down from asOf locally while running. The clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half) and the match minute is status.displayClock, e.g. 67 or 45+2. A phase without a label, soccer half-time included, reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
+        "description": "Returns live games for one sport with current score, period and status.\n\nScore changes for games in play are also pushed on the scores-update WebSocket event, opt-in with scores in the subscription, using this endpoint's event ids. That event carries a lean view (status with the clock, teams, score); this endpoint has the full event. A push fires when the score, the state, the period or the running flag of the clock changes, never on every clock tick.\n\nAn empty events array with hasScheduledGames true means games are scheduled but none has started.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), Intermission (any other break between periods) or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (status.period stays the period just played), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute; 0:00 in an intermission) and status.clock carries it as secondsRemaining (0 in an intermission) with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL and NCAAF between plays, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was true at the venue (the read, less the league feed's own edge-cache age, which for the NHL is up to 19 seconds): tick secondsRemaining down from asOf locally while running. While status.clock is present, status.period and status.detail are taken from the same clock read, so the three always agree; the clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half; the match minute is status.displayClock, e.g. 67 or 45+2), Half Time (status.period 1), Extra Time (status.period null: the feed does not say which of its two periods is on; the play-by-play does), Break (between the periods of extra time, status.period null) or Penalties (status.period 5). A phase without a label reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
         "operationId": "getSportScores",
         "parameters": [
           {
@@ -22645,7 +22986,7 @@
     },
     "/api/v1/{sport}/stats": {
       "get": {
-        "description": "Returns per-game team stats, score and status for every game on a date: live, scheduled and finished.\n\nCovers the current US Eastern day's matches: live, scheduled and finished (a finished match stays for 24 hours from its start). Use the history endpoints for older games.\n\ndate is compared with each game's start time in US Eastern time.\n\nscore is null for a scheduled game. For soccer it never includes penalty shootout goals: soccerDetail carries regulation, extraTime, penalties and decidedBy.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (around the restart, status.period can already be the next period), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute) and status.clock carries it as secondsRemaining with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL and NCAAF between plays, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was read: tick secondsRemaining down from asOf locally while running. The clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half) and the match minute is status.displayClock, e.g. 67 or 45+2. A phase without a label, soccer half-time included, reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.\n\nA teamStats pair the source did not measure is null or absent, never 0.",
+        "description": "Returns per-game team stats, score and status for every game on a date: live, scheduled and finished.\n\nCovers the current US Eastern day's matches: live, scheduled and finished (a finished match stays for 24 hours from its start). Use the history endpoints for older games.\n\ndate is compared with each game's start time in US Eastern time.\n\nscore is null for a scheduled game. For soccer it never includes penalty shootout goals: soccerDetail carries regulation, extraTime, penalties and decidedBy.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), Intermission (any other break between periods) or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (status.period stays the period just played), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute; 0:00 in an intermission) and status.clock carries it as secondsRemaining (0 in an intermission) with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL and NCAAF between plays, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was true at the venue (the read, less the league feed's own edge-cache age, which for the NHL is up to 19 seconds): tick secondsRemaining down from asOf locally while running. While status.clock is present, status.period and status.detail are taken from the same clock read, so the three always agree; the clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half; the match minute is status.displayClock, e.g. 67 or 45+2), Half Time (status.period 1), Extra Time (status.period null: the feed does not say which of its two periods is on; the play-by-play does), Break (between the periods of extra time, status.period null) or Penalties (status.period 5). A phase without a label reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.\n\nA teamStats pair the source did not measure is null or absent, never 0.",
         "operationId": "getStats",
         "parameters": [
           {

@@ -208,6 +208,8 @@ var handWrittenInputs = map[string]string{
 	"SgpBuildParams":        "SgpBuildParams",
 	"SgpLeg":                "SgpLeg",
 	"SgpCompareParams":      "SgpCompareParams",
+	"SgpComboCompareParams": "SgpComboCompareParams",
+	"SgpComboLegInput":      "SgpComboLegInput",
 	"SgpBatchParams":        "SgpBatchParams",
 	"SgpBatchParlay":        "SgpBatchParlay",
 	// Webhook request bodies (webhooks.go): value fields, and nil kept apart from an

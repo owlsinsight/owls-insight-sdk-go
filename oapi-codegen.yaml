@@ -17,6 +17,8 @@ output-options:
     - SgpBuildParams
     - SgpLeg
     - SgpCompareParams
+    - SgpComboCompareParams
+    - SgpComboLegInput
     - SgpBatchParams
     - SgpBatchParlay
     - CreateWebhookParams

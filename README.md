@@ -127,7 +127,7 @@ same plays are pushed on `plays-update` (see WebSocket).
 | `WithBaseURL(url)` | `https://api.owlsinsight.com` | The WebSocket URL follows it unless `WithWSURL` is set. |
 | `WithWSURL(url)` | the base URL | |
 | `WithHTTPClient(hc)` | `http.DefaultClient` | Leave its `Timeout` at zero. |
-| `WithTimeout(d)` | 30 s | Per attempt, through the request context. 0 disables it. `BatchSgp` raises a shorter value to 45 s. |
+| `WithTimeout(d)` | 30 s | Per attempt, through the request context. 0 disables it. `BatchSgp` and `CompareSgpCombo` raise a shorter value to 45 s. |
 | `WithRetry(p)` | no retries | Retries 429 and 503 on GET, see below. |
 | `WithHistoryConcurrency(n)` | 3 | History requests in flight at once. 0 disables the gate. |
 
@@ -143,7 +143,7 @@ var apiErr *owls.APIError
 switch {
 case errors.Is(err, owls.ErrUnauthorized): // 401: bad or missing key
 case errors.Is(err, owls.ErrForbidden):    // 403: the plan does not include it (Code FORBIDDEN, or SGP_TIER_REQUIRED for the SGP tools), or owls.DataKeyForbiddenCode
-case errors.Is(err, owls.ErrNotFound):     // 404
+case errors.Is(err, owls.ErrNotFound):     // 404 (Code COMBO_NOT_FOUND from CompareSgpCombo, else NOT_FOUND)
 case errors.Is(err, owls.ErrRateLimited) && errors.As(err, &apiErr):
 	time.Sleep(apiErr.RetryAfter) // 429; Code is HISTORY_CONCURRENCY or SGP_RATE_LIMIT when the API says so (never wait out SGP_COMPARE_TOO_MANY_BOOKS or SGP_BATCH_TOO_LARGE)
 case errors.Is(err, owls.ErrServiceBusy):  // 503
@@ -342,11 +342,19 @@ MVP and Hall of Fame plans also get:
   come back in request order with your `Ref`; one with `Status` `not-started` was not
   priced: send it again. A batch can take close to 40 seconds, so it waits at least 45 s
   whatever a shorter `WithTimeout` says.
+- `CompareSgpCombo(ctx, owls.SgpComboCompareParams{ComboTicker: "KXMVE..."})` (or `Legs`, 2
+  to 12 Kalshi markets with a `Side`): a Kalshi combo priced as the same game parlay it is.
+  Each leg's translation is in `Combo.Legs[].Translated` (an `SgpLeg`), the game's OUR event
+  id in `EventID`, and `Compare` is exactly what `CompareSgp` returns for those legs. A 422
+  refusal is returned, not an error: `Success` false and `Code` `COMBO_NOT_A_COMBO`,
+  `COMBO_LEGS_UNSUPPORTED` (`Combo.Legs[].Why`), `COMBO_MULTI_GAME` (`Games`) or
+  `COMBO_EVENT_NOT_FOUND`. It reads Kalshi before pricing, so it waits at least 45 s whatever
+  a shorter `WithTimeout` says.
 - `GetSgpHistory(ctx, sport, owls.SgpHistoryParams{EventID: ...})` (or `Book` and
   `BookEventID`): the prices YOUR account was quoted for one game, newest first, from the
-  three calls above. Every priced answer carries `Meta.LegsHash`; pass it as `LegsHash` to
+  calls above. Every priced answer carries `Meta.LegsHash`; pass it as `LegsHash` to
   see one parlay's quotes. `From` / `To` (ISO 8601) set the window, at most 7 days, default
-  the last 24 hours; `Limit` is 1 to 500, default 100. Only priced answers are kept, never a
+  the last 24 hours (`From` alone: the 24 hours from it); `Limit` is 1 to 500, default 100. Only priced answers are kept, never a
   cached quote, from the day recording was switched on, for 90 days.
 
 On a lower plan those are a 403 with `Code` `SGP_TIER_REQUIRED` (below Rookie a build is a
@@ -644,6 +652,7 @@ running, and do not restart it in a tight loop.
 | `getSgpEvents` | `GetSgpEvents(ctx, sport, book)` | `GET /api/v1/{sport}/sgp/events` |
 | `buildSgp` | `BuildSgp(ctx, sport, SgpBuildParams)` | `POST /api/v1/{sport}/sgp/build` |
 | `compareSgp` | `CompareSgp(ctx, sport, SgpCompareParams)` | `POST /api/v1/{sport}/sgp/compare` |
+| `compareSgpCombo` | `CompareSgpCombo(ctx, SgpComboCompareParams)` | `POST /api/v1/sgp/combo-compare` |
 | `batchSgp` | `BatchSgp(ctx, sport, SgpBatchParams)` | `POST /api/v1/{sport}/sgp/batch` |
 | `getSgpHistory` | `GetSgpHistory(ctx, sport, SgpHistoryParams)` | `GET /api/v1/{sport}/sgp/history` |
 | `createWebhook` | `CreateWebhook(ctx, CreateWebhookParams)` | `POST /api/v1/webhooks` |

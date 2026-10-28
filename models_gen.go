@@ -3594,13 +3594,19 @@ type Play struct {
 	Clock  *string          `json:"clock,omitempty"`
 	Detail *json.RawMessage `json:"detail,omitempty"`
 
+	// FirstSeenAt When the play was first read under this id; never moves. For the NHL and soccer (no wallclock) the nearest thing to an event time.
+	FirstSeenAt *string `json:"firstSeenAt,omitempty"`
+
 	// HomeScore Score after the play.
 	HomeScore *float64 `json:"homeScore,omitempty"`
 
 	// ID The source's play id, unique within the game.
-	ID          *string  `json:"id,omitempty"`
-	Period      *float64 `json:"period,omitempty"`
-	ScoringPlay *bool    `json:"scoringPlay,omitempty"`
+	ID     *string  `json:"id,omitempty"`
+	Period *float64 `json:"period,omitempty"`
+
+	// Replaces The id of the play this one replaced on the same read (the NHL's shot that became this goal under a new id).
+	Replaces    *string `json:"replaces,omitempty"`
+	ScoringPlay *bool   `json:"scoringPlay,omitempty"`
 
 	// SecondsRemaining Null for soccer, whose clock counts up.
 	SecondsRemaining *float64 `json:"secondsRemaining,omitempty"`
@@ -3620,6 +3626,9 @@ type Play struct {
 
 	// Wallclock When the play happened according to the source; null for the NHL and soccer, which publish none.
 	Wallclock *string `json:"wallclock,omitempty"`
+
+	// Withdrawn The source no longer lists the play (a goal overturned on review, a shot the NHL replaced with a goal): sent once, kept 10 minutes, then dropped.
+	Withdrawn *bool `json:"withdrawn,omitempty"`
 }
 
 // PlayerAveragesResponse defines model for PlayerAveragesResponse.
@@ -5130,13 +5139,13 @@ type ScheduleResponse struct {
 // ScoreClock The game clock of an in-play NBA, NHL, NFL or NCAAF game. Absent on every other
 // sport and whenever no clock was read for the game.
 type ScoreClock struct {
-	// AsOf When the clock was read: tick secondsRemaining down from this instant while running.
+	// AsOf The instant the clock was true at the venue (the read, less the league feed's own edge-cache age): tick secondsRemaining down from it while running.
 	AsOf *string `json:"asOf,omitempty"`
 
 	// Intermission Halftime or between periods.
 	Intermission *bool `json:"intermission,omitempty"`
 
-	// Period The period the clock belongs to, in the source's numbering; status.period is the board's own.
+	// Period The period the clock belongs to, in the source's numbering; status.period and status.detail follow it while the clock is present.
 	Period *float64 `json:"period,omitempty"`
 
 	// Running True while the clock runs, false in a stoppage or intermission, null when the feed cannot say (NFL and NCAAF between plays; any game before its first movement).
@@ -5674,6 +5683,104 @@ type SgpBuildResponse struct {
 	Success *bool     `json:"success,omitempty"`
 }
 
+// SgpCombo The combo of a SgpComboCompareResponse.
+type SgpCombo struct {
+	// Legs Every leg, in the combo's order.
+	Legs []SgpComboLeg `json:"legs,omitempty"`
+
+	// Ticker The combo ticker sent (upper case), or `null` when `legs` were sent.
+	Ticker *string `json:"ticker,omitempty"`
+}
+
+// SgpComboCompareResponse Response from `POST /api/v1/sgp/combo-compare`: a 200, or a returned 422
+// refusal. Branch on `success` first.
+//
+//   - `success: true`: `venue`, `combo`, `venuePrice`, `eventId` and `compare`
+//     are set. `compare` is exactly what RestClient.compareSgp returns for
+//     the translated legs (`combo.legs[].translated`) on `eventId`.
+//   - `success: false` (a 422): `code` says which refusal
+//     (SgpComboErrorCode), `error` and `message` say it in words. `combo`
+//     (and `venuePrice`) come with every refusal but `COMBO_NOT_A_COMBO`, and
+//     `games` with `COMBO_MULTI_GAME`. The API sends `COMBO_NOT_A_COMBO` without
+//     a `success` field; the SDK sets it to `false` there too.
+type SgpComboCompareResponse struct {
+	// Code A refusal only: which one. New codes can appear.
+	Code *string `json:"code,omitempty"`
+
+	// Combo The combo of a SgpComboCompareResponse.
+	Combo *SgpCombo `json:"combo,omitempty"`
+
+	// Compare Response from `POST /api/v1/{sport}/sgp/compare`.
+	Compare *SgpCompareResponse `json:"compare,omitempty"`
+
+	// Error A refusal only.
+	Error *string `json:"error,omitempty"`
+
+	// EventID OUR event id for the game the legs were matched to.
+	EventID *string `json:"eventId,omitempty"`
+
+	// Games `COMBO_MULTI_GAME` only: the legs grouped by game, in first-seen order.
+	Games []SgpComboGame `json:"games,omitempty"`
+
+	// Message A refusal only: human-readable prose.
+	Message *string `json:"message,omitempty"`
+	Success *bool   `json:"success,omitempty"`
+
+	// Venue `"kalshi"`.
+	Venue *string `json:"venue,omitempty"`
+
+	// VenuePrice The combo market's own quote on Kalshi when `comboTicker` was sent;
+	// `null` when `legs` were sent.
+	VenuePrice *SgpComboVenuePrice `json:"venuePrice,omitempty"`
+}
+
+// SgpComboGame One game of a `COMBO_MULTI_GAME` refusal: the legs (by index) that name it.
+type SgpComboGame struct {
+	// EventDateEt The game's US Eastern date, `YYYY-MM-DD`.
+	EventDateEt *string `json:"eventDateEt,omitempty"`
+
+	// Legs Indexes into `combo.legs`.
+	Legs  []float64 `json:"legs,omitempty"`
+	Sport *string   `json:"sport,omitempty"`
+
+	// Teams Kalshi's two clubs, in ticker order (away, home in US sports).
+	Teams []string `json:"teams,omitempty"`
+}
+
+// SgpComboLeg One Kalshi leg of a combo as the API read and translated it.
+type SgpComboLeg struct {
+	// MarketTicker The leg's market ticker, upper case.
+	MarketTicker *string `json:"marketTicker,omitempty"`
+	Side         *string `json:"side,omitempty"`
+
+	// Title Kalshi's own wording of the YES outcome (`"Jackson Chourio: 2+"`) when the
+	// leg's market was read, otherwise `null`.
+	Title *string `json:"title,omitempty"`
+
+	// Translated The same game parlay leg it stands for (what `buildSgp` and `compareSgp`
+	// take), or `null` when it has none. A game winner YES is that team's
+	// moneyline; a spread YES the team at minus the line (NO: the other team at
+	// plus it); a total or team total YES the over (NO the under); a player
+	// `"N+"` market YES the over N - 0.5 (NO the under).
+	Translated *SgpLeg `json:"translated,omitempty"`
+
+	// Why Why the leg has no translation, or `null`. A leg whose market was not
+	// read, because the call stopped on the tickers alone (`COMBO_MULTI_GAME`,
+	// `COMBO_EVENT_NOT_FOUND`, or `COMBO_LEGS_UNSUPPORTED` for another leg's
+	// series or clubs), has `translated` and `why` both `null`.
+	Why *string `json:"why,omitempty"`
+}
+
+// SgpComboVenuePrice The combo market's own public quote on Kalshi, in dollars per contract (0 to
+// 1), as context. Never a sportsbook price. A combo usually has no resting
+// quote, and then both prices are `null`.
+type SgpComboVenuePrice struct {
+	// Status The market's status on Kalshi (`"active"`, ...), or `null`.
+	Status *string  `json:"status,omitempty"`
+	YesAsk *float64 `json:"yesAsk,omitempty"`
+	YesBid *float64 `json:"yesBid,omitempty"`
+}
+
 // SgpCompareBook One book's answer in a SgpCompareResponse.
 type SgpCompareBook struct {
 	Book *string `json:"book,omitempty"`
@@ -6040,8 +6147,11 @@ type SgpFdSelection struct {
 	SelectionID *float64 `json:"selectionId,omitempty"`
 }
 
-// SgpHistoryFair Our fair-price estimate stored with a quote (`fair: true` on the call that
-// priced it): the decimal price and the correlation factor it used.
+// SgpHistoryFair Our fair-price estimate stored with a quote: the decimal price and the
+// correlation factor it used. Only a `buildSgp` quote made with `fair: true`
+// can carry one: `compareSgp`, `compareSgpCombo` and `batchSgp` record their
+// quotes before the fair price is worked out, so theirs never do, whatever
+// `fair` was sent.
 type SgpHistoryFair struct {
 	// CorrelationFactor The book-implied correlation factor (SgpFairBlock `basis`), or `null`.
 	CorrelationFactor *float64 `json:"correlationFactor,omitempty"`
@@ -6115,7 +6225,10 @@ type SgpHistoryQuote struct {
 	// EventID OUR event id for the game, or `null` when it could not be derived.
 	EventID *string `json:"eventId,omitempty"`
 
-	// Fair Our estimate, when the quote carried one (`fair: true`), otherwise `null`.
+	// Fair Our estimate, when the quote carried one, otherwise `null`. Only a
+	// `buildSgp` quote made with `fair: true` can (and only when the estimate
+	// was made): quotes from `compareSgp`, `compareSgpCombo` and `batchSgp`
+	// are recorded before the fair price exists, so theirs are always `null`.
 	Fair *SgpHistoryFair `json:"fair,omitempty"`
 	Legs []SgpHistoryLeg `json:"legs,omitempty"`
 

@@ -38,6 +38,18 @@ var sgpErrorCodes = map[string]bool{
 	"SGP_BATCH_TOO_LARGE": true, "SGP_HISTORY_UNAVAILABLE": true,
 }
 
+// sgpComboErrorCodes are CompareSgpCombo's COMBO_* codes, every one the TypeScript
+// SDK's SGP_COMBO_ERROR_CODES lists: COMBO_INVALID (400), COMBO_NOT_FOUND (404),
+// COMBO_NOT_A_COMBO, COMBO_LEGS_UNSUPPORTED, COMBO_MULTI_GAME and
+// COMBO_EVENT_NOT_FOUND (422, returned as the response, not as an error), and
+// COMBO_VENUE_UNAVAILABLE (503). A 404 keeps its code when it is one of these
+// (COMBO_NOT_FOUND); a 400 or 503 keeps the API's code whatever it is.
+var sgpComboErrorCodes = map[string]bool{
+	"COMBO_INVALID": true, "COMBO_NOT_FOUND": true, "COMBO_NOT_A_COMBO": true,
+	"COMBO_LEGS_UNSUPPORTED": true, "COMBO_MULTI_GAME": true, "COMBO_EVENT_NOT_FOUND": true,
+	"COMBO_VENUE_UNAVAILABLE": true,
+}
+
 // DataKeyForbiddenCode is the Code of a 403 refusing a data-only key (one minted by
 // Sign in with Owls) on the webhook API or the betslip parse, which take a key from
 // the dashboard. Every other 403 carries FORBIDDEN (the plan does not include the
@@ -48,8 +60,9 @@ const DataKeyForbiddenCode = "data_key_forbidden"
 type APIError struct {
 	// Status is the HTTP status code.
 	Status int
-	// Code is the API's own code when it sent one. 401 and 404 always carry
-	// UNAUTHORIZED and NOT_FOUND, and 403 FORBIDDEN, except a data-only key's
+	// Code is the API's own code when it sent one. 401 always carries
+	// UNAUTHORIZED, and 404 NOT_FOUND except CompareSgpCombo's unknown combo, which
+	// carries COMBO_NOT_FOUND. 403 carries FORBIDDEN, except a data-only key's
 	// refusal, which carries DataKeyForbiddenCode, and a same game parlay call or
 	// fair price the plan does not include, which carries SGP_TIER_REQUIRED; a 429
 	// without a code is RATE_LIMITED (HISTORY_CONCURRENCY, SGP_RATE_LIMIT,
@@ -130,7 +143,12 @@ func newAPIError(status int, header http.Header, body []byte) *APIError {
 			e.Code = code
 		}
 	case http.StatusNotFound:
+		// CompareSgpCombo's unknown combo (COMBO_NOT_FOUND) keeps its code. Every
+		// other 404 stays NOT_FOUND.
 		e.Code = "NOT_FOUND"
+		if sgpComboErrorCodes[code] {
+			e.Code = code
+		}
 	case http.StatusTooManyRequests:
 		e.Code = firstNonEmpty(code, "RATE_LIMITED")
 		e.RetryAfter = 60 * time.Second

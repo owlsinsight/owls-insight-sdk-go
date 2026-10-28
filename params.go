@@ -514,6 +514,39 @@ type SgpCompareParams struct {
 	Fresh bool `json:"fresh,omitempty"`
 }
 
+// SgpComboLegInput is one leg of a Kalshi combo, named by its own market in
+// SgpComboCompareParams.Legs.
+type SgpComboLegInput struct {
+	// MarketTicker is the leg's Kalshi market ticker, for example
+	// "KXNHLGAME-26OCT28PHIWSH-WSH" (lower case is accepted).
+	MarketTicker string `json:"marketTicker"`
+	// Side is the side of that market the combo takes: "yes" or "no".
+	Side string `json:"side"`
+}
+
+// SgpComboCompareParams is the body of CompareSgpCombo. Set ComboTicker OR Legs,
+// never both (the API answers a 400 COMBO_INVALID otherwise).
+type SgpComboCompareParams struct {
+	// Venue is the prediction market the combo is on: "kalshi", the only one.
+	// Empty sends "kalshi".
+	Venue string `json:"venue"`
+	// ComboTicker is a Kalshi combo market's ticker (a multivariate market, for
+	// example "KXMVECROSSCATEGORY-S2026ZJDATBFMVOSS4HNQ-QRB4CF6A6"): its legs are
+	// read from Kalshi. Lower case is accepted.
+	ComboTicker string `json:"comboTicker,omitempty"`
+	// Legs names the combo's legs one by one: 2 to 12, each a different market.
+	Legs []SgpComboLegInput `json:"legs,omitempty"`
+	// Books, DeadlineMs, FanDuel, Fair and Fresh are SgpCompareParams': the books
+	// to ask (empty: every book), how long to wait for them (1000 to 15000 ms; 0
+	// sends nothing, the server's default is 6000), "cold" or "skip" for FanDuel,
+	// our fair-price estimate as Compare.Fair, and never a cached quote.
+	Books      []string `json:"books,omitempty"`
+	DeadlineMs int      `json:"deadlineMs,omitempty"`
+	FanDuel    string   `json:"fanduel,omitempty"`
+	Fair       bool     `json:"fair,omitempty"`
+	Fresh      bool     `json:"fresh,omitempty"`
+}
+
 // SgpBatchParlay is one parlay of a BatchSgp call.
 type SgpBatchParlay struct {
 	// Ref is your label for the parlay (up to 100 characters), returned with its

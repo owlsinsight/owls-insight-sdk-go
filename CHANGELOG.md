@@ -59,27 +59,51 @@ All notable changes to this module are documented here. The format follows
   minute as shown (`"45+2"`) and `Detail` decodes with `Decode[SoccerPlayDetail]`
   (`SoccerPlayer`).
 
+- `CompareSgpCombo(ctx, SgpComboCompareParams)` (`POST /api/v1/sgp/combo-compare`, not
+  sport-scoped, MVP and Hall of Fame): a Kalshi combo priced as the same game parlay it is.
+  Set `ComboTicker` (a Kalshi combo market, whose legs are read from Kalshi) or `Legs` (2 to
+  12 `SgpComboLegInput`: `MarketTicker` and `Side` `"yes"` or `"no"`), never both, plus
+  `CompareSgp`'s `Books`, `DeadlineMs`, `FanDuel`, `Fair` and `Fresh`; an empty `Venue` sends
+  `"kalshi"`. `SgpComboCompareResponse` carries `Combo` (`SgpCombo`: `Ticker` and `Legs`,
+  each an `SgpComboLeg` with Kalshi's `Title`, the `Translated` leg as an `SgpLeg`, or `Why`
+  it has none), `VenuePrice` (`SgpComboVenuePrice`: the combo's own quote on Kalshi, for
+  context), OUR `EventID`, and `Compare`, exactly the `CompareSgp` 200 body for those legs.
+  A 422 refusal with a code is returned, not an error: `Success` false and `Code`
+  `COMBO_NOT_A_COMBO`, `COMBO_LEGS_UNSUPPORTED` (`Combo.Legs[].Why`), `COMBO_MULTI_GAME`
+  (`Games`, `SgpComboGame`), `COMBO_EVENT_NOT_FOUND` or a code added later (the API sends
+  `COMBO_NOT_A_COMBO` without `success`; the SDK sets it to false). Errors keep their code:
+  400 `COMBO_INVALID`, 404 `COMBO_NOT_FOUND`, 503 `COMBO_VENUE_UNAVAILABLE` (wait
+  `RetryAfter`), and `CompareSgp`'s SGP codes. Never retried; each attempt waits at least
+  45 s whatever a shorter `WithTimeout` says, since Kalshi is read before the books are
+  priced.
+
 ### Changed
 
+- A 404 keeps the API's code when it is `COMBO_NOT_FOUND` (`CompareSgpCombo`'s unknown
+  combo); every other 404 is still `NOT_FOUND`, and every 404 still matches `ErrNotFound`.
 - A 403 keeps the API's code when it is `SGP_TIER_REQUIRED` (a same game parlay
   comparison, batch or price history on a plan below MVP, or the fair price on the Rookie
   plan), as it already did for `DataKeyForbiddenCode`. Every other 403 is still
   `FORBIDDEN`, and every 403 still matches `ErrForbidden`. `SGP_FEATURE_DISABLED` (503, 60 s),
   `SGP_COMPARE_TOO_MANY_BOOKS` and `SGP_BATCH_TOO_LARGE` (429 without Retry-After: waiting
   never helps, ask for fewer books or parlays) arrive as the API sends them.
-- `SgpCompareParams`, `SgpBatchParams` and `SgpBatchParlay` are hand-written like
+- `SgpCompareParams`, `SgpBatchParams`, `SgpBatchParlay`, `SgpComboCompareParams` and
+  `SgpComboLegInput` are hand-written like
   `SgpBuildParams` (value fields), not generated, and a test checks that every SGP input
   sends exactly the properties the spec gives it.
-- `spec/` is the TypeScript SDK's 0.89.0 spec (at its `getSgpHistory` commit) and the
+- `spec/` is the TypeScript SDK's 0.89.0 spec (at its `compareSgpCombo` commit) and the
   models are regenerated from it: soccer in `PlaysSport` (`SoccerPlayDetail`,
   `SoccerPlayer`), the SGP fair price, compare and batch types (`SgpFairBlock`,
   `SgpFairLeg`, `SgpFairPrice`, `SgpCompareResponse`, `SgpCompareBook`,
   `SgpCompareBookResult`, `SgpCompareResultMeta`, `SgpCompareMeta`, `SgpBatchResponse`,
   `SgpBatchResult`, `SgpBatchMeta`), the price history types (`SgpHistoryResponse`,
   `SgpHistoryQuote`, `SgpHistoryLeg`, `SgpHistorySelectionIds`, `SgpHistoryPrice`,
-  `SgpHistoryFair`, `SgpHistoryMeta`), `SgpBuildResponse.Fair`, `LegsHash` on the build
-  meta and `SgpPeriod`.
-- README: `CompareSgp`, `BatchSgp`, `GetSgpHistory`, the fair price, the NHL leg shapes
+  `SgpHistoryFair`, `SgpHistoryMeta`), the combo types (`SgpComboCompareResponse`,
+  `SgpCombo`, `SgpComboLeg`, `SgpComboVenuePrice`, `SgpComboGame`), `SgpBuildResponse.Fair`,
+  `LegsHash` on the build meta, `SgpPeriod`, and the play-by-play `FirstSeenAt`, `Withdrawn`
+  and `Replaces`. The spec's docs now say a price-history quote's `Fair` comes only from
+  `BuildSgp` with `Fair` set (`SgpHistoryFair`, `SgpHistoryQuote.Fair`).
+- README: `CompareSgp`, `CompareSgpCombo`, `BatchSgp`, `GetSgpHistory`, the fair price, the NHL leg shapes
   and soccer play-by-play.
 
 ## [0.9.0] - 2026-10-26

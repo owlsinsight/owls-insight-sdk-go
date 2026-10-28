@@ -801,6 +801,96 @@ func (c *Client) CompareSgp(ctx context.Context, sport string, p SgpCompareParam
 	return sendInto[SgpCompareResponse](ctx, c, http.MethodPost, "/api/v1/"+esc(sport)+"/sgp/compare", p)
 }
 
+// sgpComboMinTimeout is the shortest per-attempt timeout CompareSgpCombo uses.
+// Before pricing, the API may read the combo and then its legs from Kalshi (each
+// read up to about 5 s), then prices them as CompareSgp does: up to DeadlineMs
+// (15 s at most; FanDuel at least 12 s) plus a second or two. The 30 s default can
+// run out first. A variable only so the tests can shorten it.
+var sgpComboMinTimeout = 45 * time.Second
+
+// CompareSgpCombo prices a Kalshi combo as the same game parlay it is, on every
+// SGP book at once (MVP and Hall of Fame). It is not sport-scoped: the sport
+// comes from the legs.
+//
+// Set p.ComboTicker (a Kalshi combo market: its legs are read from Kalshi) OR
+// p.Legs (2 to 12 markets, each with a side), never both, plus any of
+// CompareSgp's Books, DeadlineMs, FanDuel, Fair and Fresh. p.Venue is "kalshi"
+// (empty sends "kalshi"). Each Kalshi leg is translated to the leg a sportsbook
+// prices (Combo.Legs[].Translated), the game is matched to OUR event id
+// (EventID), and the translated legs are priced exactly as CompareSgp prices
+// them: Compare is its 200 body, with the same book statuses, quote cache, build
+// counting and fair price. It never returns a Kalshi price for the combo:
+// VenuePrice is the combo market's own quote on Kalshi, for context only (its
+// prices are nil without a resting quote, and it is nil itself when Legs were
+// sent). The priced quotes join your GetSgpHistory with Via "compare".
+//
+// A game winner YES is that team's moneyline, a spread YES the team at minus the
+// line (NO: the other team at plus it), a total or team total YES the over (NO
+// the under), and a player "N+" market YES the over N - 0.5 (NO the under); a
+// line market must be greater-than at a half point. A NO on a game winner, other
+// periods, soccer and non-sports markets are not translated.
+//
+// A 422 refusal with a code is RETURNED, not an error: Success is false and
+// Code says why. COMBO_NOT_A_COMBO: the market does not list 2 to 12 legs.
+// COMBO_LEGS_UNSUPPORTED: a leg has no sportsbook equivalent (Combo.Legs[].Why
+// says why). COMBO_MULTI_GAME: the legs span games (Games groups them by index
+// into Combo.Legs: send one game's legs). COMBO_EVENT_NOT_FOUND: the game is not
+// on our pregame board, or cannot be told from another game of the pair that
+// day. The API sends COMBO_NOT_A_COMBO without success; the SDK sets it to false.
+// Every other 422 is an [*APIError].
+//
+// Errors are [*APIError] values with these codes: a 400 COMBO_INVALID (a
+// malformed body: Message says which field); a 404 COMBO_NOT_FOUND (Kalshi has no
+// such market; it matches [ErrNotFound]); a 503 COMBO_VENUE_UNAVAILABLE (Kalshi
+// could not be read just then: wait RetryAfter); a 403 SGP_TIER_REQUIRED (the plan
+// is below MVP, refused before anything is read from Kalshi); a 503
+// SGP_FEATURE_DISABLED (combos, compare or, with p.Fair, the fair price are not
+// switched on yet; Details names the feature; RetryAfter 60 s); a 429 as on
+// CompareSgp (SGP_RATE_LIMIT, SGP_COMPARE_TOO_MANY_BOOKS, or the plan's limits);
+// a 503 SGP_RATE_LIMIT_UNAVAILABLE (2 s) or a code-less 503 (SERVICE_BUSY): retry
+// later.
+//
+// Kalshi is read before the books are priced, so each attempt waits at least 45 s
+// whatever a shorter client timeout ([WithTimeout]) says; a longer one, or none,
+// is kept. A deadline on ctx still applies. It is never retried: every attempt is
+// a real pricing request.
+func (c *Client) CompareSgpCombo(ctx context.Context, p SgpComboCompareParams) (*SgpComboCompareResponse, error) {
+	if p.Venue == "" {
+		p.Venue = "kalshi"
+	}
+	timeout := c.timeout
+	if timeout > 0 && timeout < sgpComboMinTimeout {
+		timeout = sgpComboMinTimeout
+	}
+	status, header, body, err := c.roundTripWithin(ctx, timeout, http.MethodPost, "/api/v1/sgp/combo-compare", nil, p)
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case status >= 200 && status < 300:
+		out := new(SgpComboCompareResponse)
+		if err := decodeBody(body, out); err != nil {
+			return nil, err
+		}
+		return out, nil
+	case status == http.StatusUnprocessableEntity:
+		var envelope struct {
+			Success *bool   `json:"success"`
+			Code    *string `json:"code"`
+			Error   *string `json:"error"`
+		}
+		if json.Unmarshal(body, &envelope) == nil && (envelope.Success == nil || !*envelope.Success) && envelope.Code != nil && envelope.Error != nil {
+			out := new(SgpComboCompareResponse)
+			if err := decodeBody(body, out); err == nil {
+				refused := false
+				out.Success = &refused
+				return out, nil
+			}
+		}
+	}
+	return nil, newAPIError(status, header, body)
+}
+
 // BatchSgp prices several same game parlays in one call (MVP and Hall of Fame).
 //
 //   - Mode "book": each parlay on the one p.Book (at most 10 parlays). Each result
@@ -864,7 +954,8 @@ func (c *Client) BatchSgp(ctx context.Context, sport string, p SgpBatchParams) (
 // carries it as Meta.LegsHash (on CompareSgp and BatchSgp also beside the
 // results), and the same parlay sent the same way always has the same hash.
 // p.From and p.To (ISO 8601) set the window, at most 7 days, by default the last
-// 24 hours; p.Limit is 1 to 500, default 100. Meta echoes the query as the API
+// 24 hours (p.From alone: the 24 hours from it, so set p.To too for a longer
+// window); p.Limit is 1 to 500, default 100. Meta echoes the query as the API
 // applied it.
 //
 // Only the calling account's own quotes are returned, and only priced answers are
@@ -873,9 +964,9 @@ func (c *Client) BatchSgp(ctx context.Context, sport string, p SgpBatchParams) (
 // recording was switched on (nothing earlier is filled in), for 90 days. QuotedAt
 // is when the book priced the parlay (Meta.PricedAt on the answer). Fair is our
 // estimate only on a quote from BuildSgp with Fair set whose answer carried a fair
-// price (Fair.Price not nil); otherwise it is nil (CompareSgp and BatchSgp record
-// each book's quote without it, whatever their Fair). Via is "build", "compare"
-// or "batch"; more can be added.
+// price (Fair.Price not nil); otherwise it is nil (CompareSgp, CompareSgpCombo
+// and BatchSgp record each book's quote without it, whatever their Fair). Via is
+// "build", "compare" (CompareSgpCombo's quotes too) or "batch"; more can be added.
 //
 // Errors are [*APIError] values: a 403 SGP_TIER_REQUIRED (the plan is below
 // MVP); a 503 SGP_FEATURE_DISABLED (the history is not switched on yet;

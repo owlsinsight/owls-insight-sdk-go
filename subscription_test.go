@@ -234,6 +234,10 @@ func TestSgpInputsMatchTheSpec(t *testing.T) {
 		"SgpBatchParlay":   SgpBatchParlay{Ref: "r", EventID: "e", Legs: legs},
 		"SgpBatchParams": SgpBatchParams{Mode: "book", Book: "hardrock", Books: []string{"hardrock"},
 			Parlays: []SgpBatchParlay{{EventID: "e", Legs: legs}}, DeadlineMs: 8000, FanDuel: "skip", Fair: true, Fresh: true},
+		"SgpComboLegInput": SgpComboLegInput{MarketTicker: "m", Side: "yes"},
+		// Both ComboTicker and Legs, which the API refuses together, only so every property is sent.
+		"SgpComboCompareParams": SgpComboCompareParams{Venue: "kalshi", ComboTicker: "c", Legs: []SgpComboLegInput{{MarketTicker: "m", Side: "no"}},
+			Books: []string{"hardrock"}, DeadlineMs: 8000, FanDuel: "skip", Fair: true, Fresh: true},
 	}
 	for schema, value := range full {
 		if len(schemas[schema]) == 0 {
