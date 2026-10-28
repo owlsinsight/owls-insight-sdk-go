@@ -886,6 +886,7 @@
           "caesars",
           "circa",
           "draftkings",
+          "fanatics",
           "fanaticsmarkets",
           "fanduel",
           "hardrock",
@@ -7984,7 +7985,7 @@
         ]
       },
       "Play": {
-        "description": "One play of an NBA, NHL, NFL or NCAAF game, as GET /{sport}/plays and the\n`plays-update` event carry it. Merge plays by `id`: a play can be amended after it\nis first published (a review, an assist added).",
+        "description": "One play of an NBA, NHL, NFL, NCAAF or soccer game, as GET /{sport}/plays and the\n`plays-update` event carry it. Merge plays by `id`: a play can be amended after it\nis first published (a review, an assist added). For soccer a play is a match\nincident (goal, card, substitution), not every pass.",
         "properties": {
           "awayScore": {
             "format": "double",
@@ -7994,7 +7995,7 @@
             ]
           },
           "clock": {
-            "description": "Time left in the period as the venue shows it (\"5:32\"); null when the source has none.",
+            "description": "Time left in the period as the venue shows it (\"5:32\"), or for soccer the match minute (\"67\", \"45+2\"); null when the source has none.",
             "type": [
               "string",
               "null"
@@ -8010,6 +8011,9 @@
               },
               {
                 "$ref": "#/components/schemas/BasketballPlayDetail"
+              },
+              {
+                "$ref": "#/components/schemas/SoccerPlayDetail"
               }
             ]
           },
@@ -8036,6 +8040,7 @@
             "type": "boolean"
           },
           "secondsRemaining": {
+            "description": "Null for soccer, whose clock counts up.",
             "format": "double",
             "type": [
               "number",
@@ -8048,7 +8053,7 @@
             "type": "number"
           },
           "team": {
-            "description": "The side the play belongs to (the offense, the shooter's team, the team that took the penalty); null for a neutral play.",
+            "description": "The side the play belongs to (the offense, the shooter's team, the team that took the penalty, the side credited with a goal); null for a neutral play.",
             "type": [
               "string",
               "null"
@@ -8062,7 +8067,7 @@
             "type": "string"
           },
           "type": {
-            "description": "The source's own type key, unchanged: \"Rush\", \"Pass Reception\"; \"shot-on-goal\", \"faceoff\"; \"2pt/Jump Shot\", \"rebound/defensive\".",
+            "description": "The source's own type key, unchanged: \"Rush\", \"Pass Reception\"; \"shot-on-goal\", \"faceoff\"; \"2pt/Jump Shot\", \"rebound/defensive\"; soccer \"Goal\", \"Yellow Card\", \"Substitution\".",
             "type": "string"
           },
           "updatedAt": {
@@ -8070,7 +8075,7 @@
             "type": "string"
           },
           "wallclock": {
-            "description": "When the play happened according to the source; null for the NHL, which publishes none.",
+            "description": "When the play happened according to the source; null for the NHL and soccer, which publish none.",
             "type": [
               "string",
               "null"
@@ -8657,7 +8662,7 @@
                 "type": "string"
               },
               "sourceAgeSeconds": {
-                "description": "The source's own edge-cache age at that read (NHL about 19 s, ESPN about 7 s); null when it sends none.",
+                "description": "The source's own edge-cache age at that read (NHL about 19 s, ESPN about 7 s); null when it sends none (NBA, soccer).",
                 "format": "double",
                 "type": [
                   "number",
@@ -8702,7 +8707,7 @@
             ]
           },
           "status": {
-            "description": "`stale` when a game in play has not been read for 30 seconds.",
+            "description": "`stale` when a game in play has not been read for 30 seconds (soccer: 60).",
             "type": "string",
             "x-extensible-enum": [
               "ok",
@@ -8735,11 +8740,12 @@
           "nba",
           "ncaaf",
           "nfl",
-          "nhl"
+          "nhl",
+          "soccer"
         ]
       },
       "PlaysUpdate": {
-        "description": "Payload of the `plays-update` WebSocket event: play-by-play for ONE sport.\n\nOpt in with `subscribe({ ..., plays: true })` (nba, nhl, nfl and ncaaf) or\n`plays: ['nfl', 'nba']`; no `plays` field, no messages. Same access as `scores-update`.\nThere is no full message: call `getPlays(sport, eventId)` once to start, then apply\neach delta by merging `plays` by `id`.",
+        "description": "Payload of the `plays-update` WebSocket event: play-by-play for ONE sport.\n\nOpt in with `subscribe({ ..., plays: true })` (nba, nhl, nfl, ncaaf and soccer) or\n`plays: ['nfl', 'nba', 'soccer']`; no `plays` field, no messages. Same access as `scores-update`.\nThere is no full message: call `getPlays(sport, eventId)` once to start, then apply\neach delta by merging `plays` by `id`.",
         "properties": {
           "events": {
             "items": {
@@ -9431,6 +9437,28 @@
                   "game"
                 ]
               },
+              "nameVariantJoins": {
+                "description": "Line groups joined to a box-score player written with another form of his first\nname (\"Alexandre Sarr\" in the books, \"Alex Sarr\" in the box score): joined, and\ndisclosed like `suffixGaps`. NBA only; [] elsewhere.",
+                "items": {
+                  "properties": {
+                    "actual": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object",
+                  "x-owls-required": [
+                    "actual",
+                    "lines"
+                  ]
+                },
+                "type": "array"
+              },
               "playersReturned": {
                 "format": "double",
                 "type": "number"
@@ -9481,6 +9509,18 @@
               },
               "unmatchedLineGroups": {
                 "description": "Closing-line groups no actual matched — a book quoted a player the box score did\nnot resolve under that spelling. Non-zero means the name join is losing data,\nwhich otherwise looks exactly like \"no book quoted this player\".",
+                "format": "double",
+                "type": "number"
+              },
+              "unsupportedCategoryExamples": {
+                "description": "A few of those, named (\"<player or roster> <category>\"). NBA only; [] elsewhere.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "unsupportedCategoryGroups": {
+                "description": "Line groups in a category no box score grades (multi-player `combos`, award and\nteam markets): never a join failure, so not counted in `unmatchedLineGroups`.\nFilled for NBA only; 0 for other sports, where those groups stay in the counters\nabove. Absent from responses of API versions before it was added.",
                 "format": "double",
                 "type": "number"
               }
@@ -12443,6 +12483,277 @@
           "SLOT_EVICTED"
         ]
       },
+      "SgpBatchMeta": {
+        "description": "`meta` of a {@link SgpBatchResponse}.",
+        "properties": {
+          "deadlineMs": {
+            "description": "The per-parlay deadline used, in ms.",
+            "format": "double",
+            "type": "number"
+          },
+          "parlays": {
+            "description": "Parlays sent.",
+            "format": "double",
+            "type": "number"
+          },
+          "quotesCached": {
+            "description": "Quotes answered from the cache (a repeated parlay counts once).",
+            "format": "double",
+            "type": "number"
+          },
+          "quotesMade": {
+            "description": "Quotes that reached a book's price request (each counted one build).",
+            "format": "double",
+            "type": "number"
+          },
+          "quotesPriced": {
+            "description": "Quotes that priced (a repeated parlay counts once).",
+            "format": "double",
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "timestamp",
+          "deadlineMs",
+          "parlays",
+          "quotesCached",
+          "quotesMade",
+          "quotesPriced"
+        ]
+      },
+      "SgpBatchMode": {
+        "description": "`\"book\"`: every parlay on the one `book`. `\"compare\"`: every parlay on every\nbook (or `books`), as `compareSgp` prices one.",
+        "type": "string",
+        "x-extensible-enum": [
+          "book",
+          "compare"
+        ]
+      },
+      "SgpBatchParams": {
+        "description": "Params for `batchSgp`.",
+        "properties": {
+          "book": {
+            "description": "Mode `\"book\"` (required there): the one book every parlay is priced on.",
+            "type": "string"
+          },
+          "books": {
+            "description": "Mode `\"compare\"`: the books to ask; default every book.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "deadlineMs": {
+            "description": "How long each parlay waits for its books, 1000 to 15000 ms; default 6000.",
+            "format": "double",
+            "type": "number"
+          },
+          "fair": {
+            "description": "`true` adds our fair-price estimate to each parlay's result ({@link SgpFairBlock}).",
+            "type": "boolean"
+          },
+          "fanduel": {
+            "description": "As on `compareSgp`: `\"cold\"` (default) or `\"skip\"`.",
+            "type": "string",
+            "x-extensible-enum": [
+              "cold",
+              "skip"
+            ]
+          },
+          "fresh": {
+            "description": "`true` never uses a cached quote.",
+            "type": "boolean"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/SgpBatchMode"
+          },
+          "parlays": {
+            "description": "At most 10 parlays in mode `\"book\"`, 4 in mode `\"compare\"`. A parlay\nrepeated in one batch (same `eventId`, same legs in the same order) is\npriced once and reported for each copy.",
+            "items": {
+              "$ref": "#/components/schemas/SgpBatchParlay"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "mode",
+          "parlays"
+        ]
+      },
+      "SgpBatchParlay": {
+        "description": "One parlay in a {@link SgpBatchParams}.",
+        "properties": {
+          "eventId": {
+            "description": "OUR event id for the game, as `getOdds` gives it (as on `compareSgp`).",
+            "type": "string"
+          },
+          "legs": {
+            "description": "The legs `buildSgp` takes, 1 to 12.",
+            "items": {
+              "$ref": "#/components/schemas/SgpLeg"
+            },
+            "type": "array"
+          },
+          "ref": {
+            "description": "Your label for the parlay (up to 100 characters), returned with its result.",
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "eventId",
+          "legs"
+        ]
+      },
+      "SgpBatchResponse": {
+        "description": "Response from `POST /api/v1/{sport}/sgp/batch`.",
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/SgpBatchMeta"
+          },
+          "mode": {
+            "type": "string",
+            "x-extensible-enum": [
+              "book",
+              "compare"
+            ]
+          },
+          "results": {
+            "description": "One per parlay, in request order.",
+            "items": {
+              "$ref": "#/components/schemas/SgpBatchResult"
+            },
+            "type": "array"
+          },
+          "sport": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success",
+          "sport",
+          "mode",
+          "results",
+          "meta"
+        ]
+      },
+      "SgpBatchResult": {
+        "description": "One parlay's answer in a {@link SgpBatchResponse}, in request order. The\nfields after `status` depend on the batch's `mode`:\n- mode `\"book\"`: `book`, `bookStatus` and, as on a {@link SgpCompareBook},\n  `bookEventId`, `httpStatus`, `result` (the `/sgp/build` body), `cached`, `reason`;\n- mode `\"compare\"`: `best` and `books` (exactly what `compareSgp` returns).\n\nWith `fair: true`, `fair` is on every `done` result (`null` when nothing\npriced). A `not-started` parlay carries no fair block: `fair` is `null` in mode\n`\"book\"` and absent in mode `\"compare\"`.",
+        "properties": {
+          "best": {
+            "description": "Mode `\"compare\"`: the highest decimal price among the books that priced,\nor `null`.",
+            "properties": {
+              "american": {
+                "format": "double",
+                "type": "number"
+              },
+              "book": {
+                "type": "string"
+              },
+              "decimal": {
+                "format": "double",
+                "type": "number"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ],
+            "x-owls-required": [
+              "book",
+              "american",
+              "decimal"
+            ]
+          },
+          "book": {
+            "description": "Mode `\"book\"`: the book priced.",
+            "type": "string"
+          },
+          "bookEventId": {
+            "description": "Mode `\"book\"`: the book's own event id for the game, once it was mapped.",
+            "type": "string"
+          },
+          "bookStatus": {
+            "$ref": "#/components/schemas/SgpCompareBookStatus",
+            "description": "Mode `\"book\"`: what happened on that book (the values a compare book's\n`status` takes)."
+          },
+          "books": {
+            "description": "Mode `\"compare\"`: every book asked, each with its `status`.",
+            "items": {
+              "$ref": "#/components/schemas/SgpCompareBook"
+            },
+            "type": "array"
+          },
+          "cached": {
+            "description": "Mode `\"book\"`: `true` when `result` is a cached quote (no build counted).",
+            "type": "boolean"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "fair": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SgpFairBlock"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With `fair: true`: our estimate for this parlay, or `null` when nothing priced."
+          },
+          "httpStatus": {
+            "description": "Mode `\"book\"`: the status `/sgp/build` would have answered with.",
+            "format": "double",
+            "type": "number"
+          },
+          "index": {
+            "description": "The parlay's index in your `parlays` array.",
+            "format": "double",
+            "type": "number"
+          },
+          "legsHash": {
+            "description": "A hash of the sport and legs (as `meta.legsHash` on `compareSgp`).",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Mode `\"book\"`: why the book was left out or not priced, when there is no `result`.",
+            "type": "string"
+          },
+          "ref": {
+            "description": "Your `ref`, when you sent one.",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/SgpCompareBookResult",
+            "description": "Mode `\"book\"`: exactly the `/sgp/build` body for this parlay, when the book answered."
+          },
+          "status": {
+            "description": "`\"done\"`: priced or answered. `\"not-started\"`: this parlay's pricing\nwould have begun more than about 20 seconds after the call began, so it was\nnot priced (except by any book answered from a cached quote); its builds are\ngiven back while the minute they were counted in is still running. Send it\nagain.",
+            "type": "string",
+            "x-extensible-enum": [
+              "done",
+              "not-started"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "index",
+          "eventId",
+          "legsHash",
+          "status"
+        ]
+      },
       "SgpBookSelection": {
         "description": "The book's own ids for a resolved SGP leg on DraftKings, Hard Rock, BetRivers,\nBally Bet and BetMGM. Hard Rock's, BetRivers' and Bally Bet's are strings of\ndigits; BetMGM's `marketId` reads `v1:<fixture>:<market>` or\n`v2:<fixture>:<market>`, and on NHL `sc:<fixture>:<builderId>` with the\noption string BetMGM's bet builder lists as `selectionId`.",
         "properties": {
@@ -12629,6 +12940,10 @@
             "description": "Pass as a string. Use `String(event.eventId)` when sourced from `getSgpEvents`.",
             "type": "string"
           },
+          "fair": {
+            "description": "`true` adds our fair-price estimate as `fair` on a priced 200\n({@link SgpFairBlock}). MVP and Hall of Fame plans: on a lower plan the\nbuild is a 403 `SGP_TIER_REQUIRED` (`ForbiddenError`), refused before\nanything is priced and not counted against any limit; a 503\n`SGP_FEATURE_DISABLED` means the fair price is not switched on yet.\nAPI v2.515.0.",
+            "type": "boolean"
+          },
           "legs": {
             "description": "Between 2 and 12 legs.",
             "items": {
@@ -12684,6 +12999,10 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "fair": {
+            "$ref": "#/components/schemas/SgpFairBlock",
+            "description": "Present on a priced 200 when the request sent `fair: true` (MVP / Hall of\nFame): our estimate of the parlay's price, beside the book's `sgp`, never in\nplace of it. API v2.515.0."
           },
           "legIndex": {
             "description": "Refused parlay, `line-*` codes only: the leg's index in your `legs` array.",
@@ -12754,6 +13073,409 @@
           "success",
           "legs",
           "meta"
+        ]
+      },
+      "SgpCompareBook": {
+        "description": "One book's answer in a {@link SgpCompareResponse}.",
+        "properties": {
+          "book": {
+            "type": "string"
+          },
+          "bookEventId": {
+            "description": "The book's own event id for the game, once it was mapped.",
+            "type": "string"
+          },
+          "cached": {
+            "description": "`true` when `result` is a cached quote (no build was counted for it).",
+            "type": "boolean"
+          },
+          "httpStatus": {
+            "description": "The status `/sgp/build` would have answered with, when the book was priced\nor refused.",
+            "format": "double",
+            "type": "number"
+          },
+          "label": {
+            "description": "The book's display name (`\"FanDuel\"`, `\"Hard Rock\"`, ...).",
+            "type": "string"
+          },
+          "ms": {
+            "description": "How long this book took, in ms (mapping and pricing).",
+            "format": "double",
+            "type": "number"
+          },
+          "reason": {
+            "description": "Why the book was left out or not priced, when there is no `result` to say it.",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/SgpCompareBookResult",
+            "description": "Exactly the `/sgp/build` body for this book, when it answered."
+          },
+          "status": {
+            "$ref": "#/components/schemas/SgpCompareBookStatus"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "book",
+          "label",
+          "status"
+        ]
+      },
+      "SgpCompareBookResult": {
+        "description": "A book's `result` in a comparison: exactly the body `/sgp/build` returned for\nthat book. Which fields are set depends on the book's `status`: a priced 200\n(`sgp`, `legs`, `meta`), a refused or unresolved 422 (`reasonCode`, `legs`,\n...), a no-price or busy 503 (`code`, `legs`, `meta`), or a short\n`{ error, message }` (an unknown game, or too few legs resolved). Every field is\ntherefore optional here: branch on the book's `status` first.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "x-extensible-enum": [
+              "ambiguous-combination",
+              "bet-failure",
+              "bet-failure-shape",
+              "combined-odds-missing",
+              "duplicate-selection",
+              "leg-failure",
+              "line-mismatch",
+              "line-not-echoed",
+              "line-unexpected",
+              "line-unverifiable",
+              "no-price",
+              "no-sgm-combination",
+              "not-placeable",
+              "resp-code",
+              "runner-odds-duplicate",
+              "runner-odds-inconsistent",
+              "runner-odds-missing",
+              "single-duplicate",
+              "single-missing",
+              "single-odds-missing",
+              "unresolved"
+            ]
+          },
+          "error": {
+            "type": "string"
+          },
+          "failureCodes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "legIndex": {
+            "format": "double",
+            "type": "number"
+          },
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/SgpResolvedLeg"
+            },
+            "type": "array"
+          },
+          "lineEchoed": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/SgpCompareResultMeta"
+          },
+          "pricing": {
+            "type": "string"
+          },
+          "reasonCode": {
+            "type": "string",
+            "x-extensible-enum": [
+              "ambiguous-combination",
+              "bet-failure",
+              "bet-failure-shape",
+              "combined-odds-missing",
+              "duplicate-selection",
+              "leg-failure",
+              "line-mismatch",
+              "line-not-echoed",
+              "line-unexpected",
+              "line-unverifiable",
+              "no-price",
+              "no-sgm-combination",
+              "not-placeable",
+              "resp-code",
+              "runner-odds-duplicate",
+              "runner-odds-inconsistent",
+              "runner-odds-missing",
+              "single-duplicate",
+              "single-missing",
+              "single-odds-missing",
+              "unresolved"
+            ]
+          },
+          "sgp": {
+            "$ref": "#/components/schemas/SgpPrice"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "SgpCompareBookStatus": {
+        "description": "What happened on one book in a comparison:\n- `priced`: `result` is the book's 200 body (`sgp` is its price).\n- `refused`: the book refused the parlay; `result` is its 422 body (`reasonCode`).\n- `unresolved`: a leg did not resolve on that book (for example a different\n  main line); `result` says which and why.\n- `busy`, `no-price`: that book produced no usable answer; retry later.\n- `timeout`: the book had not answered when `deadlineMs` ran out, or was not\n  reached in time.\n- `event-not-listed`: the book does not list this game for same game parlays.\n- `ambiguous-event`: two games match (a doubleheader without `-G2`), or the\n  book lists this matchup at a different start, so it is a different game.\n- `unsupported`: the book does not price this sport or one of the legs (`reason`).\n- `disabled`: that book's pricing is paused.\n- `skipped`: `fanduel: \"skip\"`.\n\nNew statuses can appear: handle the ones you know and treat the rest as \"no price\".",
+        "type": "string",
+        "x-extensible-enum": [
+          "ambiguous-event",
+          "busy",
+          "disabled",
+          "event-not-listed",
+          "no-price",
+          "priced",
+          "refused",
+          "skipped",
+          "timeout",
+          "unresolved",
+          "unsupported"
+        ]
+      },
+      "SgpCompareMeta": {
+        "description": "`meta` of a {@link SgpCompareResponse}.",
+        "properties": {
+          "booksAsked": {
+            "description": "Books in `books`.",
+            "format": "double",
+            "type": "number"
+          },
+          "booksCached": {
+            "description": "Books answered from a cached quote.",
+            "format": "double",
+            "type": "number"
+          },
+          "booksPriced": {
+            "description": "Books with `status: \"priced\"`.",
+            "format": "double",
+            "type": "number"
+          },
+          "booksQuoted": {
+            "description": "Books that reached a book's price request (each counted one build).",
+            "format": "double",
+            "type": "number"
+          },
+          "deadlineMs": {
+            "description": "The deadline used, in ms.",
+            "format": "double",
+            "type": "number"
+          },
+          "legsHash": {
+            "description": "A hash of the sport and legs: the same parlay always hashes the same.",
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "timestamp",
+          "deadlineMs",
+          "legsHash",
+          "booksAsked",
+          "booksCached",
+          "booksQuoted",
+          "booksPriced"
+        ]
+      },
+      "SgpCompareParams": {
+        "description": "Params for `compareSgp`.",
+        "properties": {
+          "books": {
+            "description": "The books to ask (`\"fanduel\"`, `\"draftkings\"`, `\"hardrock\"`,\n`\"betrivers\"`, `\"ballybet\"`, `\"betmgm\"`); default every book.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "deadlineMs": {
+            "description": "How long to wait for the books, 1000 to 15000 ms; default 6000. Keep the\nclient's `timeout` above it.",
+            "format": "double",
+            "type": "number"
+          },
+          "eventId": {
+            "description": "OUR event id for the game, as `getOdds` gives it:\n`{sport}:{Away}@{Home}-{YYYYMMDD}`, with `-G2` for the second game of a\ndoubleheader. Not a book's id from `getSgpEvents`.",
+            "type": "string"
+          },
+          "fair": {
+            "description": "`true` adds our fair-price estimate as `fair`, built from every book that\npriced ({@link SgpFairBlock}).",
+            "type": "boolean"
+          },
+          "fanduel": {
+            "description": "`\"cold\"` (the default): FanDuel prices in a fresh browser session and is\ngiven at least 12000 ms. `\"skip\"`: FanDuel is left out (`status: \"skipped\"`).",
+            "type": "string",
+            "x-extensible-enum": [
+              "cold",
+              "skip"
+            ]
+          },
+          "fresh": {
+            "description": "`true` never uses a cached quote: every book is priced now.",
+            "type": "boolean"
+          },
+          "legs": {
+            "description": "The same legs `buildSgp` takes, 1 to 12, sent to every book.",
+            "items": {
+              "$ref": "#/components/schemas/SgpLeg"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "eventId",
+          "legs"
+        ]
+      },
+      "SgpCompareResponse": {
+        "description": "Response from `POST /api/v1/{sport}/sgp/compare`.",
+        "properties": {
+          "best": {
+            "description": "The highest decimal price among the books that priced, or `null` when none did.",
+            "properties": {
+              "american": {
+                "format": "double",
+                "type": "number"
+              },
+              "book": {
+                "type": "string"
+              },
+              "decimal": {
+                "format": "double",
+                "type": "number"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ],
+            "x-owls-required": [
+              "book",
+              "american",
+              "decimal"
+            ]
+          },
+          "books": {
+            "description": "Every book asked, priced or not, each with its `status`.",
+            "items": {
+              "$ref": "#/components/schemas/SgpCompareBook"
+            },
+            "type": "array"
+          },
+          "eventId": {
+            "description": "Our event id, as sent.",
+            "type": "string"
+          },
+          "fair": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SgpFairBlock"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With `fair: true`: our estimate from every book that priced, or `null` when\nno book priced. Absent without `fair: true`."
+          },
+          "legs": {
+            "description": "The legs, as sent.",
+            "items": {
+              "$ref": "#/components/schemas/SgpLeg"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/SgpCompareMeta"
+          },
+          "sport": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "success",
+          "sport",
+          "eventId",
+          "legs",
+          "best",
+          "books",
+          "meta"
+        ]
+      },
+      "SgpCompareResultMeta": {
+        "description": "`meta` of a book's `result` in a comparison: the build's meta, plus the cache\nlabel when the answer was a cached quote.",
+        "properties": {
+          "book": {
+            "description": "The book the legs were resolved and priced against (`\"fanduel\"`, `\"draftkings\"`, ...).",
+            "type": "string"
+          },
+          "cacheAgeMs": {
+            "description": "With `cached`: the quote's age in ms.",
+            "format": "double",
+            "type": "number"
+          },
+          "cached": {
+            "description": "`true` when this answer is a quote the book priced for exactly these legs\nand this game in the last 15 seconds (`pricedAt` still says when).",
+            "type": "boolean"
+          },
+          "catalogAgeMs": {
+            "description": "The MINIMUM age, in ms, the catalog data already had at `resolvedAt`; the\ntrue age can be higher. Omitted when the age is unknown. API v2.348.0.",
+            "format": "double",
+            "type": "number"
+          },
+          "commence_time": {
+            "type": "string"
+          },
+          "eventId": {
+            "description": "The event id as the API echoes it: a number on FanDuel, a string on every\nother book (digits, or BetMGM NFL's `\"6:43680\"`)."
+          },
+          "lineUnverified": {
+            "description": "`true` on a 200 that priced at least one leg whose line the book's\nresponse does not confirm (FanDuel's alternate N-or-more strikeout rungs;\nevery BetMGM NHL leg, whose price answer names no leg). Absent when every\nline was confirmed. API v2.348.0.",
+            "type": "boolean"
+          },
+          "lineUnverifiedLegs": {
+            "description": "With `lineUnverified`: the indexes of those legs in your `legs` array.\nAPI v2.348.0.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "matchup": {
+            "type": "string"
+          },
+          "priceRequestedAt": {
+            "description": "When the price request went out, on the API server's clock. Present on\nevery 200, and on a refused 422, a no-price 503 or a legacy 502 only when\nFanDuel returned a response. Absent on a leg-resolution 422 (nothing was\npriced). API v2.348.0.",
+            "type": "string"
+          },
+          "pricedAt": {
+            "description": "When FanDuel's answer came back, on the API server's clock. Never earlier\nthan `priceRequestedAt`; this is the quote time to use. Same presence as\n`priceRequestedAt`. API v2.348.0.",
+            "type": "string"
+          },
+          "resolvedAt": {
+            "description": "When the legs were resolved against FanDuel's catalog, before pricing.\nAPI v2.348.0.",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "The same instant as `resolvedAt`: when the legs were resolved, BEFORE\npricing. It is not the quote time; use `pricedAt` for that.",
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "eventId",
+          "book",
+          "timestamp"
         ]
       },
       "SgpEvent": {
@@ -12843,6 +13565,256 @@
           "meta"
         ]
       },
+      "SgpFairBlock": {
+        "description": "Our estimate of a same game parlay's price (`fair` on {@link SgpBuildResponse}\nand {@link SgpCompareResponse}), built from de-vigged leg probabilities. It is\nnever a sportsbook's price: the book's own quote stays in `sgp`.\n\nThe legs' probabilities are multiplied and adjusted by how the book itself\npriced these legs together: `basis.correlationFactor` is the product of the\nbook's single prices divided by its parlay price (on compare, the median across\nthe books that priced). That factor also keeps the book's parlay surcharge over\nits singles (`basis.marginAdjusted` is `false`), so the estimate removes the\nsingles' vig, not that surcharge.\n\n`price` is `null`, with `why`, when any leg has no fair (`coverage.missingLegs`\nand each leg's `why` say which), when no book returned a usable single price\nfor every leg or the factor fell outside 0.25 to 4, once the game has started,\nor when the fair could not be worked out in time.",
+        "properties": {
+          "basis": {
+            "properties": {
+              "correlation": {
+                "description": "`\"book-implied\"`: read off the books' own quotes.",
+                "type": "string",
+                "x-extensible-enum": [
+                  "book-implied"
+                ]
+              },
+              "correlationFactor": {
+                "description": "The correlation factor used, or `null` when none was usable.",
+                "format": "double",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "correlationSources": {
+                "description": "Each priced book's own factor (`null` when that book's quote gave none).",
+                "items": {
+                  "properties": {
+                    "book": {
+                      "type": "string"
+                    },
+                    "factor": {
+                      "format": "double",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "x-owls-required": [
+                    "book",
+                    "factor"
+                  ]
+                },
+                "type": "array"
+              },
+              "legs": {
+                "description": "`\"fair-v1\"`: each leg's `source` says whether Pinnacle anchored it.",
+                "type": "string",
+                "x-extensible-enum": [
+                  "fair-v1"
+                ]
+              },
+              "marginAdjusted": {
+                "description": "`false`: the factor keeps the book's parlay surcharge over its singles.",
+                "type": "boolean"
+              }
+            },
+            "type": "object",
+            "x-owls-required": [
+              "legs",
+              "correlation",
+              "correlationFactor",
+              "correlationSources",
+              "marginAdjusted"
+            ]
+          },
+          "booksDisagree": {
+            "description": "Some leg's fair is one other books' prices disagree with (each leg says which).",
+            "type": "boolean"
+          },
+          "computedAt": {
+            "description": "ISO 8601: when the estimate was worked out.",
+            "type": "string"
+          },
+          "coverage": {
+            "properties": {
+              "legs": {
+                "format": "double",
+                "type": "number"
+              },
+              "missingLegs": {
+                "description": "Indexes (in your `legs` array) of the legs with no fair.",
+                "items": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              "withFair": {
+                "format": "double",
+                "type": "number"
+              }
+            },
+            "type": "object",
+            "x-owls-required": [
+              "legs",
+              "withFair",
+              "missingLegs"
+            ]
+          },
+          "estimate": {
+            "description": "Always `true`: this is an estimate, not a book's price.",
+            "type": "boolean"
+          },
+          "independent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SgpFairPrice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The same legs treated as unrelated (no correlation), or `null`."
+          },
+          "label": {
+            "description": "`\"Owls Insight estimate, not a sportsbook price\"`.",
+            "type": "string"
+          },
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/SgpFairLeg"
+            },
+            "type": "array"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SgpFairPrice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The fair price of the parlay with the books' correlation, or `null` with `why`."
+          },
+          "why": {
+            "description": "Why `price` is `null`, or `null` when there is a price. Known values:\n`missing-leg-fair`, `no-correlation`, `not-a-probability`, `in-play`. New\nvalues can appear.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "estimate",
+          "label",
+          "price",
+          "why",
+          "booksDisagree",
+          "basis",
+          "coverage",
+          "legs",
+          "independent",
+          "computedAt"
+        ]
+      },
+      "SgpFairLeg": {
+        "description": "One leg's fair probability in an {@link SgpFairBlock}: our Fair v1 fair for the\nleg, the one `/api/v1/{sport}/fair` serves for a moneyline, spread or total (a\nspread or total only at that fair's own number, never a whole number) and the\none `/api/v1/{sport}/props/ev` scores a player prop against (x.5 lines).",
+        "properties": {
+          "ageMs": {
+            "description": "Age in ms of the fair board the leg was read from, or `null`.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "booksDisagree": {
+            "description": "Other books' prices disagree with this leg's fair.",
+            "type": "boolean"
+          },
+          "legIndex": {
+            "description": "The leg's index in your `legs` array.",
+            "format": "double",
+            "type": "number"
+          },
+          "line": {
+            "description": "The number the fair is at (the spread or total point, the prop line);\n`null` for a moneyline and without a fair.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "pinnacleLine": {
+            "description": "With `why: \"line-not-at-pinnacle-number\"`: the number Pinnacle has, for\nthe leg's side.",
+            "format": "double",
+            "type": "number"
+          },
+          "probability": {
+            "description": "The leg's fair (no-vig) probability, or `null` with `why` when it has none.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "source": {
+            "description": "How the fair was made: `\"pinnacle\"` (Pinnacle-anchored) or, for a\nmoneyline, `\"consensus\"` (three or more books agreed). `null` without a fair.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "x-extensible-enum": [
+              "consensus",
+              "pinnacle"
+            ]
+          },
+          "why": {
+            "description": "Why the leg has no fair, or `null` when it has one. Known values:\n`fair-board-unavailable` (no board, or one too old to use),\n`game-not-on-fair-board`, `ambiguous-game`, `team-not-matched`,\n`side-not-matched`, `no-line`, `whole-number-line`,\n`line-not-at-pinnacle-number` (see `pinnacleLine`),\n`category-not-on-fair-board`, `prop-not-on-fair-board`, `ambiguous-player`,\n`no-fair`, `in-play`, `fair-unavailable` (not worked out in time). New\nvalues can appear.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "legIndex",
+          "probability",
+          "source",
+          "line",
+          "ageMs",
+          "booksDisagree",
+          "why"
+        ]
+      },
+      "SgpFairPrice": {
+        "description": "A probability with its prices: decimal odds, and American odds rounded to a\nwhole number.",
+        "properties": {
+          "american": {
+            "format": "double",
+            "type": "number"
+          },
+          "decimal": {
+            "format": "double",
+            "type": "number"
+          },
+          "probability": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "probability",
+          "decimal",
+          "american"
+        ]
+      },
       "SgpFdSelection": {
         "description": "The FanDuel selection a resolved SGP leg maps to. `marketId` is specific to\nthe FanDuel state that priced it (New Jersey); `selectionId` is the same in\nevery state.",
         "properties": {
@@ -12864,7 +13836,12 @@
         "anyOf": [
           {
             "properties": {
+              "period": {
+                "$ref": "#/components/schemas/SgpPeriod",
+                "description": "NHL, Hard Rock: the period's result instead of the full game."
+              },
               "selection": {
+                "description": "The team. With a `period`, the period's 3-way result: a team or `\"Tie\"`.",
                 "type": "string"
               },
               "type": {
@@ -12882,7 +13859,12 @@
           },
           {
             "properties": {
+              "period": {
+                "$ref": "#/components/schemas/SgpPeriod",
+                "description": "NHL, Hard Rock: the period's spread at a line Hard Rock lists for it."
+              },
               "point": {
+                "description": "The book's main line, or on NHL an alternate puck line Hard Rock,\nBally Bet or (before the game) DraftKings lists.",
                 "format": "double",
                 "type": "number"
               },
@@ -12905,7 +13887,12 @@
           },
           {
             "properties": {
+              "period": {
+                "$ref": "#/components/schemas/SgpPeriod",
+                "description": "NHL, Hard Rock: the period's total at a line Hard Rock lists for it."
+              },
               "point": {
+                "description": "The book's main line, or on NHL an alternate total Hard Rock, Bally\nBet or (before the game) DraftKings lists.",
                 "format": "double",
                 "type": "number"
               },
@@ -12926,6 +13913,40 @@
             "type": "object",
             "x-owls-required": [
               "type",
+              "selection",
+              "point"
+            ]
+          },
+          {
+            "properties": {
+              "point": {
+                "description": "A line Hard Rock lists for that team.",
+                "format": "double",
+                "type": "number"
+              },
+              "selection": {
+                "type": "string",
+                "x-extensible-enum": [
+                  "over",
+                  "under"
+                ]
+              },
+              "team": {
+                "description": "The team whose total it is.",
+                "type": "string"
+              },
+              "type": {
+                "description": "One team's own full-game total (Hard Rock NHL).",
+                "type": "string",
+                "x-extensible-enum": [
+                  "team_total"
+                ]
+              }
+            },
+            "type": "object",
+            "x-owls-required": [
+              "type",
+              "team",
               "selection",
               "point"
             ]
@@ -12971,6 +13992,15 @@
           }
         ],
         "description": "A single leg in a Same Game Parlay build request."
+      },
+      "SgpPeriod": {
+        "description": "One period of an NHL game: the 1st, 2nd or 3rd period. A moneyline, spread or\ntotal leg with a `period` prices that period instead of the full game; only\nHard Rock prices period legs, and every other book refuses them (422).",
+        "type": "string",
+        "x-extensible-enum": [
+          "P1",
+          "P2",
+          "P3"
+        ]
       },
       "SgpPrice": {
         "description": "The computed parlay price from a successful `buildSgp` call.",
@@ -13068,6 +14098,112 @@
         "x-owls-required": [
           "made",
           "attempted"
+        ]
+      },
+      "SoccerPlayDetail": {
+        "description": "Soccer: a play is a match incident (type `Goal`, `Own goal`, `Penalty`, `Yellow Card`,\n`Red Card`, `Substitution`), with the match minute, the player and, per type, the assist\n(goal), the player going off (substitution: the play's `player` is the one coming on) or\nthe card. `clock` on the play is the minute as shown (\"45+2\"); `secondsRemaining` and\n`wallclock` are null; `period` is the half (1, 2; 3 and 4 extra time; 5 penalties).",
+        "properties": {
+          "addedMinutes": {
+            "description": "Stoppage-time minutes (2 for \"45+2\"); null when none.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "assist": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SoccerPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "card": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "x-extensible-enum": [
+              "red",
+              "yellow",
+              "yellow-red"
+            ]
+          },
+          "code": {
+            "description": "The source's own numeric incident code.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "minute": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "note": {
+            "description": "The source's note on the incident when it carries one.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "player": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SoccerPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "playerOut": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SoccerPlayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "minute",
+          "addedMinutes",
+          "player",
+          "assist",
+          "playerOut",
+          "card",
+          "note",
+          "code"
+        ]
+      },
+      "SoccerPlayer": {
+        "description": "One player on a soccer play; `id` is null when the source names the player without an id.",
+        "properties": {
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "id",
+          "name"
         ]
       },
       "SoccerScoreDetail": {
@@ -16460,14 +17596,14 @@
   "info": {
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
-    "version": "0.87.0",
-    "x-owls-manifest-commit": "cd9590d5"
+    "version": "0.89.0",
+    "x-owls-manifest-commit": "6e06d569"
   },
   "openapi": "3.1.0",
   "paths": {
     "/api/odds/history": {
       "get": {
-        "description": "Returns the line movement for one book, market and side of a live or recent event, from the opening line to now. The /api/v1/history endpoints cover archived games.\n\nWith neither startTime nor hours the window starts at the opening line for that book, market and side.\n\nSnapshots whose price could not be stored accurately are excluded; the response says so rather than returning a fabricated window.\n\npointValue is point as a number (null when there is no point); point itself keeps the type it always had.\n\nPass the event's eventId field, the {sport}:{away}@{home}-{YYYYMMDD} form. The numeric id field beside it is the sportsbook's own and returns 400 here rather than an empty result. The date in eventId is the UTC start date, except for MLB games starting from 2026-10-11T10:00Z, which carry the US Eastern date; earlier MLB games keep the UTC date. Before that change, an MLB game starting at 8 PM ET or later and the next day's game between the same teams could share one eventId. NBA and NHL stay UTC-dated. NBA has about one pair of games a season sharing an eventId. NHL has about one pair a season of the same teams on one date, home and away swapped: two eventIds, but the /api/v1/history endpoints match both orderings, so each id returns both games' rows.\n\ntimestamp is the time as stored, US Eastern for most rows stored before 2026-09-16 despite the Z; timestampUtc is the UTC capture time, null where unknown (most rows before 2026-03-28, pinnacle before 2026-04-10).",
+        "description": "Returns the line movement for one book, market and side of a live or recent event, from the opening line to now. The /api/v1/history endpoints cover archived games.\n\nWith neither startTime nor hours the window starts at the opening line for that book, market and side.\n\nSnapshots whose price could not be stored accurately are excluded; the response says so rather than returning a fabricated window.\n\npoint is the stored line and can arrive as a decimal string such as \"-1.50\".\n\nPass the event's eventId field, the {sport}:{away}@{home}-{YYYYMMDD} form. The numeric id field beside it is the sportsbook's own and returns 400 here rather than an empty result. The date in eventId is the UTC start date, except for MLB games starting from 2026-10-11T10:00Z, which carry the US Eastern date; earlier MLB games keep the UTC date. Before that change, an MLB game starting at 8 PM ET or later and the next day's game between the same teams could share one eventId. NBA and NHL stay UTC-dated. NBA has about one pair of games a season sharing an eventId. NHL has about one pair a season of the same teams on one date, home and away swapped: two eventIds, but the /api/v1/history endpoints match both orderings, so each id returns both games' rows.\n\ntimestamp is the time as stored, US Eastern for most rows stored before 2026-09-16 despite the Z; timestampUtc is the UTC capture time, null where unknown (most rows before 2026-03-28, pinnacle before 2026-04-10).",
         "operationId": "getOddsHistory",
         "parameters": [
           {
@@ -17029,7 +18165,7 @@
     },
     "/api/v1/history/games": {
       "get": {
-        "description": "Lists archived games with scores and the number of odds, props and player-stat rows held for each.\n\nAt least one of sport, season, team or startDate is required.\n\ncommenceTime is the scheduled start in UTC. Present when recorded; /history/odds rows with recordedAtUtc before it are pre-game.\n\nhomeScore and awayScore are present when the final score was captured at archive, absent otherwise; periodScores, when present, lists each period by label (Q1, OT1, or the inning or period number) with both sides.\n\nhomeTeamId and awayTeamId are the roster ids the odds endpoints use (home_team_id, away_team_id); absent when a name is not on our roster.\n\noddsSnapshots counts every stored row, including rows /history/odds filters out for unusable prices, so it can exceed what that endpoint returns.\n\nplayerStats: rows on /history/stats. gradedResults (live-archived games): graded results on /api/v1/{sport}/props/results?game_id=.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.",
+        "description": "Lists archived games with scores and the number of odds, props and player-stat rows held for each.\n\nAt least one of sport, season, team or startDate is required.\n\ncommenceTime is the scheduled start in UTC. Present when recorded; /history/odds rows with recordedAtUtc before it are pre-game.\n\nhomeScore and awayScore are present when the final score was captured at archive, absent otherwise; periodScores, when present, lists each period by label (Q1, OT1, or the inning or period number) with both sides.\n\nhomeTeamId and awayTeamId are the roster ids the odds endpoints use (home_team_id, away_team_id); absent when a name is not on our roster.\n\noddsSnapshots counts every stored row, including rows /history/odds filters out for unusable prices, so it can exceed what that endpoint returns.\n\nplayerStats: rows on /history/stats. gradedResults: graded results on /api/v1/{sport}/props/results?game_id=, counted at request time.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.",
         "operationId": "getHistoryGames",
         "parameters": [
           {
@@ -19142,7 +20278,7 @@
     },
     "/api/v1/{sport}/plays": {
       "get": {
-        "description": "Returns the play-by-play of one NBA, NHL, NFL or NCAAF game in play (or ended within the last 6 hours), oldest play first, or without eventId the list of games that have play-by-play.\n\neventId is the id GET /api/v1/{sport}/scores/live gives the game. Play-by-play exists while a game is in play and for 6 hours after it ends; before tip-off, and for any other id, the response is 404 with a hint. Without eventId the response lists the games that have play-by-play, with their state and play count.\n\nEach play carries the source's own id and order (seq, ascending, not contiguous), the period and the time left in it (clock as the venue shows it, secondsRemaining), team (home or away: the offense, the shooter's team, the team that committed the penalty; null for a neutral play such as a period start), type (the source's own type key, unchanged: NFL and NCAAF Rush, Pass Reception, Punt, Field Goal Good; NHL shot-on-goal, faceoff, hit, penalty, goal; NBA 2pt/Jump Shot, rebound/defensive, turnover/bad pass, freethrow/1 of 2), text, scoringPlay, the score after the play (homeScore, awayScore), wallclock (when the play happened per the source; null for the NHL, which publishes none) and detail, the sport's own fields.\n\ndetail for NFL and NCAAF: drive, down, distance, yardLine, yardsToEndzone, downDistanceText, possessionText before the play, endDown, endDistance, endYardLine, endYardsToEndzone, endDownDistanceText after it, yards, scoreValue, isPenalty, isTurnover. For the NHL: situationCode (skaters and goalies on the ice, the league's code), zone, x, y, shotType, reason, penalty {descKey, typeCode, duration}, players [{role, id, name, sweater}] with the roles scorer, assist, shooter, goalie, winner, loser, hitter, hittee, blocker, player, committedBy, drawnBy, servedBy, and homeShotsOnGoal and awayShotsOnGoal on shots; the NHL feed scores only goal plays, so every other play carries the running tally. For the NBA: subType, descriptor, qualifiers, playerId, playerName, teamTricode, shotResult (Made or Missed), shotDistance (feet), x, y, isFieldGoal, possession.\n\nA play can be amended after it is first published (a review, an assist added, a scorer corrected), so merge plays by id; each play's updatedAt is when its current content was first seen. since=<seq> returns the plays after that seq plus any play amended in the last 2 minutes whatever its seq (meta.amendedWindowSeconds), so a poller that passes the lastSeq it has every two minutes or sooner sees every amendment; limit=<n> returns the last n plays, applied after since. A since or limit that is not an integer in range is a 400. meta.returned and meta.truncated say what the filters did.\n\nmeta.asOf is when the source was read and meta.ageSeconds how long ago that was; status is stale when a game in play has not been read for 30 seconds (the reader runs every few seconds). meta.sourceAgeSeconds is the source's own edge-cache age at that read, null when it sends none: NHL plays can be up to about 20 seconds behind the ice, NFL and NCAAF plays about 7 seconds, NBA plays are not cached.\n\nThe same plays are pushed on the plays-update WebSocket event, opt-in with plays in the subscription (true, or an array of nba, nhl, nfl, ncaaf), same access as scores-update: one message per sport within a few seconds of a new play, carrying only the plays new or amended since the previous message.",
+        "description": "Returns the play-by-play of one NBA, NHL, NFL, NCAAF or soccer game in play (or ended within the last 6 hours), oldest play first, or without eventId the list of games that have play-by-play. For soccer the plays are the match incidents: goals, own goals, penalties, cards and substitutions.\n\neventId is the id GET /api/v1/{sport}/scores/live gives the game. Play-by-play exists while a game is in play and for 6 hours after it ends; before tip-off, and for any other id, the response is 404 with a hint. Without eventId the response lists the games that have play-by-play, with their state and play count.\n\nEach play carries the source's own id and order (seq, ascending, not contiguous), the period and the time left in it (clock as the venue shows it, secondsRemaining), team (home or away: the offense, the shooter's team, the team that committed the penalty; null for a neutral play such as a period start), type (the source's own type key, unchanged: NFL and NCAAF Rush, Pass Reception, Punt, Field Goal Good; NHL shot-on-goal, faceoff, hit, penalty, goal; NBA 2pt/Jump Shot, rebound/defensive, turnover/bad pass, freethrow/1 of 2), text, scoringPlay, the score after the play (homeScore, awayScore), wallclock (when the play happened per the source; null for the NHL, which publishes none) and detail, the sport's own fields.\n\ndetail for NFL and NCAAF: drive, down, distance, yardLine, yardsToEndzone, downDistanceText, possessionText before the play, endDown, endDistance, endYardLine, endYardsToEndzone, endDownDistanceText after it, yards, scoreValue, isPenalty, isTurnover. For the NHL: situationCode (skaters and goalies on the ice, the league's code), zone, x, y, shotType, reason, penalty {descKey, typeCode, duration}, players [{role, id, name, sweater}] with the roles scorer, assist, shooter, goalie, winner, loser, hitter, hittee, blocker, player, committedBy, drawnBy, servedBy, and homeShotsOnGoal and awayShotsOnGoal on shots; the NHL feed scores only goal plays, so every other play carries the running tally. For the NBA: subType, descriptor, qualifiers, playerId, playerName, teamTricode, shotResult (Made or Missed), shotDistance (feet), x, y, isFieldGoal, possession. For soccer: minute, addedMinutes (stoppage time, e.g. 2 for 45+2), player {id, name}, assist (on a goal), playerOut (on a substitution, whose player is the one coming on), card (yellow, red or yellow-red), note, code; clock is the match minute as shown (45+2), seq is derived from the period and minute (the source has no sequence of its own, so an inserted or withdrawn incident renumbers only the plays of its own minute), secondsRemaining and wallclock are null, period is the half (1, 2; 3 and 4 extra time; 5 penalties), type is the incident label (Goal, Own goal, Penalty, Yellow Card, Red Card, Substitution) and team the side credited with it, the scoring side on an own goal; every soccer game on /scores/live is covered, whatever its league.\n\nA play can be amended after it is first published (a review, an assist added, a scorer corrected), so merge plays by id; each play's updatedAt is when its current content was first seen. since=<seq> returns the plays after that seq plus any play amended in the last 2 minutes whatever its seq (meta.amendedWindowSeconds), so a poller that passes the lastSeq it has every two minutes or sooner sees every amendment; limit=<n> returns the last n plays, applied after since. A since or limit that is not an integer in range is a 400. meta.returned and meta.truncated say what the filters did.\n\nmeta.asOf is when the source was read and meta.ageSeconds how long ago that was; status is stale when a game in play has not been read for 30 seconds (the reader runs every few seconds). meta.sourceAgeSeconds is the source's own edge-cache age at that read, null when it sends none: NHL plays can be up to about 20 seconds behind the ice, NFL and NCAAF plays about 7 seconds, NBA plays are not cached. Soccer incidents are read every 20 seconds per match and at once when the match score changes, so a goal shows within a few seconds and a card or substitution within about 20; a soccer game is stale after 60 seconds without a read.\n\nThe same plays are pushed on the plays-update WebSocket event, opt-in with plays in the subscription (true, or an array of nba, nhl, nfl, ncaaf, soccer), same access as scores-update: one message per sport within a few seconds of a new play, carrying only the plays new or amended since the previous message.",
         "operationId": "getPlays",
         "parameters": [
           {
@@ -19155,7 +20291,8 @@
                 "nba",
                 "ncaaf",
                 "nfl",
-                "nhl"
+                "nhl",
+                "soccer"
               ]
             }
           },
@@ -19196,7 +20333,7 @@
             "description": "OK"
           }
         },
-        "summary": "Returns the play-by-play of one NBA, NHL, NFL or NCAAF game in play (or ended within the last 6 hours), oldest play first, or without eventId the list of games that have play-by-play.",
+        "summary": "Returns the play-by-play of one NBA, NHL, NFL, NCAAF or soccer game in play (or ended within the last 6 hours), oldest play first, or without eventId the list of games that have play-by-play. For soccer the plays are the match incidents: goals, own goals, penalties, cards and substitutions.",
         "tags": [
           "Live scores"
         ],
@@ -19538,6 +20675,14 @@
             }
           },
           {
+            "description": "Only this game: its gameId, as /props and /props/ev return it. Applied before the row cap, so meta.truncated never hides this game's props behind other games.",
+            "in": "query",
+            "name": "game_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "description": "true also lists props with no positive-EV price, so every Pinnacle-priced prop comes with its fair line.",
             "in": "query",
             "name": "all",
@@ -19762,7 +20907,7 @@
     },
     "/api/v1/{sport}/props/results": {
       "get": {
-        "description": "Returns graded player props for one completed game: what each player actually recorded and the verdict of every closing book line against it. With date instead of game_id it lists the graded games for a day so game ids can be discovered. Anything that could not be graded carries a reason instead of a guess.\n\nPass game_id or date; with neither the response is 400. meta.mode says which shape came back.\n\nstatus on each entry is ok, dnp, no_stats, unmapped_category or stat_not_reported. An entry or line that could not be graded carries ungradableReason: dnp (the bet voids), no_stats (no box-score row matched, never treated as a void), stat_not_reported, unmapped_category, ungradable_structure (an integer line whose over/under versus N+ meaning is unknown), ambiguous_player (a display name shared by two players in the game, so no line is joined) or no_actual_value.\n\nverdict on a line is over, under or push for an over/under market and hit or miss for a milestone (N+) market. A book's market structure is honoured when it published one; an absent structure is unknown and is never defaulted to over/under.\n\ncapturePhase archive marks the last in-play line, captured at game end because the pre-game close was missed. It is not a closing line, and a hit rate built on it is not comparable to one built on commence lines.\n\nProvisional grades are included by default and every entry carries final; meta.provisional counts them. Box scores are revised for a short window after a game, so confirmed_only=true trades some delay for a grade that will not move.\n\nmeta.lineOutcomes counts verdicts per book line; meta.entryStatuses counts entries per player and category. They have different denominators, so a hit rate built from lineOutcomes is weighted by how many books quoted each player.\n\nGrading is enabled sport by sport and runs after the game is final and the box score is published. Until then, or on a sport where grading is not enabled, data is empty and meta.message says so.\n\nmeta.checks lists exactly what was evaluated. The response never claims a game is fully graded.",
+        "description": "Returns graded player props for one completed game: what each player actually recorded and the verdict of every closing book line against it. With date instead of game_id it lists the graded games for a day so game ids can be discovered. Anything that could not be graded carries a reason instead of a guess.\n\nPass game_id or date; with neither the response is 400. meta.mode says which shape came back.\n\nstatus on each entry is ok, dnp, no_stats, unmapped_category or stat_not_reported. An entry or line that could not be graded carries ungradableReason: dnp (the bet voids), no_stats (no box-score row matched, never treated as a void), stat_not_reported, unmapped_category, ungradable_structure (an integer line whose over/under versus N+ meaning is unknown), ambiguous_player (a display name shared by two players in the game, so no line is joined) or no_actual_value.\n\nverdict on a line is over, under or push for an over/under market and hit or miss for a milestone (N+) market. A book's market structure is honoured when it published one; an absent structure is unknown and is never defaulted to over/under.\n\ncapturePhase archive marks the last in-play line, captured at game end because the pre-game close was missed. It is not a closing line, and a hit rate built on it is not comparable to one built on commence lines.\n\nProvisional grades are included by default and every entry carries final; meta.provisional counts them. Box scores are revised for a short window after a game, so confirmed_only=true trades some delay for a grade read after that window. A stat correction published later can still change a confirmed grade.\n\nmeta.lineOutcomes counts verdicts per book line; meta.entryStatuses counts entries per player and category. They have different denominators, so a hit rate built from lineOutcomes is weighted by how many books quoted each player.\n\nGrading is enabled sport by sport and runs after the game is final and the box score is published. Until then, or on a sport where grading is not enabled, data is empty and meta.message says so.\n\nmeta.checks lists exactly what was evaluated. The response never claims a game is fully graded.",
         "operationId": "getPropResults",
         "parameters": [
           {
@@ -19909,7 +21054,7 @@
             }
           },
           {
-            "description": "Set to true to return only grades confirmed by a second, agreeing read of the box score. By default provisional grades are included and each carries final: false.",
+            "description": "Set to true to return only confirmed grades. By default provisional grades are included and each carries final: false. A grade is confirmed when the box score, read again after the window in which scorers revise it, still agrees: about 90 minutes after grading, or about 36 hours for NBA, where the league posts stat corrections the day after. A game first graded more than a day after it started (36 hours for NBA), when older games are added, is confirmed on that one read.",
             "in": "query",
             "name": "confirmed_only",
             "schema": {
@@ -20096,7 +21241,7 @@
             }
           },
           {
-            "description": "Set to true to return only grades confirmed by a second, agreeing read of the box score. By default provisional grades are included and each carries final: false.",
+            "description": "Set to true to return only confirmed grades. By default provisional grades are included and each carries final: false. A grade is confirmed when the box score, read again after the window in which scorers revise it, still agrees: about 90 minutes after grading, or about 36 hours for NBA, where the league posts stat corrections the day after. A game first graded more than a day after it started (36 hours for NBA), when older games are added, is confirmed on that one read.",
             "in": "query",
             "name": "confirmed_only",
             "schema": {
@@ -20675,9 +21820,64 @@
         "x-owls-sdk-method": "getScores"
       }
     },
+    "/api/v1/{sport}/sgp/batch": {
+      "post": {
+        "description": "Prices several same game parlays in one call: each on one book (mode book) or each on every same game parlay book (mode compare). Each book's answer is exactly what /sgp/build returns for that book and parlay.\n\nParlays are priced one after the other, in request order; in mode compare the books price each parlay side by side, as on /sgp/compare. A parlay whose pricing would begin more than about 20 seconds after the call began has status not-started and was not priced, except for any book answered from a cached quote, and carries no fair block: send it again. A slow book prices fewer parlays in that time (FanDuel takes about 5 to 15 seconds a parlay). Every other parlay has status done. bookStatus (mode book) and books[].status (mode compare) take the values /sgp/compare uses: priced, refused, unresolved, busy, no-price, timeout, event-not-listed, ambiguous-event, unsupported, disabled or skipped.\n\nA parlay repeated in one batch (same eventId, same legs in the same order) is priced once and reported for each copy.\n\nBefore a game starts, a book that priced exactly these legs for this game in the last 15 seconds may be answered from that quote, as on /sgp/compare: cached is true, result.meta.cached is true and result.meta.cacheAgeMs is the quote's age when the response was sent; result.meta.pricedAt is still when the book priced it. A cached answer costs no build. Send fresh: true to price everything now. A game that starts within a minute is always priced fresh.\n\nEvery quote not answered from a cached quote counts one build against your per-minute SGP build limit (one per parlay in mode book, one per book and parlay in mode compare), reserved for the whole batch before any book is priced. A quote that never reaches the book (not listed, a different game, a leg that does not resolve, no time left, or a parlay not started) is given back at once while the minute it was counted in is still running. Over the limit the call is a 429 SGP_RATE_LIMIT with unitsNeeded and a Retry-After header; a batch that needs more builds than your limit allows at all is a 429 SGP_BATCH_TOO_LARGE with unitsNeeded and no Retry-After. A batch counts as one request against your plan rate limit.\n\nIn mode book, a book outside the SGP books is a 400 SGP_BOOK_UNSUPPORTED, a book that does not price the sport a 400 SGP_BOOK_SPORT_UNSUPPORTED, and a book whose pricing is paused a 503 SGP_BOOK_DISABLED, as on /sgp/build.\n\nMVP and Hall of Fame plans. On a lower plan the call is a 403 with code SGP_TIER_REQUIRED; a 503 with code SGP_FEATURE_DISABLED means batches are not switched on yet.",
+        "operationId": "batchSgp",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sport",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-extensible-enum": [
+                "mlb",
+                "nba",
+                "ncaab",
+                "ncaaf",
+                "nfl",
+                "nhl",
+                "soccer",
+                "tennis",
+                "wnba"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SgpBatchParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SgpBatchResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Prices several same game parlays in one call: each on one book (mode book) or each on every same game parlay book (mode compare). Each book's answer is exactly what /sgp/build returns for that book and parlay.",
+        "tags": [
+          "Same Game Parlay"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "batchSgp"
+      }
+    },
     "/api/v1/{sport}/sgp/build": {
       "post": {
-        "description": "Prices a same game parlay on the book named in book (FanDuel, DraftKings, Hard Rock, BetRivers, Bally Bet and BetMGM): resolves each leg to that book's own selection for one game and returns that book's own correlation-adjusted same game parlay price for exactly those legs, verified leg by leg, not a naive multiplication of the singles.\n\nThe price is the named book's own same game parlay price for exactly the legs sent, at the lines they resolved to, verified leg by leg: it is returned only when the book's answer confirms all of that; otherwise the call fails rather than returning a price. On a 200, sgp.isSGM is always true. A book whose pricing misbehaves may be paused: its builds are then a 503 SGP_BOOK_DISABLED until it is switched back on, and the other books are unaffected.\n\nA resolved leg carries the book's own ids: fdSelection { marketId, selectionId } on FanDuel, bookSelection { marketId, selectionId } on every other book (DraftKings: its market id and selection id; Hard Rock: its market id and selection id, both strings of digits; BetRivers and Bally Bet: the book's offer id and outcome id, both strings of digits; BetMGM: marketId v1:<fixture>:<market> or v2:<fixture>:<market>, which names the BetMGM platform, fixture and market the pick is sent with, and selectionId its option id; on NHL, marketId sc:<fixture>:<builder id> and selectionId the option string BetMGM's bet builder lists for it). Only one of the two is present on a leg.\n\nFanDuel prices are FanDuel's own bet-slip price, quoted from FanDuel's New Jersey sportsbook. FanDuel runs separate markets in other states and in Ontario, so a slip placed there can show a different parlay price for the same legs. The price also moves with the market, so compare it only with a slip taken at the time in meta.pricedAt.\n\nfdSelection.marketId is FanDuel New Jersey's id for that market. FanDuel issues a different marketId in every other state and in Ontario, while selectionId is the same everywhere, so to place a leg outside New Jersey use your region's marketId for that selectionId.\n\nmeta.timestamp and meta.resolvedAt are the same instant: when the legs were resolved against the book's catalog, BEFORE pricing. meta.catalogAgeMs is the MINIMUM age that catalog data already had then; the true age can be higher. meta.priceRequestedAt is when the price request went out and meta.pricedAt is when the book's answer came back, both on our server's clock. Each can read slightly LATER than the real moment, by the time the answer took to reach our server (typically under 100 ms). If that timing detail is unavailable, priceRequestedAt is when pricing started (earlier than the request) and pricedAt is when the answer reached our server, so the two still enclose the quote. pricedAt is never earlier than priceRequestedAt and is the quote time to use. They are present on every 200, and on a refused 422 or a no-price 503 only when the book returned a response. catalogAgeMs is omitted when the age is unknown.\n\n422 with reasonCode \"unresolved\" (code repeats it) when any leg cannot be resolved on the book, including a selection the book has suspended; the legs array says which leg and why. Nothing was priced.\n\n422 also when two legs resolve to the same selection on the book, and on FanDuel for player props whose line is carried only in the selection name, because FanDuel does not confirm that line in its price response. These are refused before pricing.\n\nOn FanDuel, alternate N-or-more strikeout rungs are priced, but its price response identifies the rung by its selection only and does not confirm its line. A 200 that includes one carries meta.lineUnverified: true and meta.lineUnverifiedLegs, the indexes of those legs in your legs array. On BetMGM NHL, the price response names no leg at all, so every NHL leg is listed there. Both keys are absent when every line was confirmed, and never appear on a DraftKings, Hard Rock, BetRivers or Bally Bet build, or a BetMGM NFL or NBA build, because each confirms every line.\n\nPlayer prop coverage is not uniform across books, sports and categories. The categories a player_prop leg can use on FanDuel, per sport: mlb: strikeouts, hits, total-bases, home-runs, rbis, runs, stolen-bases, singles, doubles, triples, hits-runs-rbis. nba: accepted: points, rebounds, assists, threes, steals, blocks. wnba: points, rebounds, and accepted: assists, threes, steals, blocks. nfl: touchdowns, passing_yards, rushing_yards, receiving_yards, receptions, passing_tds, and accepted: first_touchdown_scorer. nhl: goals, hockey_points, hockey_assists, shots_on_goal, first_goal_scorer. ncaaf, ncaab, soccer and tennis have no player prop categories. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Football, basketball and hockey categories use the /props category names (receptions, points, hockey_points; for NHL, points and assists are accepted too), except basketball threes, which /props calls threes_made; baseball categories use the builder's MLB names (strikeouts, total-bases). A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: mlb, nba, wnba, nfl, ncaaf, nhl and ncaab: moneyline, spread and total; soccer and tennis: moneyline only. Any other game-leg type is refused with a 422 before pricing.\n\nDraftKings prices are DraftKings' own same game parlay pricing, quoted from DraftKings New York (DraftKings runs separate markets in other states); the betslip may differ during a price move, so compare only with a slip taken at the time in meta.pricedAt. A resolved DraftKings leg carries bookSelection: { marketId, selectionId }, DraftKings' own ids; the eventId is DraftKings' numeric event id from /sgp/events?book=draftkings. Every spread, total and player-prop line is confirmed against DraftKings' selection data at pricing time; a line DraftKings has moved since you resolved it is a 422 line-not-echoed or line-mismatch (re-resolve and resend). DraftKings drops legs it will not combine (for example a moneyline together with the same team's spread) and prices the rest; the builder never serves that partial price: it is a 422 bet-failure whose failureCodes carry DraftKings' removal reasons in upper snake case (INCOMPATIBLE_SELECTIONS, REDUNDANT_SELECTION_REMOVED).\n\nDraftKings prices a different set of player props from FanDuel. The categories a player_prop leg can use on DraftKings, per sport: nfl: passing_yards, receiving_yards, and accepted: receptions, rushing_yards, longest_reception, rush_attempts, pass_attempts, pass_completions, interceptions, pass_rush_yards, passing_tds, longest_rush, rush_rec_yards. mlb: accepted: doubles, rbis, runs, hits, walks, hits-runs-rbis, singles, total-bases, stolen-bases, strikeouts, hits-allowed, earned-runs, walks-allowed. nba: points, rebounds, assists, threes_made, steals, blocks, pts_rebs_asts, pts_rebs, pts_asts, rebs_asts. nhl: goals, hockey_points, hockey_assists, shots_on_goal, saves, blocked_shots. ncaaf has no player prop categories. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Football and basketball categories use the /props category names (passing_yards, receptions, points, threes_made, pts_rebs_asts; threes is accepted for threes_made), hockey categories use the /props NHL names (hockey_points, hockey_assists, shots_on_goal, saves, blocked_shots, goals), and baseball categories use the builder's MLB names (strikeouts, total-bases). DraftKings player props are priced as two-sided over/unders at the player's main line; the yes-only markets priced are NHL goals (the anytime goal scorer, taken as over 0.5) and NBA, NFL, NHL and MLB N-or-more rungs of a listed over/under category, before the game starts and, on NBA, NFL and NHL, in play (on DraftKings' live ladder): an over leg at N - 0.5 that is not the player's main line prices the N+ rung (over 24.5 is 25+ points, over 89.5 is 90+ receiving yards), with no under side. Other yes-only markets such as anytime touchdown, and NCAAF N-or-more rungs, are refused. A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: nfl, ncaaf, mlb, nba and nhl: moneyline, spread and total. Any other game-leg type is refused with a 422 before pricing.\n\nHard Rock prices are Hard Rock Bet's own bet-slip price, quoted on its Arizona book (channel ARIZONA_ONLINE): eventId and the ids in bookSelection are the ones the Hard Rock Arizona feed (state az) serves, and a slip in another state can show a different price for the same legs. sgp.decimal is Hard Rock's own parlay price; sgp.american is that decimal expressed in American odds, rounded to a whole number the way the Hard Rock app displays it. Hard Rock game legs price at the main line only: an alternate spread or total is refused with the main line. Hard Rock confirms every line in its price response, so no Hard Rock leg is ever priced with lineUnverified. Hard Rock does not combine a moneyline with the same team's spread, or both sides of one total: it drops the leg rather than refusing the slip, and the builder never serves that partial price: the build is a 422 bet-failure with failureCodes INVALID_SELECTION.\n\nHard Rock prices its own set of player props. The categories a player_prop leg can use on Hard Rock, per sport: nfl: receptions, passing_yards, and accepted: receiving_yards, rushing_yards, passing_tds, interceptions, pass_completions, pass_attempts, rush_rec_yards, touchdowns. mlb: accepted: strikeouts, hits, total-bases, rbis, home-runs, hits-runs-rbis. nhl: accepted: goals, hockey_assists, hockey_points, shots_on_goal, saves, goals_against, power_play_points, blocked_shots. ncaaf and nba have no player prop categories. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Football categories use the /props category names (receptions, passing_yards), hockey categories use the /props NHL names (goals, shots_on_goal, hockey_points) plus blocked_shots, and baseball categories use the builder's MLB names (strikeouts, total-bases). A Hard Rock player_prop leg prices at a line Hard Rock lists for that player, including any alternate lines it publishes; a line it does not list is refused with the lines that exist, and a player name that matches more than one player is refused. touchdowns on Hard Rock is the anytime touchdown market, taken as over 0.5, and NHL goals at 0.5 is the anytime goal scorer market. A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: nfl, ncaaf, mlb, nba and nhl: moneyline, spread and total. Any other game-leg type is refused with a 422 before pricing.\n\nBetRivers and Bally Bet prices are each book's own same game parlay price for exactly the legs sent, quoted from BetRivers Pennsylvania and Bally Bet New Jersey; a slip in another state can show a different price, and prices move, so compare only with a slip taken at the time in meta.pricedAt. Both list and price pregame games only. eventId is the book's numeric event id from /sgp/events?book=betrivers or ?book=ballybet, and a resolved leg carries bookSelection { marketId, selectionId }, the book's own offer and outcome ids. Game legs price at the main line only: an alternate spread or total is refused with the main line. Each book confirms every leg's line and status in its price response, so a line it has moved since you resolved it is a 422 line-mismatch (re-resolve and resend). A combination the book will not price (for example both moneylines, or both sides of one total) is a 422 bet-failure with failureCodes COMBINATION_NOT_SUPPORTED; a leg it will not put in a same game parlay is a 422 leg-failure with failureCodes INVALID_OUTCOMES.\n\nBetRivers prices its own set of player props. The categories a player_prop leg can use on BetRivers, per sport: nfl: interceptions, and accepted: passing_yards, rushing_yards, receiving_yards, pass_attempts, passing_tds, pass_rush_yards, rush_rec_yards. mlb has no player prop categories. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Categories use the /props category names (passing_yards, interceptions). A BetRivers player_prop leg prices at the line BetRivers posts for that player and side in the game; another line is refused naming the line that exists, and a side BetRivers does not post is refused. Yes-only and N-or-more markets are not offered as player_prop legs. A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: nfl and mlb: moneyline, spread and total. Any other game-leg type is refused with a 422 before pricing.\n\nBally Bet prices its own set of player props. The categories a player_prop leg can use on Bally Bet, per sport: nfl: interceptions, and accepted: passing_yards, rushing_yards, receiving_yards, pass_attempts, passing_tds, pass_rush_yards, rush_rec_yards. ncaaf, mlb, nba and nhl have no player prop categories. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Categories use the /props category names (passing_yards, interceptions). A Bally Bet player_prop leg prices at the line Bally Bet posts for that player and side in the game; another line is refused naming the line that exists, and a side Bally Bet does not post is refused. Yes-only and N-or-more markets are not offered as player_prop legs. A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: nfl, ncaaf, mlb, nba and nhl: moneyline, spread and total. Any other game-leg type is refused with a 422 before pricing.\n\nBetMGM prices are BetMGM's own same game parlay price for exactly the legs sent, quoted from BetMGM New Jersey; a slip in another state can show a different price, and prices move, so compare only with a slip taken at the time in meta.pricedAt. BetMGM prices NFL, NBA and NHL, pregame games only. eventId is BetMGM's fixture id from /sgp/events?book=betmgm. Game legs price at the main line only (the spread and total BetMGM lists closest to balanced, the rule /odds uses; when two rungs are equally close, a leg at either rung's line prices, where /odds shows the first listed): an alternate spread or total is refused with the main line. On NFL and NBA, BetMGM's price response repeats every leg's line, status and single price, so a line it has moved since you resolved it is a 422 line-mismatch (re-resolve and resend). NHL is priced through BetMGM's other bet builder: each leg is sent as the option that builder lists for the game, and its price response is one price that names no leg and carries no single, so on NHL legs[].single is null and every leg is in meta.lineUnverifiedLegs; NHL player props are N-or-more rungs (side over at N - 0.5), with no under side. On NHL, a combination the builder will not price (Over with Under of one total) is a 422 bet-failure with failureCodes ZERO_PROBABILITY, or REDUNDANT_LEG when it names the leg it would drop. On NFL and NBA, both sides of one total are a 422 bet-failure with failureCodes ZERO_PROBABILITY; a moneyline with the same team's spread is a 422 bet-failure with failureCodes REDUNDANT_LEG (BetMGM would price the other leg alone, and the builder never serves that partial price); a leg BetMGM's price engine reports no trading data for is a 422 leg-failure with failureCodes NO_TRADING_DATA.\n\nBetMGM prices its own set of player props. The categories a player_prop leg can use on BetMGM, per sport: nfl: receptions, and accepted: passing_yards, rushing_yards, receiving_yards, passing_tds, pass_completions, rush_attempts, longest_reception, pass_rush_yards, rush_rec_yards. nba: points, and accepted: rebounds, assists, threes_made. nhl: accepted: hockey_points, hockey_assists, shots_on_goal, goals. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Categories use the /props category names (passing_yards, interceptions). A BetMGM player_prop leg prices at the line BetMGM posts for that player and side in the game; another line is refused naming the line that exists, and a side BetMGM does not post is refused. Yes-only and N-or-more markets are not offered as player_prop legs. A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: nfl, nba and nhl: moneyline, spread and total. Any other game-leg type is refused with a 422 before pricing.\n\nOn FanDuel, NBA and WNBA player_prop legs price the player's full-game over/under line. Quarter and alternate lines are not used, so a line that exists only as a quarter or alternate line is refused with the full-game lines that do exist.\n\nA refused player_prop leg names the category you sent and, for a betting-name alias, the props category it stands for. The aliases: anytime_touchdown, anytime-touchdown, anytime_td, anytime-td, atd and touchdown_scorer for touchdowns; first_td and first-td for first_touchdown_scorer.\n\nBatter props on FanDuel are yes/no N-or-more markets, exposed as the over side of N-0.5 (over 0.5 = 1+). They have no under side.\n\nNFL touchdowns and first_touchdown_scorer are yes/no touchdown-scorer markets on FanDuel, exposed the same way: touchdowns over 0.5 is the anytime touchdown scorer, over 1.5 is 2 or more, over 2.5 is 3 or more; first_touchdown_scorer takes over 0.5. They have no under side. NFL passing_yards, rushing_yards, receiving_yards, receptions and passing_tds legs price FanDuel's main line for that player; alternate lines are not used, so a line that exists only on an alternate ladder is refused with the main line that does exist.\n\nAnytime touchdown is priced on FanDuel as touchdowns over 0.5. Hard Rock accepts touchdowns over 0.5 as its anytime touchdown market, not yet verified on a priced parlay. DraftKings does not price it yet: a touchdowns or first_touchdown_scorer leg sent to DraftKings is refused with a 422 before pricing, like every yes-only market except NHL goals (the anytime goal scorer) and, before the game starts, the NBA, NFL, NHL and MLB N-or-more rungs of a listed over/under category.\n\nBuilds can be limited per API key per minute, separately from your plan rate limit. Over that limit the call returns 429 { error, code: \"SGP_RATE_LIMIT\", limit, resetAt } with a Retry-After header, and the refused build does not count against your plan quota. A malformed body, an unsupported or disabled book, and a request refused by your plan rate limit or concurrent request limit do not count toward the per-minute build limit. Every other build does, including one refused afterwards: an invalid eventId (400), a game not found (404), an unresolvable leg (422), a refused parlay (422 with a reasonCode), no price (503 with reasonCode no-price) or SGP_BUSY (503).\n\nA book outside supportedBooks is a 400 with code SGP_BOOK_UNSUPPORTED and supportedBooks, the books the builder prices. A supported book that does not price the requested sport is a 400 with code SGP_BOOK_SPORT_UNSUPPORTED and sports, the sports it does price.\n\n503 means retry later: code SGP_BUSY when pricing capacity is reached (Retry-After: 2), SGP_BOOK_DISABLED when pricing for the requested book is paused (Retry-After: 60; a book whose pricing misbehaves may be paused this way, and a new book may be enabled for selected keys before general availability), and SGP_RATE_LIMIT_UNAVAILABLE when the build limit could not be checked. A 503 with reasonCode no-price (code no-price, Retry-After: 2) means the book produced no usable answer, to the price request or to the read of the game's markets before it: retry later. A 503 without a code is a temporary outage on our side (for example pricing, the rate limit system or subscription verification): back off and retry. The rate limit case carries limit: \"system\".\n\nA build that reached pricing and returned no price is a 422 or a 503 with the same body; the status says whether to resend. 422 means the book judged the slip and refused it, or its answer did not confirm your legs as sent: the request was valid but cannot be priced as specified, so do not resend the same body unchanged. Its reasonCode is one of duplicate-selection, resp-code, leg-failure, bet-failure, bet-failure-shape, no-sgm-combination, ambiguous-combination, combined-odds-missing, single-missing, single-duplicate, single-odds-missing, runner-odds-missing, runner-odds-duplicate, runner-odds-inconsistent, not-placeable, line-not-echoed, line-mismatch, line-unexpected, line-unverifiable. 503 with reasonCode no-price (and Retry-After: 2) means no usable answer came back at all: the price request failed, timed out or was answered with something other than a price. Retry later. code repeats reasonCode on both (the SDKs expose it as the error's code), so branch on reasonCode first: no-price to retry, unresolved to fix the legs, anything else to change the slip. 502 is not used by this endpoint.\n\nOn a refused 422, reasonCode is line-mismatch when the book priced a leg at a different line than requested (re-resolve and resend), bet-failure or leg-failure when the book rejected the parlay or dropped a leg from it (the book's own codes are in failureCodes: FanDuel for example SELECTION_NOT_FOUND, DraftKings INCOMPATIBLE_SELECTIONS or REDUNDANT_SELECTION_REMOVED, Hard Rock INVALID_SELECTION, BetRivers and Bally Bet COMBINATION_NOT_SUPPORTED or INVALID_OUTCOMES, BetMGM ZERO_PROBABILITY, REDUNDANT_LEG or NO_TRADING_DATA), not-placeable when the book is not accepting bets on these legs (for example a suspended market), or another acceptance code when the book's response did not confirm exactly these legs. For line-mismatch and the other line-* codes, legIndex is the leg in your request and lineEchoed is the line the book priced, exactly as it sent it (null when it sent none). message is human-readable prose; match on reasonCode, legIndex, lineEchoed and failureCodes, not on message.",
+        "description": "Prices a same game parlay on the book named in book (FanDuel, DraftKings, Hard Rock, BetRivers, Bally Bet and BetMGM): resolves each leg to that book's own selection for one game and returns that book's own correlation-adjusted same game parlay price for exactly those legs, verified leg by leg, not a naive multiplication of the singles.\n\nThe price is the named book's own same game parlay price for exactly the legs sent, at the lines they resolved to, verified leg by leg: it is returned only when the book's answer confirms all of that; otherwise the call fails rather than returning a price. On a 200, sgp.isSGM is always true. A book whose pricing misbehaves may be paused: its builds are then a 503 SGP_BOOK_DISABLED until it is switched back on, and the other books are unaffected.\n\nA resolved leg carries the book's own ids: fdSelection { marketId, selectionId } on FanDuel, bookSelection { marketId, selectionId } on every other book (DraftKings: its market id and selection id; Hard Rock: its market id and selection id, both strings of digits; BetRivers and Bally Bet: the book's offer id and outcome id, both strings of digits; BetMGM: marketId v1:<fixture>:<market> or v2:<fixture>:<market>, which names the BetMGM platform, fixture and market the pick is sent with, and selectionId its option id; on NHL, marketId sc:<fixture>:<builder id> and selectionId the option string BetMGM's bet builder lists for it). Only one of the two is present on a leg.\n\nFanDuel prices are FanDuel's own bet-slip price, quoted from FanDuel's New Jersey sportsbook. FanDuel runs separate markets in other states and in Ontario, so a slip placed there can show a different parlay price for the same legs. The price also moves with the market, so compare it only with a slip taken at the time in meta.pricedAt.\n\nfdSelection.marketId is FanDuel New Jersey's id for that market. FanDuel issues a different marketId in every other state and in Ontario, while selectionId is the same everywhere, so to place a leg outside New Jersey use your region's marketId for that selectionId.\n\nmeta.timestamp and meta.resolvedAt are the same instant: when the legs were resolved against the book's catalog, BEFORE pricing. meta.catalogAgeMs is the MINIMUM age that catalog data already had then; the true age can be higher. meta.priceRequestedAt is when the price request went out and meta.pricedAt is when the book's answer came back, both on our server's clock. Each can read slightly LATER than the real moment, by the time the answer took to reach our server (typically under 100 ms). If that timing detail is unavailable, priceRequestedAt is when pricing started (earlier than the request) and pricedAt is when the answer reached our server, so the two still enclose the quote. pricedAt is never earlier than priceRequestedAt and is the quote time to use. They are present on every 200, and on a refused 422 or a no-price 503 only when the book returned a response. catalogAgeMs is omitted when the age is unknown.\n\n422 with reasonCode \"unresolved\" (code repeats it) when any leg cannot be resolved on the book, including a selection the book has suspended; the legs array says which leg and why. Nothing was priced.\n\n422 also when two legs resolve to the same selection on the book, and on FanDuel for player props whose line is carried only in the selection name, because FanDuel does not confirm that line in its price response. These are refused before pricing.\n\nOn FanDuel, alternate N-or-more strikeout rungs are priced, but its price response identifies the rung by its selection only and does not confirm its line. A 200 that includes one carries meta.lineUnverified: true and meta.lineUnverifiedLegs, the indexes of those legs in your legs array. On BetMGM NHL, the price response names no leg at all, so every NHL leg is listed there. Both keys are absent when every line was confirmed, and never appear on a DraftKings, Hard Rock, BetRivers or Bally Bet build, or a BetMGM NFL or NBA build, because each confirms every line.\n\nPlayer prop coverage is not uniform across books, sports and categories. The categories a player_prop leg can use on FanDuel, per sport: mlb: strikeouts, hits, total-bases, home-runs, rbis, runs, stolen-bases, singles, doubles, triples, hits-runs-rbis. nba: accepted: points, rebounds, assists, threes, steals, blocks. wnba: points, rebounds, and accepted: assists, threes, steals, blocks. nfl: touchdowns, passing_yards, rushing_yards, receiving_yards, receptions, passing_tds, and accepted: first_touchdown_scorer. nhl: goals, hockey_points, hockey_assists, shots_on_goal, first_goal_scorer. ncaaf, ncaab, soccer and tennis have no player prop categories. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Football, basketball and hockey categories use the /props category names (receptions, points, hockey_points; for NHL, points and assists are accepted too), except basketball threes, which /props calls threes_made; baseball categories use the builder's MLB names (strikeouts, total-bases). A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: mlb, nba, wnba, nfl, ncaaf, nhl and ncaab: moneyline, spread and total; soccer and tennis: moneyline only. Any other game-leg type is refused with a 422 before pricing.\n\nSpread and total legs price at the book's main line. On NHL, Hard Rock, Bally Bet and, before the game, DraftKings also price an alternate puck line or total they list: send the point you want, and a point the book does not list is refused naming the lines it lists. team_total legs price on Hard Rock NHL only. Every other book and sport refuses an alternate point (Hard Rock, DraftKings, BetMGM, BetRivers and Bally Bet name their main line in the reason; FanDuel names only the point it could not find), and refuses a team_total leg as a leg type it does not price. Alternate lines and team_total legs can be switched off: while they are, an alternate point is refused naming the book's main line, and a team_total leg is a 400 as an unknown leg type.\n\nA leg with a period (P1, P2 or P3, NHL) prices on Hard Rock only: a period moneyline is that period's 3-way result (a team, or Tie for a tied period), and a period spread or total prices at a line Hard Rock lists for that period (before the game, Hard Rock lists a total and a spread for the 1st period). Every other book refuses a leg with a period as unsupported; no book ever prices it as the full game. Period legs can be switched off, and while they are, a leg with a period is refused the same way. There is no regulation-time leg: Hard Rock does not combine its regulation result with other legs. A period that is not P1, P2 or P3, a period on a sport other than NHL, and a period on a team_total or player_prop leg are a 400.\n\nfair: true (MVP and Hall of Fame plans) adds fair, our estimate of the parlay's price built from de-vigged leg probabilities. It is never the book's price: sgp is unchanged, and fair.estimate is always true. Each leg's probability is our Fair v1 fair: for moneylines, spreads and totals the fair /api/v1/{sport}/fair serves (a spread or total only at that fair's own number, never a whole number), for player props the fair /api/v1/{sport}/props/ev scores against (x.5 lines). Each leg's source says whether Pinnacle anchored it or, for a moneyline, at least three books agreed; booksDisagree flags a leg other books price differently. The legs' probabilities are multiplied and adjusted by how the book itself priced these legs together: basis.correlationFactor is the product of the book's single prices divided by its parlay price. That factor also keeps the book's parlay surcharge over its singles (basis.marginAdjusted is false), so the estimate removes the singles' vig, not that surcharge. fair.price is null, with fair.why, when any leg has no fair (coverage.missingLegs and each leg's why say which, for example a line off the fair's number or a fair board too old to use), when the book returned no single price for a leg (BetMGM NHL returns none) or a factor outside 0.25 to 4, once the game has started, or when the fair could not be worked out in time. fair.independent is the same legs treated as unrelated. fair is added to priced 200s only. On a Rookie plan, fair: true is a 403 with code SGP_TIER_REQUIRED, sent before anything is priced and not counted against any limit; a 503 with code SGP_FEATURE_DISABLED means the fair price is not switched on yet.\n\nDraftKings prices are DraftKings' own same game parlay pricing, quoted from DraftKings New York (DraftKings runs separate markets in other states); the betslip may differ during a price move, so compare only with a slip taken at the time in meta.pricedAt. A resolved DraftKings leg carries bookSelection: { marketId, selectionId }, DraftKings' own ids; the eventId is DraftKings' numeric event id from /sgp/events?book=draftkings. Every spread, total and player-prop line is confirmed against DraftKings' selection data at pricing time; a line DraftKings has moved since you resolved it is a 422 line-not-echoed or line-mismatch (re-resolve and resend). DraftKings drops legs it will not combine (for example a moneyline together with the same team's spread) and prices the rest; the builder never serves that partial price: it is a 422 bet-failure whose failureCodes carry DraftKings' removal reasons in upper snake case (INCOMPATIBLE_SELECTIONS, REDUNDANT_SELECTION_REMOVED).\n\nDraftKings prices a different set of player props from FanDuel. The categories a player_prop leg can use on DraftKings, per sport: nfl: passing_yards, receiving_yards, and accepted: receptions, rushing_yards, longest_reception, rush_attempts, pass_attempts, pass_completions, interceptions, pass_rush_yards, passing_tds, longest_rush, rush_rec_yards. mlb: accepted: doubles, rbis, runs, hits, walks, hits-runs-rbis, singles, total-bases, stolen-bases, strikeouts, hits-allowed, earned-runs, walks-allowed. nba: points, rebounds, assists, threes_made, steals, blocks, pts_rebs_asts, pts_rebs, pts_asts, rebs_asts. nhl: goals, hockey_points, hockey_assists, shots_on_goal, saves, blocked_shots. ncaaf has no player prop categories. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Football and basketball categories use the /props category names (passing_yards, receptions, points, threes_made, pts_rebs_asts; threes is accepted for threes_made), hockey categories use the /props NHL names (hockey_points, hockey_assists, shots_on_goal, saves, blocked_shots, goals), and baseball categories use the builder's MLB names (strikeouts, total-bases). DraftKings player props are priced as two-sided over/unders at the player's main line; the yes-only markets priced are NHL goals (the anytime goal scorer, taken as over 0.5) and NBA, NFL, NHL and MLB N-or-more rungs of a listed over/under category, before the game starts and, on NBA, NFL and NHL, in play (on DraftKings' live ladder): an over leg at N - 0.5 that is not the player's main line prices the N+ rung (over 24.5 is 25+ points, over 89.5 is 90+ receiving yards), with no under side. Other yes-only markets such as anytime touchdown, and NCAAF N-or-more rungs, are refused. A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: nfl, ncaaf, mlb, nba and nhl: moneyline, spread and total. Any other game-leg type is refused with a 422 before pricing.\n\nHard Rock prices are Hard Rock Bet's own bet-slip price, quoted on its Arizona book (channel ARIZONA_ONLINE): eventId and the ids in bookSelection are the ones the Hard Rock Arizona feed (state az) serves, and a slip in another state can show a different price for the same legs. sgp.decimal is Hard Rock's own parlay price; sgp.american is that decimal expressed in American odds, rounded to a whole number the way the Hard Rock app displays it. Hard Rock game legs price at the main line, except on NHL, where an alternate puck line or total Hard Rock lists also prices, and a team_total leg prices each team's own total (full game, including overtime) at a line Hard Rock lists for that team. On NHL, Hard Rock also prices period legs: the 3-way result of the 1st, 2nd or 3rd period, and a period total or spread at a line it lists. Hard Rock confirms every line in its price response, so no Hard Rock leg is ever priced with lineUnverified. Hard Rock does not combine a moneyline with the same team's spread, or both sides of one total: it drops the leg rather than refusing the slip, and the builder never serves that partial price: the build is a 422 bet-failure with failureCodes INVALID_SELECTION.\n\nHard Rock prices its own set of player props. The categories a player_prop leg can use on Hard Rock, per sport: nfl: receptions, passing_yards, and accepted: receiving_yards, rushing_yards, passing_tds, interceptions, pass_completions, pass_attempts, rush_rec_yards, touchdowns. mlb: accepted: strikeouts, hits, total-bases, rbis, home-runs, hits-runs-rbis. nhl: accepted: goals, hockey_assists, hockey_points, shots_on_goal, saves, goals_against, power_play_points, blocked_shots. ncaaf and nba have no player prop categories. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Football categories use the /props category names (receptions, passing_yards), hockey categories use the /props NHL names (goals, shots_on_goal, hockey_points) plus blocked_shots, and baseball categories use the builder's MLB names (strikeouts, total-bases). A Hard Rock player_prop leg prices at a line Hard Rock lists for that player, including any alternate lines it publishes; a line it does not list is refused with the lines that exist, and a player name that matches more than one player is refused. touchdowns on Hard Rock is the anytime touchdown market, taken as over 0.5, and NHL goals at 0.5 is the anytime goal scorer market. A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: nfl, ncaaf, mlb and nba: moneyline, spread and total; nhl: moneyline, spread, total and team_total; moneyline, spread and total also for one period (period P1, P2 or P3). Any other game-leg type is refused with a 422 before pricing.\n\nBetRivers and Bally Bet prices are each book's own same game parlay price for exactly the legs sent, quoted from BetRivers Pennsylvania and Bally Bet New Jersey; a slip in another state can show a different price, and prices move, so compare only with a slip taken at the time in meta.pricedAt. Both list and price pregame games only. eventId is the book's numeric event id from /sgp/events?book=betrivers or ?book=ballybet, and a resolved leg carries bookSelection { marketId, selectionId }, the book's own offer and outcome ids. Game legs price at the main line, except on Bally Bet NHL, where an alternate puck line or total Bally Bet lists for same game parlays also prices (BetRivers prices main lines only). Each book confirms every leg's line and status in its price response, so a line it has moved since you resolved it is a 422 line-mismatch (re-resolve and resend). A combination the book will not price (for example both moneylines, or both sides of one total) is a 422 bet-failure with failureCodes COMBINATION_NOT_SUPPORTED; a leg it will not put in a same game parlay is a 422 leg-failure with failureCodes INVALID_OUTCOMES.\n\nBetRivers prices its own set of player props. The categories a player_prop leg can use on BetRivers, per sport: nfl: interceptions, and accepted: passing_yards, rushing_yards, receiving_yards, pass_attempts, passing_tds, pass_rush_yards, rush_rec_yards. mlb has no player prop categories. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Categories use the /props category names (passing_yards, interceptions). A BetRivers player_prop leg prices at the line BetRivers posts for that player and side in the game; another line is refused naming the line that exists, and a side BetRivers does not post is refused. Yes-only and N-or-more markets are not offered as player_prop legs. A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: nfl and mlb: moneyline, spread and total. Any other game-leg type is refused with a 422 before pricing.\n\nBally Bet prices its own set of player props. The categories a player_prop leg can use on Bally Bet, per sport: nfl: interceptions, and accepted: passing_yards, rushing_yards, receiving_yards, pass_attempts, passing_tds, pass_rush_yards, rush_rec_yards. ncaaf, mlb, nba and nhl have no player prop categories. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Categories use the /props category names (passing_yards, interceptions). A Bally Bet player_prop leg prices at the line Bally Bet posts for that player and side in the game; another line is refused naming the line that exists, and a side Bally Bet does not post is refused. Yes-only and N-or-more markets are not offered as player_prop legs. A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: nfl, ncaaf, mlb, nba and nhl: moneyline, spread and total. Any other game-leg type is refused with a 422 before pricing.\n\nBetMGM prices are BetMGM's own same game parlay price for exactly the legs sent, quoted from BetMGM New Jersey; a slip in another state can show a different price, and prices move, so compare only with a slip taken at the time in meta.pricedAt. BetMGM prices NFL, NBA and NHL, pregame games only. eventId is BetMGM's fixture id from /sgp/events?book=betmgm. Game legs price at the main line only (the spread and total BetMGM lists closest to balanced, the rule /odds uses; when two rungs are equally close, a leg at either rung's line prices, where /odds shows the first listed): an alternate spread or total is refused with the main line. On NFL and NBA, BetMGM's price response repeats every leg's line, status and single price, so a line it has moved since you resolved it is a 422 line-mismatch (re-resolve and resend). NHL is priced through BetMGM's other bet builder: each leg is sent as the option that builder lists for the game, and its price response is one price that names no leg and carries no single, so on NHL legs[].single is null and every leg is in meta.lineUnverifiedLegs; NHL player props are N-or-more rungs (side over at N - 0.5), with no under side. On NHL, a combination the builder will not price (Over with Under of one total) is a 422 bet-failure with failureCodes ZERO_PROBABILITY, or REDUNDANT_LEG when it names the leg it would drop. On NFL and NBA, both sides of one total are a 422 bet-failure with failureCodes ZERO_PROBABILITY; a moneyline with the same team's spread is a 422 bet-failure with failureCodes REDUNDANT_LEG (BetMGM would price the other leg alone, and the builder never serves that partial price); a leg BetMGM's price engine reports no trading data for is a 422 leg-failure with failureCodes NO_TRADING_DATA.\n\nBetMGM prices its own set of player props. The categories a player_prop leg can use on BetMGM, per sport: nfl: receptions, and accepted: passing_yards, rushing_yards, receiving_yards, passing_tds, pass_completions, rush_attempts, longest_reception, pass_rush_yards, rush_rec_yards. nba: points, and accepted: rebounds, assists, threes_made. nhl: accepted: hockey_points, hockey_assists, shots_on_goal, goals. An accepted category prices when the book posts that market for the player in the game, and the leg is refused before pricing, with the reason in legs[].reason, when it has not. Categories use the /props category names (passing_yards, interceptions). A BetMGM player_prop leg prices at the line BetMGM posts for that player and side in the game; another line is refused naming the line that exists, and a side BetMGM does not post is refused. Yes-only and N-or-more markets are not offered as player_prop legs. A player_prop leg outside these lists is refused with a 422 and a specific reason before pricing. Game legs per sport: nfl, nba and nhl: moneyline, spread and total. Any other game-leg type is refused with a 422 before pricing.\n\nOn FanDuel, NBA and WNBA player_prop legs price the player's full-game over/under line. Quarter and alternate lines are not used, so a line that exists only as a quarter or alternate line is refused with the full-game lines that do exist.\n\nA refused player_prop leg names the category you sent and, for a betting-name alias, the props category it stands for. The aliases: anytime_touchdown, anytime-touchdown, anytime_td, anytime-td, atd and touchdown_scorer for touchdowns; first_td and first-td for first_touchdown_scorer.\n\nBatter props on FanDuel are yes/no N-or-more markets, exposed as the over side of N-0.5 (over 0.5 = 1+). They have no under side.\n\nNFL touchdowns and first_touchdown_scorer are yes/no touchdown-scorer markets on FanDuel, exposed the same way: touchdowns over 0.5 is the anytime touchdown scorer, over 1.5 is 2 or more, over 2.5 is 3 or more; first_touchdown_scorer takes over 0.5. They have no under side. NFL passing_yards, rushing_yards, receiving_yards, receptions and passing_tds legs price FanDuel's main line for that player; alternate lines are not used, so a line that exists only on an alternate ladder is refused with the main line that does exist.\n\nAnytime touchdown is priced on FanDuel as touchdowns over 0.5. Hard Rock accepts touchdowns over 0.5 as its anytime touchdown market, not yet verified on a priced parlay. DraftKings does not price it yet: a touchdowns or first_touchdown_scorer leg sent to DraftKings is refused with a 422 before pricing, like every yes-only market except NHL goals (the anytime goal scorer) and, before the game starts, the NBA, NFL, NHL and MLB N-or-more rungs of a listed over/under category.\n\nBuilds can be limited per API key per minute, separately from your plan rate limit. Over that limit the call returns 429 { error, code: \"SGP_RATE_LIMIT\", limit, resetAt } with a Retry-After header, and the refused build does not count against your plan quota. A malformed body, an unsupported or disabled book, and a request refused by your plan rate limit or concurrent request limit do not count toward the per-minute build limit. Every other build does, including one refused afterwards: an invalid eventId (400), a game not found (404), an unresolvable leg (422), a refused parlay (422 with a reasonCode), no price (503 with reasonCode no-price) or SGP_BUSY (503).\n\nA book outside supportedBooks is a 400 with code SGP_BOOK_UNSUPPORTED and supportedBooks, the books the builder prices. A supported book that does not price the requested sport is a 400 with code SGP_BOOK_SPORT_UNSUPPORTED and sports, the sports it does price.\n\n503 means retry later: code SGP_BUSY when pricing capacity is reached (Retry-After: 2), SGP_BOOK_DISABLED when pricing for the requested book is paused (Retry-After: 60; a book whose pricing misbehaves may be paused this way, and a new book may be enabled for selected keys before general availability), and SGP_RATE_LIMIT_UNAVAILABLE when the build limit could not be checked. A 503 with reasonCode no-price (code no-price, Retry-After: 2) means the book produced no usable answer, to the price request or to the read of the game's markets before it: retry later. A 503 without a code is a temporary outage on our side (for example pricing, the rate limit system or subscription verification): back off and retry. The rate limit case carries limit: \"system\".\n\nA build that reached pricing and returned no price is a 422 or a 503 with the same body; the status says whether to resend. 422 means the book judged the slip and refused it, or its answer did not confirm your legs as sent: the request was valid but cannot be priced as specified, so do not resend the same body unchanged. Its reasonCode is one of duplicate-selection, resp-code, leg-failure, bet-failure, bet-failure-shape, no-sgm-combination, ambiguous-combination, combined-odds-missing, single-missing, single-duplicate, single-odds-missing, runner-odds-missing, runner-odds-duplicate, runner-odds-inconsistent, not-placeable, line-not-echoed, line-mismatch, line-unexpected, line-unverifiable. 503 with reasonCode no-price (and Retry-After: 2) means no usable answer came back at all: the price request failed, timed out or was answered with something other than a price. Retry later. code repeats reasonCode on both (the SDKs expose it as the error's code), so branch on reasonCode first: no-price to retry, unresolved to fix the legs, anything else to change the slip. 502 is not used by this endpoint.\n\nOn a refused 422, reasonCode is line-mismatch when the book priced a leg at a different line than requested (re-resolve and resend), bet-failure or leg-failure when the book rejected the parlay or dropped a leg from it (the book's own codes are in failureCodes: FanDuel for example SELECTION_NOT_FOUND, DraftKings INCOMPATIBLE_SELECTIONS or REDUNDANT_SELECTION_REMOVED, Hard Rock INVALID_SELECTION, BetRivers and Bally Bet COMBINATION_NOT_SUPPORTED or INVALID_OUTCOMES, BetMGM ZERO_PROBABILITY, REDUNDANT_LEG or NO_TRADING_DATA), not-placeable when the book is not accepting bets on these legs (for example a suspended market), or another acceptance code when the book's response did not confirm exactly these legs. For line-mismatch and the other line-* codes, legIndex is the leg in your request and lineEchoed is the line the book priced, exactly as it sent it (null when it sent none). message is human-readable prose; match on reasonCode, legIndex, lineEchoed and failureCodes, not on message.",
         "operationId": "buildSgp",
         "parameters": [
           {
@@ -20748,6 +21948,61 @@
         ],
         "x-owls-access": "Rookie and above",
         "x-owls-sdk-method": "buildSgp"
+      }
+    },
+    "/api/v1/{sport}/sgp/compare": {
+      "post": {
+        "description": "Prices one same game parlay on every same game parlay book at once (FanDuel, DraftKings, Hard Rock, BetRivers, Bally Bet and BetMGM), from our event id, and returns each book's own answer side by side with the best price. Each book's answer is exactly what /sgp/build returns for it.\n\nstatus says what happened on each book: priced (result is the 200 body), refused (the book refused the parlay: result is its 422 body), unresolved (a leg did not resolve on that book, for example a different main line: result says which and why), busy or no-price (that book produced no usable answer: retry later), timeout (the book had not answered when deadlineMs ran out, or was not reached in time), event-not-listed (the book does not list this game for same game parlays when asked), ambiguous-event (two games match, a doubleheader without -G2, or the book lists this matchup at a different start than this game, or than the other books when the game is under way, so it is a different game), unsupported (the book does not price this sport or one of the legs: reason says which), disabled (that book's pricing is paused) or skipped (fanduel: skip).\n\nThe same legs are sent to every book. Books price game legs at their own lines: a spread or total at a number one book does not list (its main line, or on NHL one of the alternates Hard Rock, Bally Bet and, before the game, DraftKings list) is unresolved on that book, with the book's lines in the reason (FanDuel's names only the point); a team_total leg, or a leg with a period, is unsupported on every book except Hard Rock on NHL. best is the highest decimal price among the books that priced. BetRivers and Bally Bet are priced one after the other within the same deadline.\n\nBefore a game starts, a book that priced exactly these legs for this game in the last 15 seconds (through /sgp/build or /sgp/compare, for any customer) may be answered from that quote: cached is true, result.meta.cached is true and result.meta.cacheAgeMs is the quote's age when the response was sent; result.meta.pricedAt is still when the book priced it. A cached answer costs no build. Send fresh: true to price every book now. A game that starts within 30 seconds, or is already under way, is always priced fresh.\n\nEvery book asked that is not answered from a cached quote counts one build against your per-minute SGP build limit, reserved for the whole comparison before any book is priced; a book that is never asked for a price (not listed, a different game, not reached in time, or a leg that does not resolve) is given back at once while the minute it was counted in is still running. Over the limit the call is a 429 SGP_RATE_LIMIT with unitsNeeded and a Retry-After header. When the comparison needs more builds than your limit allows at all, it is a 429 SGP_COMPARE_TOO_MANY_BOOKS with maxBooks and no Retry-After: ask for at most maxBooks books with books. A comparison counts as one request against your plan rate limit.\n\nMVP and Hall of Fame plans. On a lower plan the call is a 403 with code SGP_TIER_REQUIRED; a 503 with code SGP_FEATURE_DISABLED means comparisons are not switched on yet.",
+        "operationId": "compareSgp",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sport",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-extensible-enum": [
+                "mlb",
+                "nba",
+                "ncaab",
+                "ncaaf",
+                "nfl",
+                "nhl",
+                "soccer",
+                "tennis",
+                "wnba"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SgpCompareParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SgpCompareResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Prices one same game parlay on every same game parlay book at once (FanDuel, DraftKings, Hard Rock, BetRivers, Bally Bet and BetMGM), from our event id, and returns each book's own answer side by side with the best price. Each book's answer is exactly what /sgp/build returns for it.",
+        "tags": [
+          "Same Game Parlay"
+        ],
+        "x-owls-access": "MVP and above",
+        "x-owls-sdk-method": "compareSgp"
       }
     },
     "/api/v1/{sport}/sgp/events": {
@@ -21505,7 +22760,7 @@
     },
     "/api/v2/{book}/{sport}": {
       "get": {
-        "description": "Returns a sportsbook's native markets for a sport exactly as the source publishes them: no mapping, no team normalization, no merging. Each entry in data is one raw market blob keyed by the source's own market id.\n\nmarketIds narrows data to the listed market ids and prefixes (main,props-* or props-9524; case does not matter). Only those entries are returned, dated in meta.ageSeconds and hashed into the ETag, so a caller of one family keeps its 304s while another family moves. meta.marketIds echoes the filter and meta.marketsFilteredOut counts the entries left out. When the stored board exists but nothing matches, data is empty with meta.cached true and the status and age of the board's primary entries (those outside a family with its own freshness threshold, such as DraftKings game-* and props-*), so it is not mistaken for an outage; if none of those is left (for example only DraftKings game-* and props-* are stored), meta.status is no-data. An entry that is neither an id (letters, digits, - or _) nor a prefix ending in * is a 400. bet365, hardrock, mybookie, stake, thunderpick and underdog ignore marketIds and always return their whole board.\n\nDraftKings nba, nfl, nhl, mlb, ncaab and ncaaf hold main (the league page: game lines), live (the live feed snapshot, when it fits) and one props-<subcategoryId> entry per player-prop subcategory; nba, nfl and ncaaf also hold one game-<subcategoryId> entry per game-market subcategory (1st half, 1st quarter, team totals and, for football, alternate spread and alternate total). game-* entries are in the default response, refresh about every 30 seconds, are REST only and are judged against their own 90 second threshold. A default request's meta.status is judged by main and live: a game-* entry kept through a failed refresh does not turn it stale (meta.marketAges shows its age), and when main and live are both gone it reads stale. A marketIds request that includes game-* is judged by those entries too. Each props-* entry is DraftKings' response for that subcategory as received (parsed and re-serialized, not mapped), with its events, markets and selections. props-* entries refresh about every 3 to 5 minutes and are REST only (no draftkings-v2-update message). They are left out unless marketIds asks for them; meta.defaultExcluded then gives their count and the marketIds value that includes them. They are judged fresh against their own 480 second threshold, so they do not turn meta.status stale; meta.marketAges gives each returned entry's age in seconds. When one subcategory's request fails, its previous entry is kept for a cycle; if it reaches its 10 minute lifetime first, a request that includes it reads meta.status partial until the entry is cleared, at the latest on the next cycle.\n\nmeta.status is ok, stale, partial or no-data. It flips to stale once ageSeconds passes the book's own freshness threshold, which is set to that book's refresh cadence. Entries in a family with its own threshold (DraftKings game-* and props-*) are judged against that threshold instead, and only when the request asked for them.\n\nSend If-None-Match with the ETag response header, quoted exactly as received (a leading W/ is fine), to receive 304 when nothing changed. The body etag is the same value without quotes, so a bare etag never matches. A 304 on /api/v2 does not count toward your monthly quota; it still counts toward your per-minute limit and appears in your usage log. A key that has used up its monthly quota gets 429 even when the request would have been a 304.\n\nmeta.cached is false only when there is no stored board to serve (no-data, and partial-miss on the books that report it). It is not a freshness signal: read meta.ageSeconds and meta.status for that.\n\nFor a multi-league sport without league, most books return 400 with a hint to the /leagues index. Books flagged mergeWhenUnspecified instead return a merged board with league null, a leagues index attributing every market to its competition, and meta.merged true; if the merge had to truncate, meta.status is partial, meta.truncated says what was omitted, and meta.omittedIds lists the first 100 omitted market ids, to fetch with marketIds (50 per request) or by passing league.\n\nA few books key data by event rather than by market, so one entry holds a whole game. Each book's sport set, single-league sports and league rules are in the v2Books entries of this manifest.\n\nThe SDKs expose one method per book: get<Book>V2 in TypeScript and get_<book>_v2 in Python.\n\nThe stake board is the exception to the meta shape above: it serves meta { source, cached, status, timestamp, ageSeconds, hash, now } on every response, with data as an array of fixtures. On no-data and partial-miss, timestamp, ageSeconds and hash are null because there is no board to date, and now is the response clock; never read freshness from a null timestamp.\n\nOn stake ice-hockey and basketball, a fixture also carries swish when Stake prices player props for it: Stake's player props (ice hockey: shots on goal, goals, assists, points, hits, plus minus, power play points, blocked shots, and goalie saves once Stake prices them; NBA: points, rebounds, assists, points+assists+rebounds, threes made, double-double, triple-double and first scorer) as { id, status, startTime, players: [{ id, name, position, markets: [{ id, stat: { name }, lines: [{ id, name, line, over, under, balanced, suspended }] }] }] }, over and under in decimal odds. A market lists every line Stake offers: balanced true marks Stake's main line and the others are its alternate lines. Markets with no line are left out, and a game in progress has no swish block because Stake pulls player props once it starts.\n\npropbuilder (Prop Builder) holds one entry per game and market family, family first: game-<gameId> (the game record with home, away, startTime and entries, the ids stored for that game), gfm-<gameId>-<statistic>-<hash> (one game-market group), ou-<gameId>-<statistic>-<hash> (Over/Under lines for one statistic), ss-<gameId>-<statistic>-<hash> (an N+ milestone ladder), ppd-<gameId> (Player Doubles) and h2h-<gameId> (player vs player). marketIds=ou-* returns every Over/Under entry, and game-<gameId>,ou-<gameId>-*,ss-<gameId>-*,gfm-<gameId>-*,ppd-<gameId>,h2h-<gameId> returns one game. gameId is the board's own game id, not the eventId of the /api/v1 endpoints. Odds are decimal, and a market's oddsOverride replaces odds when it is greater than 1. Games are listed until they start, and a market the board suspends or withdraws leaves its entry, as on the board itself. The board sells the game markets (gfm) as parlay legs only, and a leg's price is not the price of a parlay. Several sportsbooks embed this board, and its prices were identical on every site we compared. propbuilder-v2-update pushes changed entries within seconds: load this board on every connect, then apply the messages.\n\nfanaticsmarkets holds one entry per event (the event as Fanatics Markets publishes it, each outcome with its Nadex symbol and probability) and, for every event and market group with a live order book, a books-<eventId>-<group> entry (group: moneyline, spread, over_and_under and so on). books entries are left out unless marketIds asks for them (books-* for all, or marketIds=*). A books entry is { eventId, group, books: { <symbol>: { yes: { bids, asks }, no: { bids, asks }, asOf, live } } }, prices 0 to 1 and sizes in contracts. It is rewritten the moment a book moves on Fanatics Markets; when its group has no book left or the event leaves the board, it is deleted. Over WebSocket the books come on their own event, fanaticsmarkets-books-v2-update, only when you subscribe with books: true next to your fanaticsmarkets sports (v2: { fanaticsmarkets: { nfl: '*', books: true } }); fanaticsmarkets-v2-update keeps carrying the events alone. Each message arrives within about a second of the move and carries books entries (kind books), either whole (replace the entry) or with patch true, carrying only the books that changed (merge them by symbol; null means that book is gone); a deleted entry arrives in removedIds, and about once a minute a group carries ids, the full list of that league's books entries (drop any other entry of that league; other leagues are not affected). To sync: subscribe, hold the messages, load the books entries over REST (?marketIds=books-* with league), then apply what you held. For every message, keep per symbol the book with the later asOf (on a tie, take the message); a null removes the symbol. On a patch for an entry you do not hold, and after every reconnect, load it again over REST. Every entry is also sent whole about every 10 minutes, and once more shortly after a restart on our side. asOf is the time that book last CHANGED on Fanatics Markets, not when we read it: a quiet book keeps an old asOf while still current. live true means the book is held on our open subscription; live false means it is the last state we hold and is not confirmed: our subscription dropped or is reconnecting, or an update arrived for it that we could not apply (it turns true again with the next full book). meta.marketAges gives each entry's age: for a books entry, the seconds since we last confirmed it (at most about 30 while every book in it is live; it keeps growing while one is not); for an event, the seconds since its last refresh (a few minutes). The books response is stale once any books entry is 90 seconds old. The orderbook inside an event entry is a copy taken at the event's refresh, with live as of that refresh (false while our subscription is down, or after an update for it that we could not apply: it is then the last book we hold); read the books entries for live depth.",
+        "description": "Returns a sportsbook's native markets for a sport exactly as the source publishes them: no mapping, no team normalization, no merging. Each entry in data is one raw market blob keyed by the source's own market id.\n\nmarketIds narrows data to the listed market ids and prefixes (main,props-* or props-9524; case does not matter). Only those entries are returned, dated in meta.ageSeconds and hashed into the ETag, so a caller of one family keeps its 304s while another family moves. meta.marketIds echoes the filter and meta.marketsFilteredOut counts the entries left out. When the stored board exists but nothing matches, data is empty with meta.cached true and the status and age of the board's primary entries (those outside a family with its own freshness threshold, such as DraftKings game-* and props-*), so it is not mistaken for an outage; if none of those is left (for example only DraftKings game-* and props-* are stored), meta.status is no-data. An entry that is neither an id (letters, digits, - or _) nor a prefix ending in * is a 400. bet365, hardrock, mybookie, stake, thunderpick and underdog ignore marketIds and always return their whole board.\n\nDraftKings nba, nfl, nhl, mlb, ncaab and ncaaf hold main (the league page: game lines), live (the live feed snapshot, when it fits) and one props-<subcategoryId> entry per player-prop subcategory; nba, nfl and ncaaf also hold one game-<subcategoryId> entry per game-market subcategory: 1st half, 1st quarter, team totals, for football alternate spread and alternate total, and for the NBA the game leaders (game-16471 Most Points, game-16472 Most Rebounds, game-16473 Most Assists, game-16474 Most Threes, game-16475 Most Points + Rebounds + Assists: one market per game whose selections are the players, as DraftKings prices them). game-* entries are in the default response, refresh about every 30 seconds, are REST only and are judged against their own 90 second threshold. A default request's meta.status is judged by main and live: a game-* entry kept through a failed refresh does not turn it stale (meta.marketAges shows its age), and when main and live are both gone it reads stale. A marketIds request that includes game-* is judged by those entries too. Each props-* entry is DraftKings' response for that subcategory as received (parsed and re-serialized, not mapped), with its events, markets and selections. props-* entries refresh about every 3 to 5 minutes and are REST only (no draftkings-v2-update message). They are left out unless marketIds asks for them; meta.defaultExcluded then gives their count and the marketIds value that includes them. They are judged fresh against their own 480 second threshold, so they do not turn meta.status stale; meta.marketAges gives each returned entry's age in seconds. When one subcategory's request fails, its previous entry is kept for a cycle; if it reaches its 10 minute lifetime first, a request that includes it reads meta.status partial until the entry is cleared, at the latest on the next cycle.\n\nmeta.status is ok, stale, partial or no-data. It flips to stale once ageSeconds passes the book's own freshness threshold, which is set to that book's refresh cadence. Entries in a family with its own threshold (DraftKings game-* and props-*) are judged against that threshold instead, and only when the request asked for them.\n\nSend If-None-Match with the ETag response header, quoted exactly as received (a leading W/ is fine), to receive 304 when nothing changed. The body etag is the same value without quotes, so a bare etag never matches. A 304 on /api/v2 does not count toward your monthly quota; it still counts toward your per-minute limit and appears in your usage log. A key that has used up its monthly quota gets 429 even when the request would have been a 304.\n\nmeta.cached is false only when there is no stored board to serve (no-data, and partial-miss on the books that report it). It is not a freshness signal: read meta.ageSeconds and meta.status for that.\n\nFor a multi-league sport without league, most books return 400 with a hint to the /leagues index. Books flagged mergeWhenUnspecified instead return a merged board with league null, a leagues index attributing every market to its competition, and meta.merged true; if the merge had to truncate, meta.status is partial, meta.truncated says what was omitted, and meta.omittedIds lists the first 100 omitted market ids, to fetch with marketIds (50 per request) or by passing league.\n\nA few books key data by event rather than by market, so one entry holds a whole game. Each book's sport set, single-league sports and league rules are in the v2Books entries of this manifest.\n\nThe SDKs expose one method per book: get<Book>V2 in TypeScript and get_<book>_v2 in Python.\n\nThe stake board is the exception to the meta shape above: it serves meta { source, cached, status, timestamp, ageSeconds, hash, now } on every response, with data as an array of fixtures. On no-data and partial-miss, timestamp, ageSeconds and hash are null because there is no board to date, and now is the response clock; never read freshness from a null timestamp.\n\nOn stake ice-hockey and basketball, a fixture also carries swish when Stake prices player props for it: Stake's player props (ice hockey: shots on goal, goals, assists, points, hits, plus minus, power play points, blocked shots, and goalie saves once Stake prices them; NBA: points, rebounds, assists, points+assists+rebounds, threes made, double-double, triple-double and first scorer) as { id, status, startTime, players: [{ id, name, position, markets: [{ id, stat: { name }, lines: [{ id, name, line, over, under, balanced, suspended }] }] }] }, over and under in decimal odds. A market lists every line Stake offers: balanced true marks Stake's main line and the others are its alternate lines. Markets with no line are left out, and a game in progress has no swish block because Stake pulls player props once it starts.\n\npropbuilder (Prop Builder) holds one entry per game and market family, family first: game-<gameId> (the game record with home, away, startTime and entries, the ids stored for that game), gfm-<gameId>-<statistic>-<hash> (one game-market group), ou-<gameId>-<statistic>-<hash> (Over/Under lines for one statistic), ss-<gameId>-<statistic>-<hash> (an N+ milestone ladder), ppd-<gameId> (Player Doubles) and h2h-<gameId> (player vs player). marketIds=ou-* returns every Over/Under entry, and game-<gameId>,ou-<gameId>-*,ss-<gameId>-*,gfm-<gameId>-*,ppd-<gameId>,h2h-<gameId> returns one game. gameId is the board's own game id, not the eventId of the /api/v1 endpoints. Odds are decimal, and a market's oddsOverride replaces odds when it is greater than 1. Games are listed until they start, and a market the board suspends or withdraws leaves its entry, as on the board itself. The board sells the game markets (gfm) as parlay legs only, and a leg's price is not the price of a parlay. Several sportsbooks embed this board, and its prices were identical on every site we compared. propbuilder-v2-update pushes changed entries within seconds: load this board on every connect, then apply the messages.\n\nfanatics (Fanatics Sportsbook, not the prediction market) holds one entry per game, keyed by Fanatics' event id: { id, name, startTime, live (true while Fanatics offers in-game betting on it), homeTeam, awayTeam, markets }, teams as { name, abbreviation, nickname }, with every market Fanatics prices for it (moneyline, the full spread and total ladders, team totals, halves and quarters, player milestone props). Each market is { name, bets }, and each bet { id, marketId, name, side, line: { label, value }, status, american, decimal } in Fanatics' own ids: id is the selection id and marketId the market id, so one market of a ladder can hold several Fanatics market ids; side is HOME, AWAY, DRAW, YES or NO where the market has sides; line.label is the line as shown (+3.5, 48, 10+) and line.value its number without the sign (3.5; on correct-score markets read label). Moneyline is two-way in US sports and three-way (with a DRAW side) in soccer; Moneyline 3-Way is the regulation three-way for nba, nhl and ncaaf; Half Time Result is two-way in nfl and ncaaf and three-way in soccer. Only priced selections are listed. A game appears once Fanatics prices it, and while Fanatics prices nothing on it (a suspension) it stays listed with markets [] for up to 30 minutes. Prices are read about every 10 seconds; meta.ageSeconds is the time since the read that last confirmed the game, because the feed carries no change timestamp. nba, nfl, nhl, mlb, ncaaf and ncaab are single-league; soccer is keyed by competition (mls) and merges without league. REST only.\n\nfanaticsmarkets holds one entry per event (the event as Fanatics Markets publishes it, each outcome with its Nadex symbol and probability) and, for every event and market group with a live order book, a books-<eventId>-<group> entry (group: moneyline, spread, over_and_under and so on). books entries are left out unless marketIds asks for them (books-* for all, or marketIds=*). A books entry is { eventId, group, books: { <symbol>: { yes: { bids, asks }, no: { bids, asks }, asOf, live } } }, prices 0 to 1 and sizes in contracts. It is rewritten the moment a book moves on Fanatics Markets; when its group has no book left or the event leaves the board, it is deleted. Over WebSocket the books come on their own event, fanaticsmarkets-books-v2-update, only when you subscribe with books: true next to your fanaticsmarkets sports (v2: { fanaticsmarkets: { nfl: '*', books: true } }); fanaticsmarkets-v2-update keeps carrying the events alone. Each message arrives within about a second of the move and carries books entries (kind books), either whole (replace the entry) or with patch true, carrying only the books that changed (merge them by symbol; null means that book is gone); a deleted entry arrives in removedIds, and about once a minute a group carries ids, the full list of that league's books entries (drop any other entry of that league; other leagues are not affected). To sync: subscribe, hold the messages, load the books entries over REST (?marketIds=books-* with league), then apply what you held. For every message, keep per symbol the book with the later asOf (on a tie, take the message); a null removes the symbol. On a patch for an entry you do not hold, and after every reconnect, load it again over REST. Every entry is also sent whole about every 10 minutes, and once more shortly after a restart on our side. asOf is the time that book last CHANGED on Fanatics Markets, not when we read it: a quiet book keeps an old asOf while still current. live true means the book is held on our open subscription; live false means it is the last state we hold and is not confirmed: our subscription dropped or is reconnecting, or an update arrived for it that we could not apply (it turns true again with the next full book). meta.marketAges gives each entry's age: for a books entry, the seconds since we last confirmed it (at most about 30 while every book in it is live; it keeps growing while one is not); for an event, the seconds since its last refresh (a few minutes). The books response is stale once any books entry is 90 seconds old. The orderbook inside an event entry is a copy taken at the event's refresh, with live as of that refresh (false while our subscription is down, or after an update for it that we could not apply: it is then the last book we hold); read the books entries for live depth.",
         "operationId": "getV2",
         "parameters": [
           {
@@ -21526,6 +22781,7 @@
                 "bookmaker",
                 "bovada",
                 "draftkings",
+                "fanatics",
                 "fanaticsmarkets",
                 "fanduel",
                 "kalshi",
@@ -21612,6 +22868,7 @@
                 "bookmaker",
                 "bovada",
                 "draftkings",
+                "fanatics",
                 "fanaticsmarkets",
                 "fanduel",
                 "kalshi",
@@ -22411,6 +23668,19 @@
         "wnba"
       ],
       "wsEvent": "draftkings-v2-update"
+    },
+    {
+      "book": "fanatics",
+      "sports": [
+        "mlb",
+        "nba",
+        "ncaab",
+        "ncaaf",
+        "nfl",
+        "nhl",
+        "soccer"
+      ],
+      "wsEvent": null
     },
     {
       "book": "fanaticsmarkets",

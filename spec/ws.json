@@ -62,8 +62,8 @@
   },
   "info": {
     "title": "Owls Insight WebSocket",
-    "version": "0.87.0",
-    "x-owls-manifest-commit": "cd9590d5"
+    "version": "0.89.0",
+    "x-owls-manifest-commit": "6e06d569"
   },
   "serverEvents": {
     "1xbet-update": {
@@ -404,7 +404,7 @@
     },
     "plays-update": {
       "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
-      "description": "Play-by-play for NBA, NHL, NFL and NCAAF games in play, pushed within a few seconds of a new play, one message per sport: {type, timestamp, sport, events}. Opt in with plays: true or an array of those sport keys; no opt-in, no messages. Each event is one game, {eventId, home, away, state, count, plays}: eventId is the id GET /api/v1/{sport}/scores/live gives the game, count the plays in the game after this message, and plays the plays new or amended since the previous message, in order, each in the shape of GET /api/v1/{sport}/plays (id, seq, period, clock, secondsRemaining, team, type, text, scoringPlay, homeScore, awayScore, wallclock, detail). Merge plays by id: a play can be amended after it is first sent (a review, an assist added). A game that ends is sent once more with state post, with any last plays. There is no full message: fetch GET /api/v1/{sport}/plays?eventId= once to start, then apply the deltas. Delivery follows each league's own feed: NHL plays can be up to about 20 seconds behind the ice, NFL and NCAAF plays about 7 seconds, NBA plays a few seconds.",
+      "description": "Play-by-play for NBA, NHL, NFL, NCAAF and soccer games in play, pushed within a few seconds of a new play, one message per sport: {type, timestamp, sport, events}. Opt in with plays: true or an array of those sport keys; no opt-in, no messages. For soccer the plays are the match incidents (goals, own goals, penalties, cards, substitutions) of every game on the live board, whatever its league. Each event is one game, {eventId, home, away, state, count, plays}: eventId is the id GET /api/v1/{sport}/scores/live gives the game, count the plays in the game after this message, and plays the plays new or amended since the previous message, in order, each in the shape of GET /api/v1/{sport}/plays (id, seq, period, clock, secondsRemaining, team, type, text, scoringPlay, homeScore, awayScore, wallclock, detail). Merge plays by id: a play can be amended after it is first sent (a review, an assist added). A game that ends is sent once more with state post, with any last plays. There is no full message: fetch GET /api/v1/{sport}/plays?eventId= once to start, then apply the deltas. Delivery follows each league's own feed: NHL plays can be up to about 20 seconds behind the ice, NFL and NCAAF plays about 7 seconds, NBA plays a few seconds; a soccer goal within a few seconds of the score changing, a card or substitution within about 20 seconds.",
       "documented": true,
       "payload": {
         "$ref": "openapi.json#/components/schemas/PlaysUpdate"

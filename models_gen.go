@@ -3583,13 +3583,14 @@ type PitchingStats struct {
 	WalksAllowed    *float64 `json:"walksAllowed,omitempty"`
 }
 
-// Play One play of an NBA, NHL, NFL or NCAAF game, as GET /{sport}/plays and the
+// Play One play of an NBA, NHL, NFL, NCAAF or soccer game, as GET /{sport}/plays and the
 // `plays-update` event carry it. Merge plays by `id`: a play can be amended after it
-// is first published (a review, an assist added).
+// is first published (a review, an assist added). For soccer a play is a match
+// incident (goal, card, substitution), not every pass.
 type Play struct {
 	AwayScore *float64 `json:"awayScore,omitempty"`
 
-	// Clock Time left in the period as the venue shows it ("5:32"); null when the source has none.
+	// Clock Time left in the period as the venue shows it ("5:32"), or for soccer the match minute ("67", "45+2"); null when the source has none.
 	Clock  *string          `json:"clock,omitempty"`
 	Detail *json.RawMessage `json:"detail,omitempty"`
 
@@ -3597,25 +3598,27 @@ type Play struct {
 	HomeScore *float64 `json:"homeScore,omitempty"`
 
 	// ID The source's play id, unique within the game.
-	ID               *string  `json:"id,omitempty"`
-	Period           *float64 `json:"period,omitempty"`
-	ScoringPlay      *bool    `json:"scoringPlay,omitempty"`
+	ID          *string  `json:"id,omitempty"`
+	Period      *float64 `json:"period,omitempty"`
+	ScoringPlay *bool    `json:"scoringPlay,omitempty"`
+
+	// SecondsRemaining Null for soccer, whose clock counts up.
 	SecondsRemaining *float64 `json:"secondsRemaining,omitempty"`
 
 	// Seq The source's own order within the game: ascending, not contiguous.
 	Seq *float64 `json:"seq,omitempty"`
 
-	// Team The side the play belongs to (the offense, the shooter's team, the team that took the penalty); null for a neutral play.
+	// Team The side the play belongs to (the offense, the shooter's team, the team that took the penalty, the side credited with a goal); null for a neutral play.
 	Team *string `json:"team,omitempty"`
 	Text *string `json:"text,omitempty"`
 
-	// Type The source's own type key, unchanged: "Rush", "Pass Reception"; "shot-on-goal", "faceoff"; "2pt/Jump Shot", "rebound/defensive".
+	// Type The source's own type key, unchanged: "Rush", "Pass Reception"; "shot-on-goal", "faceoff"; "2pt/Jump Shot", "rebound/defensive"; soccer "Goal", "Yellow Card", "Substitution".
 	Type *string `json:"type,omitempty"`
 
 	// UpdatedAt When this version of the play was first seen: an amendment after first publication moves it.
 	UpdatedAt *string `json:"updatedAt,omitempty"`
 
-	// Wallclock When the play happened according to the source; null for the NHL, which publishes none.
+	// Wallclock When the play happened according to the source; null for the NHL and soccer, which publish none.
 	Wallclock *string `json:"wallclock,omitempty"`
 }
 
@@ -3833,7 +3836,7 @@ type PlaysResponse struct {
 		Since    *float64 `json:"since,omitempty"`
 		Source   *string  `json:"source,omitempty"`
 
-		// SourceAgeSeconds The source's own edge-cache age at that read (NHL about 19 s, ESPN about 7 s); null when it sends none.
+		// SourceAgeSeconds The source's own edge-cache age at that read (NHL about 19 s, ESPN about 7 s); null when it sends none (NBA, soccer).
 		SourceAgeSeconds *float64 `json:"sourceAgeSeconds,omitempty"`
 		Timestamp        *string  `json:"timestamp,omitempty"`
 		Truncated        *bool    `json:"truncated,omitempty"`
@@ -3844,7 +3847,7 @@ type PlaysResponse struct {
 	Sport *PlaysSport `json:"sport,omitempty"`
 	State *string     `json:"state,omitempty"`
 
-	// Status `stale` when a game in play has not been read for 30 seconds.
+	// Status `stale` when a game in play has not been read for 30 seconds (soccer: 60).
 	Status  *string `json:"status,omitempty"`
 	Success *bool   `json:"success,omitempty"`
 }
@@ -3854,8 +3857,8 @@ type PlaysSport = string
 
 // PlaysUpdate Payload of the `plays-update` WebSocket event: play-by-play for ONE sport.
 //
-// Opt in with `subscribe({ ..., plays: true })` (nba, nhl, nfl and ncaaf) or
-// `plays: ['nfl', 'nba']`; no `plays` field, no messages. Same access as `scores-update`.
+// Opt in with `subscribe({ ..., plays: true })` (nba, nhl, nfl, ncaaf and soccer) or
+// `plays: ['nfl', 'nba', 'soccer']`; no `plays` field, no messages. Same access as `scores-update`.
 // There is no full message: call `getPlays(sport, eventId)` once to start, then apply
 // each delta by merging `plays` by `id`.
 type PlaysUpdate struct {
@@ -4159,12 +4162,20 @@ type PropResultsResponse struct {
 
 		// LineOutcomes Verdict counts, ONE PER BOOK LINE. `over + under + push` is a LINE count, so a
 		// rate built from it is weighted by how many books quoted each player.
-		LineOutcomes    map[string]float64 `json:"lineOutcomes,omitempty"`
-		LinesGraded     *float64           `json:"linesGraded,omitempty"`
-		LinesTruncated  *bool              `json:"linesTruncated,omitempty"`
-		Message         *string            `json:"message,omitempty"`
-		Mode            *string            `json:"mode,omitempty"`
-		PlayersReturned *float64           `json:"playersReturned,omitempty"`
+		LineOutcomes   map[string]float64 `json:"lineOutcomes,omitempty"`
+		LinesGraded    *float64           `json:"linesGraded,omitempty"`
+		LinesTruncated *bool              `json:"linesTruncated,omitempty"`
+		Message        *string            `json:"message,omitempty"`
+		Mode           *string            `json:"mode,omitempty"`
+
+		// NameVariantJoins Line groups joined to a box-score player written with another form of his first
+		// name ("Alexandre Sarr" in the books, "Alex Sarr" in the box score): joined, and
+		// disclosed like `suffixGaps`. NBA only; [] elsewhere.
+		NameVariantJoins []struct {
+			Actual *string  `json:"actual,omitempty"`
+			Lines  []string `json:"lines,omitempty"`
+		} `json:"nameVariantJoins,omitempty"`
+		PlayersReturned *float64 `json:"playersReturned,omitempty"`
 
 		// Provisional Entries returned that are still provisional. OVERLAPS `entryStatuses`.
 		Provisional *float64 `json:"provisional,omitempty"`
@@ -4187,6 +4198,15 @@ type PropResultsResponse struct {
 		// not resolve under that spelling. Non-zero means the name join is losing data,
 		// which otherwise looks exactly like "no book quoted this player".
 		UnmatchedLineGroups *float64 `json:"unmatchedLineGroups,omitempty"`
+
+		// UnsupportedCategoryExamples A few of those, named ("<player or roster> <category>"). NBA only; [] elsewhere.
+		UnsupportedCategoryExamples []string `json:"unsupportedCategoryExamples,omitempty"`
+
+		// UnsupportedCategoryGroups Line groups in a category no box score grades (multi-player `combos`, award and
+		// team markets): never a join failure, so not counted in `unmatchedLineGroups`.
+		// Filled for NBA only; 0 for other sports, where those groups stay in the counters
+		// above. Absent from responses of API versions before it was added.
+		UnsupportedCategoryGroups *float64 `json:"unsupportedCategoryGroups,omitempty"`
 	} `json:"meta,omitempty"`
 	Success *bool `json:"success,omitempty"`
 }
@@ -5351,6 +5371,166 @@ type ServerNotice struct {
 //   - `SERVER_RESTART`: sent to open connections just before a restart.
 type ServerNoticeCode = string
 
+// SgpBatchMeta `meta` of a SgpBatchResponse.
+type SgpBatchMeta struct {
+	// DeadlineMs The per-parlay deadline used, in ms.
+	DeadlineMs *float64 `json:"deadlineMs,omitempty"`
+
+	// Parlays Parlays sent.
+	Parlays *float64 `json:"parlays,omitempty"`
+
+	// QuotesCached Quotes answered from the cache (a repeated parlay counts once).
+	QuotesCached *float64 `json:"quotesCached,omitempty"`
+
+	// QuotesMade Quotes that reached a book's price request (each counted one build).
+	QuotesMade *float64 `json:"quotesMade,omitempty"`
+
+	// QuotesPriced Quotes that priced (a repeated parlay counts once).
+	QuotesPriced *float64 `json:"quotesPriced,omitempty"`
+	Timestamp    *string  `json:"timestamp,omitempty"`
+}
+
+// SgpBatchMode `"book"`: every parlay on the one `book`. `"compare"`: every parlay on every
+// book (or `books`), as `compareSgp` prices one.
+type SgpBatchMode = string
+
+// SgpBatchParams Params for `batchSgp`.
+type SgpBatchParams struct {
+	// Book Mode `"book"` (required there): the one book every parlay is priced on.
+	Book *string `json:"book,omitempty"`
+
+	// Books Mode `"compare"`: the books to ask; default every book.
+	Books []string `json:"books,omitempty"`
+
+	// DeadlineMs How long each parlay waits for its books, 1000 to 15000 ms; default 6000.
+	DeadlineMs *float64 `json:"deadlineMs,omitempty"`
+
+	// Fair `true` adds our fair-price estimate to each parlay's result (SgpFairBlock).
+	Fair *bool `json:"fair,omitempty"`
+
+	// Fanduel As on `compareSgp`: `"cold"` (default) or `"skip"`.
+	Fanduel *string `json:"fanduel,omitempty"`
+
+	// Fresh `true` never uses a cached quote.
+	Fresh *bool `json:"fresh,omitempty"`
+
+	// Mode `"book"`: every parlay on the one `book`. `"compare"`: every parlay on every
+	// book (or `books`), as `compareSgp` prices one.
+	Mode *SgpBatchMode `json:"mode,omitempty"`
+
+	// Parlays At most 10 parlays in mode `"book"`, 4 in mode `"compare"`. A parlay
+	// repeated in one batch (same `eventId`, same legs in the same order) is
+	// priced once and reported for each copy.
+	Parlays []SgpBatchParlay `json:"parlays,omitempty"`
+}
+
+// SgpBatchParlay One parlay in a SgpBatchParams.
+type SgpBatchParlay struct {
+	// EventID OUR event id for the game, as `getOdds` gives it (as on `compareSgp`).
+	EventID *string `json:"eventId,omitempty"`
+
+	// Legs The legs `buildSgp` takes, 1 to 12.
+	Legs []SgpLeg `json:"legs,omitempty"`
+
+	// Ref Your label for the parlay (up to 100 characters), returned with its result.
+	Ref *string `json:"ref,omitempty"`
+}
+
+// SgpBatchResponse Response from `POST /api/v1/{sport}/sgp/batch`.
+type SgpBatchResponse struct {
+	// Meta `meta` of a SgpBatchResponse.
+	Meta *SgpBatchMeta `json:"meta,omitempty"`
+	Mode *string       `json:"mode,omitempty"`
+
+	// Results One per parlay, in request order.
+	Results []SgpBatchResult `json:"results,omitempty"`
+	Sport   *string          `json:"sport,omitempty"`
+	Success *bool            `json:"success,omitempty"`
+}
+
+// SgpBatchResult One parlay's answer in a SgpBatchResponse, in request order. The
+// fields after `status` depend on the batch's `mode`:
+//   - mode `"book"`: `book`, `bookStatus` and, as on a SgpCompareBook,
+//     `bookEventId`, `httpStatus`, `result` (the `/sgp/build` body), `cached`, `reason`;
+//   - mode `"compare"`: `best` and `books` (exactly what `compareSgp` returns).
+//
+// With `fair: true`, `fair` is on every `done` result (`null` when nothing
+// priced). A `not-started` parlay carries no fair block: `fair` is `null` in mode
+// `"book"` and absent in mode `"compare"`.
+type SgpBatchResult struct {
+	// Best Mode `"compare"`: the highest decimal price among the books that priced,
+	// or `null`.
+	Best *struct {
+		American *float64 `json:"american,omitempty"`
+		Book     *string  `json:"book,omitempty"`
+		Decimal  *float64 `json:"decimal,omitempty"`
+	} `json:"best,omitempty"`
+
+	// Book Mode `"book"`: the book priced.
+	Book *string `json:"book,omitempty"`
+
+	// BookEventID Mode `"book"`: the book's own event id for the game, once it was mapped.
+	BookEventID *string `json:"bookEventId,omitempty"`
+
+	// BookStatus What happened on one book in a comparison:
+	// - `priced`: `result` is the book's 200 body (`sgp` is its price).
+	// - `refused`: the book refused the parlay; `result` is its 422 body (`reasonCode`).
+	// - `unresolved`: a leg did not resolve on that book (for example a different
+	//   main line); `result` says which and why.
+	// - `busy`, `no-price`: that book produced no usable answer; retry later.
+	// - `timeout`: the book had not answered when `deadlineMs` ran out, or was not
+	//   reached in time.
+	// - `event-not-listed`: the book does not list this game for same game parlays.
+	// - `ambiguous-event`: two games match (a doubleheader without `-G2`), or the
+	//   book lists this matchup at a different start, so it is a different game.
+	// - `unsupported`: the book does not price this sport or one of the legs (`reason`).
+	// - `disabled`: that book's pricing is paused.
+	// - `skipped`: `fanduel: "skip"`.
+	//
+	// New statuses can appear: handle the ones you know and treat the rest as "no price".
+	BookStatus *SgpCompareBookStatus `json:"bookStatus,omitempty"`
+
+	// Books Mode `"compare"`: every book asked, each with its `status`.
+	Books []SgpCompareBook `json:"books,omitempty"`
+
+	// Cached Mode `"book"`: `true` when `result` is a cached quote (no build counted).
+	Cached  *bool   `json:"cached,omitempty"`
+	EventID *string `json:"eventId,omitempty"`
+
+	// Fair With `fair: true`: our estimate for this parlay, or `null` when nothing priced.
+	Fair *SgpFairBlock `json:"fair,omitempty"`
+
+	// HTTPStatus Mode `"book"`: the status `/sgp/build` would have answered with.
+	HTTPStatus *float64 `json:"httpStatus,omitempty"`
+
+	// Index The parlay's index in your `parlays` array.
+	Index *float64 `json:"index,omitempty"`
+
+	// LegsHash A hash of the sport and legs (as `meta.legsHash` on `compareSgp`).
+	LegsHash *string `json:"legsHash,omitempty"`
+
+	// Reason Mode `"book"`: why the book was left out or not priced, when there is no `result`.
+	Reason *string `json:"reason,omitempty"`
+
+	// Ref Your `ref`, when you sent one.
+	Ref *string `json:"ref,omitempty"`
+
+	// Result A book's `result` in a comparison: exactly the body `/sgp/build` returned for
+	// that book. Which fields are set depends on the book's `status`: a priced 200
+	// (`sgp`, `legs`, `meta`), a refused or unresolved 422 (`reasonCode`, `legs`,
+	// ...), a no-price or busy 503 (`code`, `legs`, `meta`), or a short
+	// `{ error, message }` (an unknown game, or too few legs resolved). Every field is
+	// therefore optional here: branch on the book's `status` first.
+	Result *SgpCompareBookResult `json:"result,omitempty"`
+
+	// Status `"done"`: priced or answered. `"not-started"`: this parlay's pricing
+	// would have begun more than about 20 seconds after the call began, so it was
+	// not priced (except by any book answered from a cached quote); its builds are
+	// given back while the minute they were counted in is still running. Send it
+	// again.
+	Status *string `json:"status,omitempty"`
+}
+
 // SgpBookSelection The book's own ids for a resolved SGP leg on DraftKings, Hard Rock, BetRivers,
 // Bally Bet and BetMGM. Hard Rock's, BetRivers' and Bally Bet's are strings of
 // digits; BetMGM's `marketId` reads `v1:<fixture>:<market>` or
@@ -5476,6 +5656,23 @@ type SgpBuildResponse struct {
 	// (e.g. `SELECTION_NOT_FOUND`).
 	FailureCodes []string `json:"failureCodes,omitempty"`
 
+	// Fair Our estimate of a same game parlay's price (`fair` on SgpBuildResponse
+	// and SgpCompareResponse), built from de-vigged leg probabilities. It is
+	// never a sportsbook's price: the book's own quote stays in `sgp`.
+	//
+	// The legs' probabilities are multiplied and adjusted by how the book itself
+	// priced these legs together: `basis.correlationFactor` is the product of the
+	// book's single prices divided by its parlay price (on compare, the median across
+	// the books that priced). That factor also keeps the book's parlay surcharge over
+	// its singles (`basis.marginAdjusted` is `false`), so the estimate removes the
+	// singles' vig, not that surcharge.
+	//
+	// `price` is `null`, with `why`, when any leg has no fair (`coverage.missingLegs`
+	// and each leg's `why` say which), when no book returned a usable single price
+	// for every leg or the factor fell outside 0.25 to 4, once the game has started,
+	// or when the fair could not be worked out in time.
+	Fair *SgpFairBlock `json:"fair,omitempty"`
+
 	// LegIndex Refused parlay, `line-*` codes only: the leg's index in your `legs` array.
 	LegIndex *float64         `json:"legIndex,omitempty"`
 	Legs     []SgpResolvedLeg `json:"legs,omitempty"`
@@ -5507,6 +5704,233 @@ type SgpBuildResponse struct {
 	// Sgp The computed parlay price from a successful `buildSgp` call.
 	Sgp     *SgpPrice `json:"sgp,omitempty"`
 	Success *bool     `json:"success,omitempty"`
+}
+
+// SgpCompareBook One book's answer in a SgpCompareResponse.
+type SgpCompareBook struct {
+	Book *string `json:"book,omitempty"`
+
+	// BookEventID The book's own event id for the game, once it was mapped.
+	BookEventID *string `json:"bookEventId,omitempty"`
+
+	// Cached `true` when `result` is a cached quote (no build was counted for it).
+	Cached *bool `json:"cached,omitempty"`
+
+	// HTTPStatus The status `/sgp/build` would have answered with, when the book was priced
+	// or refused.
+	HTTPStatus *float64 `json:"httpStatus,omitempty"`
+
+	// Label The book's display name (`"FanDuel"`, `"Hard Rock"`, ...).
+	Label *string `json:"label,omitempty"`
+
+	// Ms How long this book took, in ms (mapping and pricing).
+	Ms *float64 `json:"ms,omitempty"`
+
+	// Reason Why the book was left out or not priced, when there is no `result` to say it.
+	Reason *string `json:"reason,omitempty"`
+
+	// Result A book's `result` in a comparison: exactly the body `/sgp/build` returned for
+	// that book. Which fields are set depends on the book's `status`: a priced 200
+	// (`sgp`, `legs`, `meta`), a refused or unresolved 422 (`reasonCode`, `legs`,
+	// ...), a no-price or busy 503 (`code`, `legs`, `meta`), or a short
+	// `{ error, message }` (an unknown game, or too few legs resolved). Every field is
+	// therefore optional here: branch on the book's `status` first.
+	Result *SgpCompareBookResult `json:"result,omitempty"`
+
+	// Status What happened on one book in a comparison:
+	// - `priced`: `result` is the book's 200 body (`sgp` is its price).
+	// - `refused`: the book refused the parlay; `result` is its 422 body (`reasonCode`).
+	// - `unresolved`: a leg did not resolve on that book (for example a different
+	//   main line); `result` says which and why.
+	// - `busy`, `no-price`: that book produced no usable answer; retry later.
+	// - `timeout`: the book had not answered when `deadlineMs` ran out, or was not
+	//   reached in time.
+	// - `event-not-listed`: the book does not list this game for same game parlays.
+	// - `ambiguous-event`: two games match (a doubleheader without `-G2`), or the
+	//   book lists this matchup at a different start, so it is a different game.
+	// - `unsupported`: the book does not price this sport or one of the legs (`reason`).
+	// - `disabled`: that book's pricing is paused.
+	// - `skipped`: `fanduel: "skip"`.
+	//
+	// New statuses can appear: handle the ones you know and treat the rest as "no price".
+	Status *SgpCompareBookStatus `json:"status,omitempty"`
+}
+
+// SgpCompareBookResult A book's `result` in a comparison: exactly the body `/sgp/build` returned for
+// that book. Which fields are set depends on the book's `status`: a priced 200
+// (`sgp`, `legs`, `meta`), a refused or unresolved 422 (`reasonCode`, `legs`,
+// ...), a no-price or busy 503 (`code`, `legs`, `meta`), or a short
+// `{ error, message }` (an unknown game, or too few legs resolved). Every field is
+// therefore optional here: branch on the book's `status` first.
+type SgpCompareBookResult struct {
+	Code         *string          `json:"code,omitempty"`
+	Error        *string          `json:"error,omitempty"`
+	FailureCodes []string         `json:"failureCodes,omitempty"`
+	LegIndex     *float64         `json:"legIndex,omitempty"`
+	Legs         []SgpResolvedLeg `json:"legs,omitempty"`
+	LineEchoed   *float64         `json:"lineEchoed,omitempty"`
+	Message      *string          `json:"message,omitempty"`
+
+	// Meta `meta` of a book's `result` in a comparison: the build's meta, plus the cache
+	// label when the answer was a cached quote.
+	Meta       *SgpCompareResultMeta `json:"meta,omitempty"`
+	Pricing    *string               `json:"pricing,omitempty"`
+	ReasonCode *string               `json:"reasonCode,omitempty"`
+
+	// Sgp The computed parlay price from a successful `buildSgp` call.
+	Sgp     *SgpPrice `json:"sgp,omitempty"`
+	Success *bool     `json:"success,omitempty"`
+}
+
+// SgpCompareBookStatus What happened on one book in a comparison:
+//   - `priced`: `result` is the book's 200 body (`sgp` is its price).
+//   - `refused`: the book refused the parlay; `result` is its 422 body (`reasonCode`).
+//   - `unresolved`: a leg did not resolve on that book (for example a different
+//     main line); `result` says which and why.
+//   - `busy`, `no-price`: that book produced no usable answer; retry later.
+//   - `timeout`: the book had not answered when `deadlineMs` ran out, or was not
+//     reached in time.
+//   - `event-not-listed`: the book does not list this game for same game parlays.
+//   - `ambiguous-event`: two games match (a doubleheader without `-G2`), or the
+//     book lists this matchup at a different start, so it is a different game.
+//   - `unsupported`: the book does not price this sport or one of the legs (`reason`).
+//   - `disabled`: that book's pricing is paused.
+//   - `skipped`: `fanduel: "skip"`.
+//
+// New statuses can appear: handle the ones you know and treat the rest as "no price".
+type SgpCompareBookStatus = string
+
+// SgpCompareMeta `meta` of a SgpCompareResponse.
+type SgpCompareMeta struct {
+	// BooksAsked Books in `books`.
+	BooksAsked *float64 `json:"booksAsked,omitempty"`
+
+	// BooksCached Books answered from a cached quote.
+	BooksCached *float64 `json:"booksCached,omitempty"`
+
+	// BooksPriced Books with `status: "priced"`.
+	BooksPriced *float64 `json:"booksPriced,omitempty"`
+
+	// BooksQuoted Books that reached a book's price request (each counted one build).
+	BooksQuoted *float64 `json:"booksQuoted,omitempty"`
+
+	// DeadlineMs The deadline used, in ms.
+	DeadlineMs *float64 `json:"deadlineMs,omitempty"`
+
+	// LegsHash A hash of the sport and legs: the same parlay always hashes the same.
+	LegsHash  *string `json:"legsHash,omitempty"`
+	Timestamp *string `json:"timestamp,omitempty"`
+}
+
+// SgpCompareParams Params for `compareSgp`.
+type SgpCompareParams struct {
+	// Books The books to ask (`"fanduel"`, `"draftkings"`, `"hardrock"`,
+	// `"betrivers"`, `"ballybet"`, `"betmgm"`); default every book.
+	Books []string `json:"books,omitempty"`
+
+	// DeadlineMs How long to wait for the books, 1000 to 15000 ms; default 6000. Keep the
+	// client's `timeout` above it.
+	DeadlineMs *float64 `json:"deadlineMs,omitempty"`
+
+	// EventID OUR event id for the game, as `getOdds` gives it:
+	// `{sport}:{Away}@{Home}-{YYYYMMDD}`, with `-G2` for the second game of a
+	// doubleheader. Not a book's id from `getSgpEvents`.
+	EventID *string `json:"eventId,omitempty"`
+
+	// Fair `true` adds our fair-price estimate as `fair`, built from every book that
+	// priced (SgpFairBlock).
+	Fair *bool `json:"fair,omitempty"`
+
+	// Fanduel `"cold"` (the default): FanDuel prices in a fresh browser session and is
+	// given at least 12000 ms. `"skip"`: FanDuel is left out (`status: "skipped"`).
+	Fanduel *string `json:"fanduel,omitempty"`
+
+	// Fresh `true` never uses a cached quote: every book is priced now.
+	Fresh *bool `json:"fresh,omitempty"`
+
+	// Legs The same legs `buildSgp` takes, 1 to 12, sent to every book.
+	Legs []SgpLeg `json:"legs,omitempty"`
+}
+
+// SgpCompareResponse Response from `POST /api/v1/{sport}/sgp/compare`.
+type SgpCompareResponse struct {
+	// Best The highest decimal price among the books that priced, or `null` when none did.
+	Best *struct {
+		American *float64 `json:"american,omitempty"`
+		Book     *string  `json:"book,omitempty"`
+		Decimal  *float64 `json:"decimal,omitempty"`
+	} `json:"best,omitempty"`
+
+	// Books Every book asked, priced or not, each with its `status`.
+	Books []SgpCompareBook `json:"books,omitempty"`
+
+	// EventID Our event id, as sent.
+	EventID *string `json:"eventId,omitempty"`
+
+	// Fair With `fair: true`: our estimate from every book that priced, or `null` when
+	// no book priced. Absent without `fair: true`.
+	Fair *SgpFairBlock `json:"fair,omitempty"`
+
+	// Legs The legs, as sent.
+	Legs []SgpLeg `json:"legs,omitempty"`
+
+	// Meta `meta` of a SgpCompareResponse.
+	Meta    *SgpCompareMeta `json:"meta,omitempty"`
+	Sport   *string         `json:"sport,omitempty"`
+	Success *bool           `json:"success,omitempty"`
+}
+
+// SgpCompareResultMeta `meta` of a book's `result` in a comparison: the build's meta, plus the cache
+// label when the answer was a cached quote.
+type SgpCompareResultMeta struct {
+	// Book The book the legs were resolved and priced against (`"fanduel"`, `"draftkings"`, ...).
+	Book *string `json:"book,omitempty"`
+
+	// CacheAgeMs With `cached`: the quote's age in ms.
+	CacheAgeMs *float64 `json:"cacheAgeMs,omitempty"`
+
+	// Cached `true` when this answer is a quote the book priced for exactly these legs
+	// and this game in the last 15 seconds (`pricedAt` still says when).
+	Cached *bool `json:"cached,omitempty"`
+
+	// CatalogAgeMs The MINIMUM age, in ms, the catalog data already had at `resolvedAt`; the
+	// true age can be higher. Omitted when the age is unknown. API v2.348.0.
+	CatalogAgeMs *float64 `json:"catalogAgeMs,omitempty"`
+	CommenceTime *string  `json:"commence_time,omitempty"`
+
+	// EventID The event id as the API echoes it: a number on FanDuel, a string on every
+	// other book (digits, or BetMGM NFL's `"6:43680"`).
+	EventID *json.RawMessage `json:"eventId,omitempty"`
+
+	// LineUnverified `true` on a 200 that priced at least one leg whose line the book's
+	// response does not confirm (FanDuel's alternate N-or-more strikeout rungs;
+	// every BetMGM NHL leg, whose price answer names no leg). Absent when every
+	// line was confirmed. API v2.348.0.
+	LineUnverified *bool `json:"lineUnverified,omitempty"`
+
+	// LineUnverifiedLegs With `lineUnverified`: the indexes of those legs in your `legs` array.
+	// API v2.348.0.
+	LineUnverifiedLegs []float64 `json:"lineUnverifiedLegs,omitempty"`
+	Matchup            *string   `json:"matchup,omitempty"`
+
+	// PriceRequestedAt When the price request went out, on the API server's clock. Present on
+	// every 200, and on a refused 422, a no-price 503 or a legacy 502 only when
+	// FanDuel returned a response. Absent on a leg-resolution 422 (nothing was
+	// priced). API v2.348.0.
+	PriceRequestedAt *string `json:"priceRequestedAt,omitempty"`
+
+	// PricedAt When FanDuel's answer came back, on the API server's clock. Never earlier
+	// than `priceRequestedAt`; this is the quote time to use. Same presence as
+	// `priceRequestedAt`. API v2.348.0.
+	PricedAt *string `json:"pricedAt,omitempty"`
+
+	// ResolvedAt When the legs were resolved against FanDuel's catalog, before pricing.
+	// API v2.348.0.
+	ResolvedAt *string `json:"resolvedAt,omitempty"`
+
+	// Timestamp The same instant as `resolvedAt`: when the legs were resolved, BEFORE
+	// pricing. It is not the quote time; use `pricedAt` for that.
+	Timestamp *string `json:"timestamp,omitempty"`
 }
 
 // SgpEvent One bookable event returned by `getSgpEvents`.
@@ -5544,6 +5968,122 @@ type SgpEventsResponse struct {
 	Success *bool   `json:"success,omitempty"`
 }
 
+// SgpFairBlock Our estimate of a same game parlay's price (`fair` on SgpBuildResponse
+// and SgpCompareResponse), built from de-vigged leg probabilities. It is
+// never a sportsbook's price: the book's own quote stays in `sgp`.
+//
+// The legs' probabilities are multiplied and adjusted by how the book itself
+// priced these legs together: `basis.correlationFactor` is the product of the
+// book's single prices divided by its parlay price (on compare, the median across
+// the books that priced). That factor also keeps the book's parlay surcharge over
+// its singles (`basis.marginAdjusted` is `false`), so the estimate removes the
+// singles' vig, not that surcharge.
+//
+// `price` is `null`, with `why`, when any leg has no fair (`coverage.missingLegs`
+// and each leg's `why` say which), when no book returned a usable single price
+// for every leg or the factor fell outside 0.25 to 4, once the game has started,
+// or when the fair could not be worked out in time.
+type SgpFairBlock struct {
+	Basis *struct {
+		// Correlation `"book-implied"`: read off the books' own quotes.
+		Correlation *string `json:"correlation,omitempty"`
+
+		// CorrelationFactor The correlation factor used, or `null` when none was usable.
+		CorrelationFactor *float64 `json:"correlationFactor,omitempty"`
+
+		// CorrelationSources Each priced book's own factor (`null` when that book's quote gave none).
+		CorrelationSources []struct {
+			Book   *string  `json:"book,omitempty"`
+			Factor *float64 `json:"factor,omitempty"`
+		} `json:"correlationSources,omitempty"`
+
+		// Legs `"fair-v1"`: each leg's `source` says whether Pinnacle anchored it.
+		Legs *string `json:"legs,omitempty"`
+
+		// MarginAdjusted `false`: the factor keeps the book's parlay surcharge over its singles.
+		MarginAdjusted *bool `json:"marginAdjusted,omitempty"`
+	} `json:"basis,omitempty"`
+
+	// BooksDisagree Some leg's fair is one other books' prices disagree with (each leg says which).
+	BooksDisagree *bool `json:"booksDisagree,omitempty"`
+
+	// ComputedAt ISO 8601: when the estimate was worked out.
+	ComputedAt *string `json:"computedAt,omitempty"`
+	Coverage   *struct {
+		Legs *float64 `json:"legs,omitempty"`
+
+		// MissingLegs Indexes (in your `legs` array) of the legs with no fair.
+		MissingLegs []float64 `json:"missingLegs,omitempty"`
+		WithFair    *float64  `json:"withFair,omitempty"`
+	} `json:"coverage,omitempty"`
+
+	// Estimate Always `true`: this is an estimate, not a book's price.
+	Estimate *bool `json:"estimate,omitempty"`
+
+	// Independent The same legs treated as unrelated (no correlation), or `null`.
+	Independent *SgpFairPrice `json:"independent,omitempty"`
+
+	// Label `"Owls Insight estimate, not a sportsbook price"`.
+	Label *string      `json:"label,omitempty"`
+	Legs  []SgpFairLeg `json:"legs,omitempty"`
+
+	// Price The fair price of the parlay with the books' correlation, or `null` with `why`.
+	Price *SgpFairPrice `json:"price,omitempty"`
+
+	// Why Why `price` is `null`, or `null` when there is a price. Known values:
+	// `missing-leg-fair`, `no-correlation`, `not-a-probability`, `in-play`. New
+	// values can appear.
+	Why *string `json:"why,omitempty"`
+}
+
+// SgpFairLeg One leg's fair probability in an SgpFairBlock: our Fair v1 fair for the
+// leg, the one `/api/v1/{sport}/fair` serves for a moneyline, spread or total (a
+// spread or total only at that fair's own number, never a whole number) and the
+// one `/api/v1/{sport}/props/ev` scores a player prop against (x.5 lines).
+type SgpFairLeg struct {
+	// AgeMs Age in ms of the fair board the leg was read from, or `null`.
+	AgeMs *float64 `json:"ageMs,omitempty"`
+
+	// BooksDisagree Other books' prices disagree with this leg's fair.
+	BooksDisagree *bool `json:"booksDisagree,omitempty"`
+
+	// LegIndex The leg's index in your `legs` array.
+	LegIndex *float64 `json:"legIndex,omitempty"`
+
+	// Line The number the fair is at (the spread or total point, the prop line);
+	// `null` for a moneyline and without a fair.
+	Line *float64 `json:"line,omitempty"`
+
+	// PinnacleLine With `why: "line-not-at-pinnacle-number"`: the number Pinnacle has, for
+	// the leg's side.
+	PinnacleLine *float64 `json:"pinnacleLine,omitempty"`
+
+	// Probability The leg's fair (no-vig) probability, or `null` with `why` when it has none.
+	Probability *float64 `json:"probability,omitempty"`
+
+	// Source How the fair was made: `"pinnacle"` (Pinnacle-anchored) or, for a
+	// moneyline, `"consensus"` (three or more books agreed). `null` without a fair.
+	Source *string `json:"source,omitempty"`
+
+	// Why Why the leg has no fair, or `null` when it has one. Known values:
+	// `fair-board-unavailable` (no board, or one too old to use),
+	// `game-not-on-fair-board`, `ambiguous-game`, `team-not-matched`,
+	// `side-not-matched`, `no-line`, `whole-number-line`,
+	// `line-not-at-pinnacle-number` (see `pinnacleLine`),
+	// `category-not-on-fair-board`, `prop-not-on-fair-board`, `ambiguous-player`,
+	// `no-fair`, `in-play`, `fair-unavailable` (not worked out in time). New
+	// values can appear.
+	Why *string `json:"why,omitempty"`
+}
+
+// SgpFairPrice A probability with its prices: decimal odds, and American odds rounded to a
+// whole number.
+type SgpFairPrice struct {
+	American    *float64 `json:"american,omitempty"`
+	Decimal     *float64 `json:"decimal,omitempty"`
+	Probability *float64 `json:"probability,omitempty"`
+}
+
 // SgpFdSelection The FanDuel selection a resolved SGP leg maps to. `marketId` is specific to
 // the FanDuel state that priced it (New Jersey); `selectionId` is the same in
 // every state.
@@ -5551,6 +6091,11 @@ type SgpFdSelection struct {
 	MarketID    *string  `json:"marketId,omitempty"`
 	SelectionID *float64 `json:"selectionId,omitempty"`
 }
+
+// SgpPeriod One period of an NHL game: the 1st, 2nd or 3rd period. A moneyline, spread or
+// total leg with a `period` prices that period instead of the full game; only
+// Hard Rock prices period legs, and every other book refuses them (422).
+type SgpPeriod = string
 
 // SgpPrice The computed parlay price from a successful `buildSgp` call.
 type SgpPrice struct {
@@ -5596,6 +6141,33 @@ type ShootingSplit struct {
 	Attempted  *float64 `json:"attempted,omitempty"`
 	Made       *float64 `json:"made,omitempty"`
 	Percentage *float64 `json:"percentage,omitempty"`
+}
+
+// SoccerPlayDetail Soccer: a play is a match incident (type `Goal`, `Own goal`, `Penalty`, `Yellow Card`,
+// `Red Card`, `Substitution`), with the match minute, the player and, per type, the assist
+// (goal), the player going off (substitution: the play's `player` is the one coming on) or
+// the card. `clock` on the play is the minute as shown ("45+2"); `secondsRemaining` and
+// `wallclock` are null; `period` is the half (1, 2; 3 and 4 extra time; 5 penalties).
+type SoccerPlayDetail struct {
+	// AddedMinutes Stoppage-time minutes (2 for "45+2"); null when none.
+	AddedMinutes *float64      `json:"addedMinutes,omitempty"`
+	Assist       *SoccerPlayer `json:"assist,omitempty"`
+	Card         *string       `json:"card,omitempty"`
+
+	// Code The source's own numeric incident code.
+	Code   *float64 `json:"code,omitempty"`
+	Minute *float64 `json:"minute,omitempty"`
+
+	// Note The source's note on the incident when it carries one.
+	Note      *string       `json:"note,omitempty"`
+	Player    *SoccerPlayer `json:"player,omitempty"`
+	PlayerOut *SoccerPlayer `json:"playerOut,omitempty"`
+}
+
+// SoccerPlayer One player on a soccer play; `id` is null when the source names the player without an id.
+type SoccerPlayer struct {
+	ID   *string `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
 }
 
 // SoccerScoreDetail Soccer result breakdown. `home.score`/`away.score` (and `score` on the stats
