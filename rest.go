@@ -879,9 +879,9 @@ func (c *Client) BatchSgp(ctx context.Context, sport string, p SgpBatchParams) (
 // MVP); a 503 SGP_FEATURE_DISABLED (the history is not switched on yet;
 // RetryAfter 60 s); a 503 SGP_HISTORY_UNAVAILABLE (the history could not be read
 // just then; RetryAfter 5 s); a 429 (the plan rate limit, or the concurrent
-// request limit); a 400 for the game named both ways or not at all, a window
-// over 7 days, a Limit outside 1 to 500 or a malformed LegsHash (Message says
-// which).
+// request limit); a 400 for a parameter the API cannot read, for example the
+// game named both ways or not at all, a window over 7 days, a Limit outside 1 to
+// 500 or a malformed LegsHash (Message says which).
 //
 // It is a read, so with [WithRetry] its 429s and 503s are retried like any other
 // GET.

@@ -49,7 +49,7 @@ All notable changes to this module are documented here. The format follows
   each priced book's `Result.Meta` on `CompareSgp` and `BatchSgp`
   (`SgpCompareResultMeta.LegsHash`): the key the price history files the parlay under.
 - `SGP_HISTORY_UNAVAILABLE` (503, `ErrServiceBusy`, `RetryAfter` 5 s: the history could not
-  be read just then) joins the SGP codes. A plan below MVP is a 403 `SGP_TIER_REQUIRED`, and
+  be read just then) arrives as the API sends it. A plan below MVP is a 403 `SGP_TIER_REQUIRED`, and
   a 503 `SGP_FEATURE_DISABLED` (`"feature": "history"`) means the history is not switched
   on yet.
 - Soccer play-by-play: `GetPlays(ctx, "soccer", ...)` and `Subscription.Plays` with
@@ -61,9 +61,9 @@ All notable changes to this module are documented here. The format follows
 ### Changed
 
 - A 403 keeps the API's code when it is `SGP_TIER_REQUIRED` (a same game parlay
-  comparison or batch on a plan below MVP, or the fair price on the Rookie plan), as it
-  already did for `DataKeyForbiddenCode`. Every other 403 is still `FORBIDDEN`, and every
-  403 still matches `ErrForbidden`. `SGP_FEATURE_DISABLED` (503, 60 s),
+  comparison, batch or price history on a plan below MVP, or the fair price on the Rookie
+  plan), as it already did for `DataKeyForbiddenCode`. Every other 403 is still
+  `FORBIDDEN`, and every 403 still matches `ErrForbidden`. `SGP_FEATURE_DISABLED` (503, 60 s),
   `SGP_COMPARE_TOO_MANY_BOOKS` and `SGP_BATCH_TOO_LARGE` (429 without Retry-After: waiting
   never helps, ask for fewer books or parlays) arrive as the API sends them.
 - `SgpCompareParams`, `SgpBatchParams` and `SgpBatchParlay` are hand-written like

@@ -27,8 +27,10 @@ const SgpNoPriceCode = "no-price"
 
 const sgpNoPriceRetryAfter = 2 * time.Second
 
-// sgpErrorCodes are the same game parlay endpoints' SGP_* codes. A 403 keeps its
-// code when it is one of these (SGP_TIER_REQUIRED), as the TypeScript SDK does.
+// sgpErrorCodes are the same game parlay endpoints' SGP_* codes, every one the
+// TypeScript SDK's SGP_ERROR_CODES lists. A 403 keeps its code when it is one of
+// these (SGP_TIER_REQUIRED), as the TypeScript SDK does; a 429 or 503 keeps the
+// API's code whatever it is.
 var sgpErrorCodes = map[string]bool{
 	"SGP_RATE_LIMIT": true, "SGP_RATE_LIMIT_UNAVAILABLE": true, "SGP_BUSY": true,
 	"SGP_BOOK_DISABLED": true, "SGP_BOOK_UNSUPPORTED": true, "SGP_BOOK_SPORT_UNSUPPORTED": true,

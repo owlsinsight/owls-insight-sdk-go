@@ -551,9 +551,9 @@ type SgpBatchParams struct {
 
 // SgpHistoryParams selects GetSgpHistory. Name the game one way, never both: by
 // OUR event id (EventID), or by a book and that book's own event id (Book and
-// BookEventID). The API checks the fields and answers a 400 (Message says which)
-// for the game named both ways or not at all, a window over 7 days, a Limit
-// outside 1 to 500 or a malformed LegsHash.
+// BookEventID). The API checks the fields and answers a 400 (Message says which),
+// for example for the game named both ways or not at all, a window over 7 days, a
+// Limit outside 1 to 500 or a malformed LegsHash.
 type SgpHistoryParams struct {
 	// EventID is OUR event id for the game, as GetOdds gives it
 	// ({sport}:{Away}@{Home}-{YYYYMMDD}).
@@ -563,7 +563,11 @@ type SgpHistoryParams struct {
 	// that book's quotes for it.
 	Book string
 	// BookEventID is the book's own event id, as GetSgpEvents lists it and BuildSgp
-	// takes it (SgpBuildParams.EventID): FanDuel's numeric id as its digits.
+	// takes it (SgpBuildParams.EventID): FanDuel's numeric id as its digits, every
+	// other book's id unquoted. SgpEvent.EventID and SgpBuildMeta.EventID are raw
+	// JSON, so decode them (or reuse the EventID you sent to BuildSgp): their bytes
+	// keep a string's quotes, and a quoted id matches no quote, so the history comes
+	// back empty rather than refused.
 	BookEventID string
 	// LegsHash narrows the history to one parlay: the 16 hex characters of
 	// Meta.LegsHash on a priced BuildSgp answer (or on CompareSgp and BatchSgp).
