@@ -223,7 +223,7 @@ A new v2 book needs no SDK release; pass its key as the URL has it, including on
 starts with a digit (`4casters`, `888sport`). `owls.V2EventName(book)` gives its
 WebSocket event (`<book>-v2-update`, except BetOnline's `betonline-realtime`). Some
 books are REST only and send no event: 888sport, bookmaker, bovada, hardrock, novig,
-polymarketus, stake, thescore and underdog. `mma` is REST only on kalshi and polymarket, whose events
+pick6, polymarketus, stake, thescore and underdog. `mma` is REST only on kalshi and polymarket, whose events
 carry their other sports. Every v2 event decodes into `owls.V2Update`. Books differ
 in what they send, so `Markets` (a list of `{marketId, hash, kind, data}` or a count),
 `Timestamp` (epoch milliseconds or an ISO string), `Events`, `Data`, `Raw` and the
@@ -251,6 +251,16 @@ full, err := c.GetV2Markets(ctx, "polymarketus", "nfl", "nfl", "full-*")
 Polymarket: its own events, ids and prices, probabilities in 0..1 sent as strings. It is
 REST only, and `league` is required for every sport (`GetV2Leagues`; season-long futures
 sit under `<league>-futures`, such as `nfl-futures`).
+
+**DraftKings Pick6** (book `pick6`) is a pick'em board, not a sportsbook: no odds, only
+More/Less picks on players' stat lines, each side with a multiplier. Every sport is one
+league, so pass an empty league. `Data` holds Pick6's own responses: `pickgroups` (the
+sport's pick groups and their games) and `cards-<pickGroupId>-<pickCategoryId>` (one
+category's player cards). In a card's `activePickableMarkets[].activeSelections`,
+`statLinePropositionId` 1 is More and 2 is Less, each with its `standingsMultiplier`.
+`GetV2Markets(ctx, "pick6", "nba", "", "cards-*")` returns every category without the
+pick-group list. It is REST only and read about every 60 seconds; `Meta.Status` reads
+`stale` after 240 seconds.
 
 **Fanatics Markets order books** arrive on their own event,
 `owls.EventFanaticsMarketsBooksV2Update` (`fanaticsmarkets-books-v2-update`, decoded into
