@@ -3493,9 +3493,16 @@ type PinnacleRealtimeSyncPayload struct {
 // containing the same sport key (filters are tolerated for forward
 // compatibility).
 //
-// Multi-league sports (tennis, soccer, esports, handball, mma) use slugified
-// Pinnacle league names as filter values (e.g. `'atp-singles'`).
+// Multi-league sports (tennis, soccer, esports, handball, mma, basketball) use
+// slugified Pinnacle league names as filter values (e.g. `'atp-singles'`, or
+// `'europe-euroleague'` for basketball); list them with `getPinnacleV2Leagues`.
 type PinnacleV2BookSubscription struct {
+	// Basketball Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Basketball *V2LeagueFilter `json:"basketball,omitempty"`
+
 	// Esports Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
 	// receive every league for that sport, or an array of league keys to
 	// filter to a specific set. League keys come from the corresponding
@@ -5107,15 +5114,18 @@ type RealtimeStreamPosition struct {
 
 // RecentGame defines model for RecentGame.
 type RecentGame struct {
-	AwayTeam   *string  `json:"awayTeam,omitempty"`
-	Date       *float64 `json:"date,omitempty"`
-	HomeSide   *bool    `json:"homeSide,omitempty"`
-	HomeTeam   *string  `json:"homeTeam,omitempty"`
-	MatchID    *string  `json:"matchId,omitempty"`
-	Result     *string  `json:"result,omitempty"`
-	Score      *string  `json:"score,omitempty"`
-	Surface    *string  `json:"surface,omitempty"`
-	Tournament *string  `json:"tournament,omitempty"`
+	AwayTeam *string  `json:"awayTeam,omitempty"`
+	Date     *float64 `json:"date,omitempty"`
+	HomeSide *bool    `json:"homeSide,omitempty"`
+	HomeTeam *string  `json:"homeTeam,omitempty"`
+
+	// MatchID The source's match id. Absent on `/api/v1/history/game-stats-detail`, which serves no
+	// supplier ids (nor `homeSlug`/`awaySlug` on its `h2h`).
+	MatchID    *string `json:"matchId,omitempty"`
+	Result     *string `json:"result,omitempty"`
+	Score      *string `json:"score,omitempty"`
+	Surface    *string `json:"surface,omitempty"`
+	Tournament *string `json:"tournament,omitempty"`
 }
 
 // ResultsResponse Response from GET /{sport}/results (completed games).
@@ -7080,8 +7090,9 @@ type V2Subscription struct {
 	// containing the same sport key (filters are tolerated for forward
 	// compatibility).
 	//
-	// Multi-league sports (tennis, soccer, esports, handball, mma) use slugified
-	// Pinnacle league names as filter values (e.g. `'atp-singles'`).
+	// Multi-league sports (tennis, soccer, esports, handball, mma, basketball) use
+	// slugified Pinnacle league names as filter values (e.g. `'atp-singles'`, or
+	// `'europe-euroleague'` for basketball); list them with `getPinnacleV2Leagues`.
 	Pinnacle *PinnacleV2BookSubscription `json:"pinnacle,omitempty"`
 
 	// Polymarket Per-book subscription shape for Polymarket v2 events.

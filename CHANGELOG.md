@@ -4,6 +4,24 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.11.0] - 2026-11-03
+
+### Added
+
+- `PinnacleV2BookSubscription.Basketball`: Pinnacle v2 international basketball (EuroLeague,
+  EuroCup, Champions League, ACB, Bundesliga, French Cup, Lega A, Polish Basket Liga, CBA,
+  B.League, KBL, NBL; the NBA, NCAAB and WNBA keep their own keys). Multi-league: list the
+  league keys with `GetV2Leagues(ctx, "pinnacle", "basketball")` (e.g. `europe-euroleague`),
+  read one with `GetV2(ctx, "pinnacle", "basketball", "europe-euroleague")`, and subscribe
+  for `pinnacle-v2-update` with `Basketball` set.
+
+### Changed
+
+- The vendored spec is regenerated from the JS SDK 0.91.0 spec and the current API manifest:
+  `RecentGame.MatchID` is documented as absent on `/api/v1/history/game-stats-detail`,
+  `pick6` is in the v2 book lists, the same game parlay descriptions name Caesars, and the
+  `GetPlays` description names soccer's period start and end markers.
+
 ## [0.10.0] - 2026-10-28
 
 ### Added

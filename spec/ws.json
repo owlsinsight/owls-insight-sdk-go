@@ -62,8 +62,8 @@
   },
   "info": {
     "title": "Owls Insight WebSocket",
-    "version": "0.89.0",
-    "x-owls-manifest-commit": "f1edb339b"
+    "version": "0.91.0",
+    "x-owls-manifest-commit": "306be0da"
   },
   "serverEvents": {
     "1xbet-update": {
