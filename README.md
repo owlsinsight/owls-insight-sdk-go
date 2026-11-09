@@ -193,6 +193,13 @@ for snap, err := range c.IterHistoryOdds(ctx, owls.HistoryOddsParams{EventID: id
 stop after a short page, and retry a 429 or 503 up to 3 times per page by default
 (`PageOptions`).
 
+Past UFC bouts also answer from a third-party archive (2019 on) when an `mma:` event id
+has no captured history: `Meta.Source` is `third_party_archive`, `Meta.MatchedEventID`
+names the archived bout, and `Meta.ArchiveNote` says why an answer is empty. Those rows
+carry `Phase` (`open`, `close`, or `current`, the last price the archive kept) and, for a
+book listed per state, `BookRegion`; `RecordedAt` is nil, since the archive kept no quote
+times.
+
 `GetHistorySplits` returns how a game's betting splits moved: each reading of a book's
 handle and ticket percentages, with the line or price at that moment, oldest first.
 Ask for one game by `EventID` (the `eventId` from `GetOdds`), or for a sport by `Sport`
@@ -222,8 +229,8 @@ for marketID, raw := range markets {
 A new v2 book needs no SDK release; pass its key as the URL has it, including one that
 starts with a digit (`4casters`, `888sport`). `owls.V2EventName(book)` gives its
 WebSocket event (`<book>-v2-update`, except BetOnline's `betonline-realtime`). Some
-books are REST only and send no event: 888sport, bookmaker, bovada, fanatics, hardrock,
-novig, pick6, polymarketus, stake, thescore and underdog. `mma` is REST only on kalshi and polymarket, whose events
+books are REST only and send no event: 888sport, bookmaker, hardrock, novig, pick6,
+polymarketus, stake and underdog. `mma` is REST only on kalshi and polymarket, whose events
 carry their other sports. Every v2 event decodes into `owls.V2Update`. Books differ
 in what they send, so `Markets` (a list of `{marketId, hash, kind, data}` or a count),
 `Timestamp` (epoch milliseconds or an ISO string), `Events`, `Data`, `Raw` and the

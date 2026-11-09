@@ -344,8 +344,12 @@
             "type": "string"
           },
           "plusMinus": {
+            "description": "null for NCAAB: the college box score has no +/-.",
             "format": "double",
-            "type": "number"
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "points": {
             "format": "double",
@@ -877,6 +881,7 @@
           "1xbet",
           "bet105",
           "bet365",
+          "betfair_sportsbook",
           "betmgm",
           "betonline",
           "betr",
@@ -886,19 +891,26 @@
           "caesars",
           "circa",
           "draftkings",
+          "espnbet",
           "fanatics",
           "fanaticsmarkets",
           "fanduel",
           "hardrock",
+          "holland_casino",
           "kalshi",
           "lowvig",
           "novig",
           "pinnacle",
           "pinnacle_mqtt",
+          "pointsbet",
           "polymarket",
           "ps3838",
+          "rushbet",
           "south_point",
           "stations",
+          "sugarhouse",
+          "titanbets",
+          "unibet",
           "westgate",
           "wynn"
         ]
@@ -1030,6 +1042,19 @@
           "last_update",
           "markets"
         ]
+      },
+      "BovadaV2BookSubscription": {
+        "description": "Per-sport filter for `v2: { bovada: {...} }`. Every sport is one league: pass `'*'`.",
+        "properties": {
+          "mlb": {},
+          "mma": {},
+          "nba": {},
+          "ncaab": {},
+          "ncaaf": {},
+          "nfl": {},
+          "nhl": {}
+        },
+        "type": "object"
       },
       "CS2MapResult": {
         "properties": {
@@ -4149,6 +4174,280 @@
         },
         "type": "object"
       },
+      "FanaticsV2BookSubscription": {
+        "description": "Per-sport filter for `v2: { fanatics: {...} }`. nba, nfl, nhl, mlb, ncaaf and ncaab are one\nleague each: pass `'*'`. soccer: `'*'` or competition keys (`['mls']`).",
+        "properties": {
+          "mlb": {},
+          "nba": {},
+          "ncaab": {},
+          "ncaaf": {},
+          "nfl": {},
+          "nhl": {},
+          "soccer": {}
+        },
+        "type": "object"
+      },
+      "FliffV2BookSubscription": {
+        "description": "Per-sport filter for `v2: { fliff: {...} }`. nfl, ncaaf, cfl, nba, ncaab, nhl and mlb are one\nleague each: pass `'*'`. soccer, tennis, mma and boxing: `'*'` or league keys from\n`getFliffV2Leagues` (`['ufc']`).",
+        "properties": {
+          "boxing": {},
+          "cfl": {},
+          "mlb": {},
+          "mma": {},
+          "nba": {},
+          "ncaab": {},
+          "ncaaf": {},
+          "nfl": {},
+          "nhl": {},
+          "soccer": {},
+          "tennis": {}
+        },
+        "type": "object"
+      },
+      "FootballDefensiveStats": {
+        "properties": {
+          "passesDefended": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "qbHits": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "qbHurries": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "sacks": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "soloTackles": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tacklesForLoss": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "totalTackles": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "touchdowns": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "FootballFumbleStats": {
+        "properties": {
+          "fumbles": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lost": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "recovered": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "FootballInterceptionStats": {
+        "properties": {
+          "interceptions": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "touchdowns": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yards": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "FootballKickingStats": {
+        "properties": {
+          "extraPointAttempts": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "extraPointsMade": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "fieldGoalAttempts": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "fieldGoalPct": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "fieldGoalsMade": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "longFieldGoal": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "points": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "FootballPassingStats": {
+        "properties": {
+          "adjQbr": {
+            "description": "Total QBR.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "attempts": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "completions": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "interceptions": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "qbRating": {
+            "description": "Passer rating.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "sackYards": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "sacks": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "touchdowns": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yards": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yardsPerAttempt": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "FootballPlayDetail": {
         "description": "NFL and NCAAF: the down and distance before (`down`…) and after (`endDown`…) the play.",
         "properties": {
@@ -4269,6 +4568,217 @@
           "isPenalty",
           "isTurnover"
         ]
+      },
+      "FootballPuntingStats": {
+        "properties": {
+          "grossAverage": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "inside20": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "long": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "punts": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "touchbacks": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yards": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "FootballReceivingStats": {
+        "properties": {
+          "long": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "receptions": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "targets": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "touchdowns": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yards": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yardsPerReception": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "FootballReturnStats": {
+        "description": "Kick returns and punt returns.",
+        "properties": {
+          "long": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "returns": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "touchdowns": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yards": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yardsPerReturn": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "FootballRushingStats": {
+        "properties": {
+          "attempts": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "long": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "touchdowns": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yards": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "yardsPerAttempt": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "FootballStats": {
+        "description": "One object per box-score group the player recorded a stat in. A missing group means nothing was recorded there, not zeros.",
+        "properties": {
+          "defensive": {
+            "$ref": "#/components/schemas/FootballDefensiveStats"
+          },
+          "fumbles": {
+            "$ref": "#/components/schemas/FootballFumbleStats"
+          },
+          "interceptions": {
+            "$ref": "#/components/schemas/FootballInterceptionStats"
+          },
+          "kickReturns": {
+            "$ref": "#/components/schemas/FootballReturnStats"
+          },
+          "kicking": {
+            "$ref": "#/components/schemas/FootballKickingStats"
+          },
+          "passing": {
+            "$ref": "#/components/schemas/FootballPassingStats"
+          },
+          "puntReturns": {
+            "$ref": "#/components/schemas/FootballReturnStats"
+          },
+          "punting": {
+            "$ref": "#/components/schemas/FootballPuntingStats"
+          },
+          "receiving": {
+            "$ref": "#/components/schemas/FootballReceivingStats"
+          },
+          "rushing": {
+            "$ref": "#/components/schemas/FootballRushingStats"
+          }
+        },
+        "type": "object"
       },
       "FourcastersV2BookSubscription": {
         "description": "Per-sport league filter for `v2: { '4casters': {...} }`.",
@@ -5429,6 +5939,10 @@
               "archiveBuiltAt": {
                 "type": "string"
               },
+              "archiveNote": {
+                "description": "On `third_party_archive` answers that come back empty: why, and what to ask instead.",
+                "type": "string"
+              },
               "ignored_params": {
                 "description": "Query parameters the endpoint did not honour, sorted. Absent when none were.",
                 "items": {
@@ -5443,11 +5957,17 @@
                 "description": "Why, keyed by parameter name; only for entries that have a reason.",
                 "type": "object"
               },
+              "matchedEventId": {
+                "description": "On `third_party_archive` answers: the archived bout's own event id the request was matched to.",
+                "type": "string"
+              },
               "source": {
+                "description": "`third_party_archive` (Nov 2026): an MMA event id with no captured history, answered from the\nUFC odds archive (2019 on). Its rows carry `phase` and a null `recordedAt`; `matchedEventId`\nnames the archived bout the id was matched to, and `archiveNote` explains an empty answer.",
                 "type": "string",
                 "x-extensible-enum": [
                   "archive",
-                  "live"
+                  "live",
+                  "third_party_archive"
                 ]
               }
             },
@@ -5513,14 +6033,17 @@
             "type": "string"
           },
           "statType": {
-            "description": "Stat type discriminator. null = BasketballStats, \"batter\"|\"team_batting\" = BattingStats, \"pitcher\"|\"team_pitching\" = PitchingStats.",
+            "description": "Stat type discriminator. null = BasketballStats (NBA, NCAAB), \"batter\"|\"team_batting\" = BattingStats,\n\"pitcher\"|\"team_pitching\" = PitchingStats (MLB), \"player\" = FootballStats (NFL, NCAAF),\n\"skater\" = HockeySkaterStats, \"goalie\" = HockeyGoalieStats (NHL). `stats` is null when the player did not play.",
             "type": [
               "string",
               "null"
             ],
             "x-extensible-enum": [
               "batter",
+              "goalie",
               "pitcher",
+              "player",
+              "skater",
               "team_batting",
               "team_pitching"
             ]
@@ -5535,6 +6058,15 @@
               },
               {
                 "$ref": "#/components/schemas/PitchingStats"
+              },
+              {
+                "$ref": "#/components/schemas/FootballStats"
+              },
+              {
+                "$ref": "#/components/schemas/HockeySkaterStats"
+              },
+              {
+                "$ref": "#/components/schemas/HockeyGoalieStats"
               },
               {
                 "type": "null"
@@ -5848,6 +6380,89 @@
           "data"
         ]
       },
+      "HockeyGoalieStats": {
+        "properties": {
+          "evenStrengthSaves": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "goalsAgainst": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "penaltyMinutes": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "powerPlaySaves": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "savePct": {
+            "description": "0 to 1 (0.931).",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "saves": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "shootoutSaves": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "shootoutShotsAgainst": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "shortHandedSaves": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "shotsAgainst": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "timeOnIce": {
+            "description": "\"MM:SS\".",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "HockeyPlayDetail": {
         "description": "NHL: the players involved by role, the ice position, the shot or penalty.",
         "properties": {
@@ -5989,6 +6604,161 @@
           "id",
           "name",
           "sweater"
+        ]
+      },
+      "HockeySkaterStats": {
+        "properties": {
+          "assists": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "blockedShots": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "evenStrengthTimeOnIce": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "faceoffPct": {
+            "description": "0 to 100.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "faceoffsLost": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "faceoffsWon": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "giveaways": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "goals": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hits": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "penalties": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "penaltyMinutes": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "plusMinus": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "points": {
+            "description": "goals + assists; null when either is missing.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "powerPlayTimeOnIce": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shifts": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "shootoutGoals": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "shortHandedTimeOnIce": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shots": {
+            "description": "Shots on goal.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "shotsMissed": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "takeaways": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "timeOnIce": {
+            "description": "\"MM:SS\".",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object",
+        "x-owls-required": [
+          "points"
         ]
       },
       "HomeAway": {
@@ -7100,7 +7870,7 @@
         ]
       },
       "MyBookieV2BookSubscription": {
-        "description": "Per-book subscription shape for MyBookie v2 events.\n\nMyBookie is single-league per sport (mlb, nba) — pass `'*'`. Arrays\nare accepted and coerced to `'*'` server-side (V2_SINGLE_LEAGUE_PAIRS).",
+        "description": "Per-book subscription shape for MyBookie v2 events.\n\nMyBookie is single-league per sport (mlb, nba, nhl, nfl, ncaab, ncaaf) —\npass `'*'`.",
         "properties": {
           "mlb": {
             "$ref": "#/components/schemas/V2LeagueFilter",
@@ -7109,6 +7879,22 @@
           "nba": {
             "$ref": "#/components/schemas/V2LeagueFilter",
             "description": "NBA — pass `'*'` (single-league stream)."
+          },
+          "ncaab": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "NCAAB — pass `'*'` (single-league stream)."
+          },
+          "ncaaf": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "NCAAF — pass `'*'` (single-league stream)."
+          },
+          "nfl": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "NFL — pass `'*'` (single-league stream)."
+          },
+          "nhl": {
+            "$ref": "#/components/schemas/V2LeagueFilter",
+            "description": "NHL — pass `'*'` (single-league stream)."
           }
         },
         "type": "object"
@@ -7538,12 +8324,28 @@
           "book": {
             "type": "string"
           },
+          "bookRegion": {
+            "description": "Only on UFC third-party archive rows: the state of a state-licensed book's price (NJ, CO, PA, TN), or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "inPlay": {
             "description": "Whether the game was in play when the row was captured.\n\nThree states, and the third is an ABSENT KEY: `true` in play, `false`\npre-game, absent when the phase was not recorded. Absent covers every row\nwritten before 2026-09-20, every esports row, and rows from sources that\ndo not derive a phase. Do NOT read a missing key as `false`: that files\nunknown-phase rows as pre-game.",
             "type": "boolean"
           },
           "market": {
             "type": "string"
+          },
+          "phase": {
+            "description": "Only on UFC third-party archive rows (`meta.source` `third_party_archive`): which price of the\nbout this is. `open` and `close` are that book's opening and closing price; `current` is the last\nprice the archive kept for that book, with no time (the only price it kept for most bouts\nbefore November 2023). Absent on every captured row.",
+            "type": "string",
+            "x-extensible-enum": [
+              "close",
+              "current",
+              "open"
+            ]
           },
           "point": {
             "description": "The line (spread or total) as stored: a decimal string such as \"-1.50\",\nbecause the archive keeps two-decimal precision as text. Prefer\n`pointValue`, which is the same line already parsed. null for moneylines."
@@ -7570,10 +8372,14 @@
             ]
           },
           "recordedAt": {
-            "type": "string"
+            "description": "When the row was captured, as stored. `null` only on rows served from the UFC third-party\narchive (`meta.source` `third_party_archive`, MMA event ids with no captured history): that\narchive keeps no quote time, and none is invented. See `phase` for which price such a row is.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "recordedAtUtc": {
-            "description": "The capture time in UTC (ISO, ends in Z), or `null` when its clock cannot be known (rows stored\nbefore 2026-03-28, and book `pinnacle` before 2026-04-10). `recordedAt` is the time as stored: most\nrows stored before 2026-09-16 hold US Eastern wall time even though the value ends in Z. Use this\none for time arithmetic. Added Oct 2026: absent on an API older than that.",
+            "description": "The capture time in UTC (ISO, ends in Z), or `null` when its clock cannot be known (rows stored\nbefore 2026-03-28, and book `pinnacle` before 2026-04-10) and on UFC third-party archive rows.\n`recordedAt` is the time as stored: most rows stored before 2026-09-16 hold US Eastern wall time\neven though the value ends in Z. Use this one for time arithmetic. Added Oct 2026: absent on an\nAPI older than that.",
             "type": [
               "string",
               "null"
@@ -16053,6 +16859,19 @@
           "data"
         ]
       },
+      "TheScoreV2BookSubscription": {
+        "description": "Per-sport filter for `v2: { thescore: {...} }`. mlb, nfl, ncaaf, nba and nhl are one league\neach: pass `'*'`. soccer and tennis: `'*'` or competition keys from `getTheScoreV2Leagues`.",
+        "properties": {
+          "mlb": {},
+          "nba": {},
+          "ncaaf": {},
+          "nfl": {},
+          "nhl": {},
+          "soccer": {},
+          "tennis": {}
+        },
+        "type": "object"
+      },
       "ThunderpickV2BookSubscription": {
         "description": "Per-book subscription shape for Thunderpick v2 events.\n\nEach Thunderpick sport is a single stream (no per-league\nsegmentation). Pass `'*'` per sport you want. Arrays are accepted\nand coerced to `'*'` server-side.",
         "properties": {
@@ -16472,8 +17291,16 @@
             "$ref": "#/components/schemas/BetusV2BookSubscription",
             "description": "Delivers `betus-v2-update`. Each `markets[].data` is a whole EVENT."
           },
+          "bovada": {
+            "$ref": "#/components/schemas/BovadaV2BookSubscription",
+            "description": "Bovada. Delivers `bovada-v2-update`. Every sport is one league: pass `'*'`\n(`{ nfl: '*' }`, `{ mma: '*' }`). The events that changed, each whole, in\nbatches each second."
+          },
           "draftkings": {
             "$ref": "#/components/schemas/DraftKingsV2BookSubscription"
+          },
+          "fanatics": {
+            "$ref": "#/components/schemas/FanaticsV2BookSubscription",
+            "description": "Fanatics Sportsbook. Delivers `fanatics-v2-update`. US sports are one league: pass\n`'*'`; soccer takes `'*'` or competition keys. The games that changed, each whole,\nin batches each second."
           },
           "fanaticsmarkets": {
             "$ref": "#/components/schemas/FanaticsMarketsV2BookSubscription",
@@ -16481,6 +17308,10 @@
           },
           "fanduel": {
             "$ref": "#/components/schemas/FanDuelV2BookSubscription"
+          },
+          "fliff": {
+            "$ref": "#/components/schemas/FliffV2BookSubscription",
+            "description": "Fliff. Delivers `fliff-v2-update`. US sports and cfl are one league: pass `'*'`;\nsoccer, tennis, mma and boxing take `'*'` or league keys (`{ mma: ['ufc'] }`). The\ngames that changed, each whole, in batches each second."
           },
           "kalshi": {
             "$ref": "#/components/schemas/KalshiV2BookSubscription"
@@ -16501,6 +17332,10 @@
           "propbuilder": {
             "$ref": "#/components/schemas/PropbuilderV2BookSubscription",
             "description": "Prop Builder. Delivers `propbuilder-v2-update`. Every sport is one\nleague: pass `'*'` (`{ nfl: '*' }`). Pregame player props and game markets,\nodds DECIMAL; changed entries are pushed within seconds, each one whole."
+          },
+          "thescore": {
+            "$ref": "#/components/schemas/TheScoreV2BookSubscription",
+            "description": "theScore Bet (Ontario). Delivers `thescore-v2-update`: each competition that changed,\nwhole. Single-league sports take `'*'`; soccer and tennis take `'*'` or competition keys."
           },
           "thunderpick": {
             "$ref": "#/components/schemas/ThunderpickV2BookSubscription"
@@ -18186,8 +19021,8 @@
   "info": {
     "description": "Generated from the Owls Insight API manifest and the owls-insight-ts SDK types. Schemas are deliberately lenient: every field is optional, enums are open (x-extensible-enum), and unknown fields may appear. Decode accordingly.",
     "title": "Owls Insight API",
-    "version": "0.91.0",
-    "x-owls-manifest-commit": "306be0da"
+    "version": "0.95.0",
+    "x-owls-manifest-commit": "a7bb68361"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -18368,6 +19203,7 @@
                 "1xbet",
                 "5dimes",
                 "bet365",
+                "betfair_sportsbook",
                 "betmgm",
                 "betonline",
                 "betr",
@@ -18376,21 +19212,29 @@
                 "circa",
                 "consensus",
                 "draftkings",
+                "espnbet",
                 "fanduel",
                 "gtbets",
                 "hardrock",
+                "holland_casino",
                 "kalshi",
+                "lowvig",
                 "mybookie",
                 "novig",
                 "pinnacle",
                 "pinnacle_mqtt",
+                "pointsbet",
                 "polymarket",
                 "ps3838",
+                "rushbet",
                 "south_point",
                 "sportsbetting_ag",
                 "stations",
                 "statsllc",
+                "sugarhouse",
+                "titanbets",
                 "topbet",
+                "unibet",
                 "westgate",
                 "wynn"
               ]
@@ -18863,7 +19707,7 @@
     },
     "/api/v1/history/odds": {
       "get": {
-        "description": "Returns the odds snapshots recorded for an archived game, optionally narrowed to a book, market and side, or reduced to opening lines.\n\nEach row is the book main line for that market and side at that moment: one line per book, market and side. Alternate rungs and team totals are not stored; a period market (first_half_h2h, first_half_spreads, first_half_totals) is stored under its own key, never under totals or spreads. Rows recorded before the one-line rule was enforced at capture, and rows from the pinnacle_mqtt source, can carry such lines under totals or spreads for some books; dataQuality.mainLineNote repeats this on every response.\n\ninPlay is true when the game was in play when the row was captured and false when it was pre-game. It is absent when the phase was not recorded: every row captured before it was introduced, every cs2 row, and ps3838 or older pinnacle_mqtt rows.\n\nTo keep pre-game rows only, compare recordedAtUtc against commenceTime from /history/games; where inPlay is present it is the same test as the book reported it, and is right on a delayed start where the clock alone is not.\n\nrecordedAt is the time as stored, US Eastern for most rows stored before 2026-09-16 despite the Z; recordedAtUtc is the UTC capture time, null where unknown (most rows before 2026-03-28, pinnacle before 2026-04-10).\n\npinnacle_mqtt and ps3838 are the real-time Pinnacle sources; pinnacle is the polled book. They are stored as separate books; pinnacle_mqtt holds tennis pre-game from 2026-09-23, from the real-time feed.\n\npriceDecimal carries the exact upstream decimal price for decimal-native books and is null otherwise.\n\nmeta.source is archive when a completed game is served from the archive copy and live when it is read on request; the payload shape is identical either way, and meta.archiveBuiltAt says when the archive copy was built.\n\npointValue is point as a number (null when the market has no point); point itself keeps the type it always had.\n\nRows whose price could not be stored accurately are excluded; dataQuality explains the filter on every response.\n\nA plural spelling (books, markets, sides) carrying a comma-separated list or an unknown value is not applied; it is reported in meta.ignored_params with the reason. Each filter takes one value; the singular spelling with an unknown value returns 400.\n\nQuery parameters this endpoint does not read are reported in meta.ignored_params rather than rejected; a value the endpoint read but could not apply (an unknown market, a comma list where one value is allowed, a book alias with no valid key) is reported too, with the reason in meta.ignored_reasons.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.\n\nPass the event's eventId field, the {sport}:{away}@{home}-{YYYYMMDD} form. The numeric id field beside it is the sportsbook's own and returns 400 here rather than an empty result. The date in eventId is the UTC start date, except for MLB games starting from 2026-10-11T10:00Z, which carry the US Eastern date; earlier MLB games keep the UTC date. Before that change, an MLB game starting at 8 PM ET or later and the next day's game between the same teams could share one eventId. NBA and NHL stay UTC-dated. NBA has about one pair of games a season sharing an eventId. NHL has about one pair a season of the same teams on one date, home and away swapped: two eventIds, but the /api/v1/history endpoints match both orderings, so each id returns both games' rows.",
+        "description": "Returns the odds snapshots recorded for an archived game, optionally narrowed to a book, market and side, or reduced to opening lines.\n\nEach row is the book main line for that market and side at that moment: one line per book, market and side. Alternate rungs and team totals are not stored; a period market (first_half_h2h, first_half_spreads, first_half_totals) is stored under its own key, never under totals or spreads. Rows recorded before the one-line rule was enforced at capture, and rows from the pinnacle_mqtt source, can carry such lines under totals or spreads for some books; dataQuality.mainLineNote repeats this on every response.\n\ninPlay is true when the game was in play when the row was captured and false when it was pre-game. It is absent when the phase was not recorded: every row captured before it was introduced, every cs2 row, and ps3838 or older pinnacle_mqtt rows.\n\nTo keep pre-game rows only, compare recordedAtUtc against commenceTime from /history/games; where inPlay is present it is the same test as the book reported it, and is right on a delayed start where the clock alone is not.\n\nrecordedAt is the time as stored, US Eastern for most rows stored before 2026-09-16 despite the Z; recordedAtUtc is the UTC capture time, null where unknown (most rows before 2026-03-28, pinnacle before 2026-04-10).\n\npinnacle_mqtt and ps3838 are the real-time Pinnacle sources; pinnacle is the polled book. They are stored as separate books; pinnacle_mqtt holds tennis pre-game from 2026-09-23, from the real-time feed.\n\npriceDecimal carries the exact upstream decimal price for decimal-native books and is null otherwise.\n\nmeta.source is archive when a completed game is served from the archive copy and live when it is read on request; the payload shape is identical either way, and meta.archiveBuiltAt says when the archive copy was built.\n\npointValue is point as a number (null when the market has no point); point itself keeps the type it always had.\n\nUFC bouts (event ids mma:{away}@{home}-YYYYMMDD) with no captured rows are answered from a third-party odds archive (2019-04 on) when it holds the bout: meta.source is third_party_archive, meta.matchedEventId names the archived bout, markets are h2h and totals (point is the rounds line), and each row adds phase (open, close or current) and bookRegion (the state of a state-licensed book, or null). The archive keeps no quote times, so recordedAt, recordedAtUtc and priceDecimal are null; opening=true returns the open rows, and meta.archiveNote says what was left out or why an answer is empty.\n\nRows whose price could not be stored accurately are excluded; dataQuality explains the filter on every response.\n\nA plural spelling (books, markets, sides) carrying a comma-separated list or an unknown value is not applied; it is reported in meta.ignored_params with the reason. Each filter takes one value; the singular spelling with an unknown value returns 400.\n\nQuery parameters this endpoint does not read are reported in meta.ignored_params rather than rejected; a value the endpoint read but could not apply (an unknown market, a comma list where one value is allowed, a book alias with no valid key) is reported too, with the reason in meta.ignored_reasons.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.\n\nPass the event's eventId field, the {sport}:{away}@{home}-{YYYYMMDD} form. The numeric id field beside it is the sportsbook's own and returns 400 here rather than an empty result. The date in eventId is the UTC start date, except for MLB games starting from 2026-10-11T10:00Z, which carry the US Eastern date; earlier MLB games keep the UTC date. Before that change, an MLB game starting at 8 PM ET or later and the next day's game between the same teams could share one eventId. NBA and NHL stay UTC-dated. NBA has about one pair of games a season sharing an eventId. NHL has about one pair a season of the same teams on one date, home and away swapped: two eventIds, but the /api/v1/history endpoints match both orderings, so each id returns both games' rows.",
         "operationId": "getHistoryOdds",
         "parameters": [
           {
@@ -18884,6 +19728,7 @@
               "x-extensible-enum": [
                 "1xbet",
                 "bet365",
+                "betfair_sportsbook",
                 "betmgm",
                 "betonline",
                 "betr",
@@ -18891,16 +19736,24 @@
                 "caesars",
                 "circa",
                 "draftkings",
+                "espnbet",
                 "fanduel",
                 "hardrock",
+                "holland_casino",
                 "kalshi",
+                "lowvig",
                 "novig",
                 "pinnacle",
                 "pinnacle_mqtt",
+                "pointsbet",
                 "polymarket",
                 "ps3838",
+                "rushbet",
                 "south_point",
                 "stations",
+                "sugarhouse",
+                "titanbets",
+                "unibet",
                 "westgate",
                 "wynn"
               ]
@@ -19249,6 +20102,7 @@
               "x-extensible-enum": [
                 "1xbet",
                 "bet365",
+                "betfair_sportsbook",
                 "betmgm",
                 "betonline",
                 "betr",
@@ -19256,16 +20110,24 @@
                 "caesars",
                 "circa",
                 "draftkings",
+                "espnbet",
                 "fanduel",
                 "hardrock",
+                "holland_casino",
                 "kalshi",
+                "lowvig",
                 "novig",
                 "pinnacle",
                 "pinnacle_mqtt",
+                "pointsbet",
                 "polymarket",
                 "ps3838",
+                "rushbet",
                 "south_point",
                 "stations",
+                "sugarhouse",
+                "titanbets",
+                "unibet",
                 "westgate",
                 "wynn"
               ]
@@ -19501,7 +20363,7 @@
     },
     "/api/v1/history/stats": {
       "get": {
-        "description": "Returns archived player box score rows, for one game or for one player across games.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.\n\nAt least one of eventId or playerName is required.",
+        "description": "Returns archived player box score rows, one per player per game, for one game or for one player across games. Box scores are archived for NBA, NCAAB, MLB, NFL, NCAAF and NHL.\n\nAt least one of eventId or playerName is required.\n\nstats depends on the sport and is null when didNotPlay is true. NBA and NCAAB: minutes, points, rebounds, assists, steals, blocks, turnovers, fouls, plusMinus (null for NCAAB, whose box score has no plus/minus), and fg, threePoint and freeThrow as { made, attempted }. MLB: a batter or team_batting row (statType) has atBats, runs, hits, rbi, homeRuns, walks, strikeouts, battingAvg, obp, slg; a pitcher or team_pitching row has inningsPitched, hitsAllowed, runsAllowed, earnedRuns, walksAllowed, strikeouts, homeRunsAllowed, pitchCount, pitchStrikes, era.\n\nNFL and NCAAF: statType is player and stats has one object per stat group the player recorded a stat in, a group he is absent from being omitted (nothing recorded there, not zero): passing { completions, attempts, yards, yardsPerAttempt, touchdowns, interceptions, sacks, sackYards, adjQbr, qbRating }, rushing { attempts, yards, yardsPerAttempt, touchdowns, long }, receiving { receptions, yards, yardsPerReception, touchdowns, long, targets }, fumbles { fumbles, lost, recovered }, defensive { totalTackles, soloTackles, sacks, tacklesForLoss, passesDefended, qbHits, touchdowns }, interceptions { interceptions, yards, touchdowns }, kickReturns and puntReturns { returns, yards, yardsPerReturn, long, touchdowns }, kicking { fieldGoalsMade, fieldGoalAttempts, fieldGoalPct, longFieldGoal, extraPointsMade, extraPointAttempts, points }, punting { punts, yards, grossAverage, touchbacks, inside20, long }. adjQbr is the total QBR, qbRating the passer rating. NCAAF passing has no sacks, sackYards or qbRating, and NCAAF defensive has qbHurries in place of qbHits.\n\nNHL: a skater row (statType skater) has goals, assists, points, plusMinus, shots (on goal), shotsMissed, hits, blockedShots, takeaways, giveaways, faceoffsWon, faceoffsLost, faceoffPct, penalties, penaltyMinutes, shifts, shootoutGoals, and timeOnIce, powerPlayTimeOnIce, shortHandedTimeOnIce and evenStrengthTimeOnIce as MM:SS text. A goalie row (statType goalie) has goalsAgainst, shotsAgainst, saves, savePct (a fraction, for example 0.931), evenStrengthSaves, powerPlaySaves, shortHandedSaves, shootoutSaves, shootoutShotsAgainst, timeOnIce, penaltyMinutes.\n\nNFL, NCAAF and NHL values are numbers, null where the box score shows none. A row of these sports with no stored line serves stats null.\n\nHistorical endpoints share a per-key in-flight limit that is lower than the general concurrent-request limit. A request beyond it returns 429 with a Retry-After header giving the delay in seconds; wait that long and resend.\n\n503 with a Retry-After header means the archive could not serve that request: the query was too expensive to run in one request, or the archive read path was busy. Wait the indicated seconds before resending; if it repeats, narrow the request with the filters this endpoint accepts.\n\nPage one event at a time with limit and offset and stop when a page comes back shorter than limit. Do not fan out one request per book or market in parallel.",
         "operationId": "getHistoryStats",
         "parameters": [
           {
@@ -19592,7 +20454,7 @@
             "description": "OK"
           }
         },
-        "summary": "Returns archived player box score rows, for one game or for one player across games.",
+        "summary": "Returns archived player box score rows, one per player per game, for one game or for one player across games. Box scores are archived for NBA, NCAAB, MLB, NFL, NCAAF and NHL.",
         "tags": [
           "Historical data"
         ],
@@ -19937,7 +20799,7 @@
     },
     "/api/v1/scores/live": {
       "get": {
-        "description": "Returns live games across every supported sport in one call, with current score, period and status.\n\nScore changes for games in play are also pushed on the scores-update WebSocket event, opt-in with scores in the subscription, using this endpoint's event ids. That event carries a lean view (status with the clock, teams, score); this endpoint has the full event. A push fires when the score, the state, the period or the running flag of the clock changes, never on every clock tick.\n\n503 until the first scoreboard has been collected.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), Intermission (any other break between periods) or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (status.period stays the period just played), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute; 0:00 in an intermission) and status.clock carries it as secondsRemaining (0 in an intermission) with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL and NCAAF between plays, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was true at the venue (the read, less the league feed's own edge-cache age, which for the NHL is up to 19 seconds): tick secondsRemaining down from asOf locally while running. While status.clock is present, status.period and status.detail are taken from the same clock read, so the three always agree; the clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half; the match minute is status.displayClock, e.g. 67 or 45+2), Half Time (status.period 1), Extra Time (status.period null: the feed does not say which of its two periods is on; the play-by-play does), Break (between the periods of extra time, status.period null) or Penalties (status.period 5). A phase without a label reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
+        "description": "Returns live games across every supported sport in one call, with current score, period and status.\n\nScore changes for games in play are also pushed on the scores-update WebSocket event, opt-in with scores in the subscription, using this endpoint's event ids. That event carries a lean view (status with the clock, teams, score); this endpoint has the full event. A push fires when the score, the state, the period or the running flag of the clock changes, and, for a clock that cannot say whether it is running (status.clock.running null), when its reading moves; a clock you can count forward is never pushed on every tick.\n\n503 until the first scoreboard has been collected.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), Intermission (any other break between periods) or OT (period 5 for every overtime; overtimes are not numbered). NCAAB plays two halves: H1 and H2, Halftime (period 1), Intermission (before an overtime) or OT (period 3 and up: each overtime is a period). NHL gives P1 to P3, Intermission between periods (status.period stays the period just played), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute; 0:00 in an intermission) and status.clock carries it as secondsRemaining (0 in an intermission) with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL, NCAAF and NCAAB, whose clock is published in steps as plays are logged, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was true at the venue (the read, less the league feed's own edge-cache age, which for the NHL is up to 19 seconds): tick secondsRemaining down from asOf locally while running. While status.clock is present, status.period and status.detail are taken from the same clock read, so the three always agree; the clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half; the match minute is status.displayClock, e.g. 67 or 45+2), Half Time (status.period 1), Extra Time (status.period null: the feed does not say which of its two periods is on; the play-by-play does), Break (between the periods of extra time, status.period null) or Penalties (status.period 5). A phase without a label reads Live with status.period null, as does a college basketball game whose clock was not read. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
         "operationId": "getScores",
         "responses": {
           "200": {
@@ -20986,7 +21848,7 @@
     },
     "/api/v1/{sport}/props": {
       "get": {
-        "description": "Returns the merged player props board for a sport: every game with its props grouped per sportsbook, with each book's freshness reported in meta.\n\nQuery parameters this endpoint does not read are reported in meta.ignored_params rather than rejected; a value the endpoint read but could not apply (an unknown market, a comma list where one value is allowed, a book alias with no valid key) is reported too, with the reason in meta.ignored_reasons.\n\nUnknown book keys inside books are dropped and the applied list is meta.requestedBooks.\n\nmeta.books reports each requested book with lastUpdate, ageSeconds and a status of ok, stale or no-data; ageSeconds is the time since that book last published, not the age of its prices.\n\nThere is no aggregate status on purpose: a book whose feed stops disappears from booksReturned instead of ageing, so a roll-up would read ok for a dead book.\n\navailableBooks is the static catalogue; booksReturned is what contributed to this response.\n\nmarketStructure is present only when the book published one (over_under, milestone, single_sided or pick_one). Absent means unknown, never over_under: on an integer line, over 20 and 20+ disagree at exactly 20.\n\nKalshi props quote the takeable price: overPrice and underPrice are the ask a buyer pays now, overPriceMid and underPriceMid are the bid/ask midpoint, and overPriceBasis and underPriceBasis say per side whether the served price is takeable or, when no ask was resting, midpoint. A midpoint is a fair-value estimate, not a price anyone can trade at. These four fields appear on Kalshi props only; every other book's posted price is takeable by construction.",
+        "description": "Returns the merged player props board for a sport: every game with its props grouped per sportsbook, with each book's freshness reported in meta.\n\nQuery parameters this endpoint does not read are reported in meta.ignored_params rather than rejected; a value the endpoint read but could not apply (an unknown market, a comma list where one value is allowed, a book alias with no valid key) is reported too, with the reason in meta.ignored_reasons.\n\nUnknown book keys inside books are dropped and the applied list is meta.requestedBooks.\n\nmeta.books reports each requested book with lastUpdate, ageSeconds and a status of ok, stale or no-data; ageSeconds is the time since that book last published, not the age of its prices.\n\nPer-line tracking, on books whose feed runs it (novig and draftkings in this release): firstSeenAt is when that line (player, category, market structure) first appeared at the book, lineSince is since when its current line has held (a point move resets it, a price move does not), and a line the book stops listing while the game stays on its board comes back once as the last row seen with withdrawn: true, withdrawnAt and withdrawnReason (suspended when the book marked it unavailable, absent when it left the fetch), for at most five minutes and only with include_withdrawn=true. These stamps change only on such a transition, never because a fetch found nothing changed. A whole game leaving the board produces no withdrawn rows.\n\nmeta.books.{book}.pullLagSeconds is how quickly that book's feed can notice a pulled line, by game state, from its own fetch cadence (novig: 3 s live, 6 s within three hours of the start, 90 s otherwise; draftkings: 5 s for markets on its live feed, 180 s for pregame-only markets). It is a property of the feed, not a promise about the book, and it is null for a book whose feed does not run the tracker.\n\nThere is no aggregate status on purpose: a book whose feed stops disappears from booksReturned instead of ageing, so a roll-up would read ok for a dead book.\n\navailableBooks is the static catalogue; booksReturned is what contributed to this response.\n\nmarketStructure is present only when the book published one (over_under, milestone, single_sided or pick_one). Absent means unknown, never over_under: on an integer line, over 20 and 20+ disagree at exactly 20.\n\nKalshi props quote the takeable price: overPrice and underPrice are the ask a buyer pays now, overPriceMid and underPriceMid are the bid/ask midpoint, and overPriceBasis and underPriceBasis say per side whether the served price is takeable or, when no ask was resting, midpoint. A midpoint is a fair-value estimate, not a price anyone can trade at. These four fields appear on Kalshi props only; every other book's posted price is takeable by construction.",
         "operationId": "getProps",
         "parameters": [
           {
@@ -21150,6 +22012,14 @@
                 "novig",
                 "pinnacle"
               ]
+            }
+          },
+          {
+            "description": "true keeps the lines a book pulled in the last few minutes, served as the last row seen with withdrawn: true, withdrawnAt and withdrawnReason (absent or suspended). Default false: a pulled line simply leaves the board on the producer's next cycle. Only books whose feed runs the per-line tracker (novig and draftkings) carry these rows; also accepted as includeWithdrawn.",
+            "in": "query",
+            "name": "include_withdrawn",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -22406,7 +23276,7 @@
     },
     "/api/v1/{sport}/scores/live": {
       "get": {
-        "description": "Returns live games for one sport with current score, period and status.\n\nScore changes for games in play are also pushed on the scores-update WebSocket event, opt-in with scores in the subscription, using this endpoint's event ids. That event carries a lean view (status with the clock, teams, score); this endpoint has the full event. A push fires when the score, the state, the period or the running flag of the clock changes, never on every clock tick.\n\nAn empty events array with hasScheduledGames true means games are scheduled but none has started.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), Intermission (any other break between periods) or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (status.period stays the period just played), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute; 0:00 in an intermission) and status.clock carries it as secondsRemaining (0 in an intermission) with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL and NCAAF between plays, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was true at the venue (the read, less the league feed's own edge-cache age, which for the NHL is up to 19 seconds): tick secondsRemaining down from asOf locally while running. While status.clock is present, status.period and status.detail are taken from the same clock read, so the three always agree; the clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half; the match minute is status.displayClock, e.g. 67 or 45+2), Half Time (status.period 1), Extra Time (status.period null: the feed does not say which of its two periods is on; the play-by-play does), Break (between the periods of extra time, status.period null) or Penalties (status.period 5). A phase without a label reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
+        "description": "Returns live games for one sport with current score, period and status.\n\nScore changes for games in play are also pushed on the scores-update WebSocket event, opt-in with scores in the subscription, using this endpoint's event ids. That event carries a lean view (status with the clock, teams, score); this endpoint has the full event. A push fires when the score, the state, the period or the running flag of the clock changes, and, for a clock that cannot say whether it is running (status.clock.running null), when its reading moves; a clock you can count forward is never pushed on every tick.\n\nAn empty events array with hasScheduledGames true means games are scheduled but none has started.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), Intermission (any other break between periods) or OT (period 5 for every overtime; overtimes are not numbered). NCAAB plays two halves: H1 and H2, Halftime (period 1), Intermission (before an overtime) or OT (period 3 and up: each overtime is a period). NHL gives P1 to P3, Intermission between periods (status.period stays the period just played), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute; 0:00 in an intermission) and status.clock carries it as secondsRemaining (0 in an intermission) with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL, NCAAF and NCAAB, whose clock is published in steps as plays are logged, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was true at the venue (the read, less the league feed's own edge-cache age, which for the NHL is up to 19 seconds): tick secondsRemaining down from asOf locally while running. While status.clock is present, status.period and status.detail are taken from the same clock read, so the three always agree; the clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half; the match minute is status.displayClock, e.g. 67 or 45+2), Half Time (status.period 1), Extra Time (status.period null: the feed does not say which of its two periods is on; the play-by-play does), Break (between the periods of extra time, status.period null) or Penalties (status.period 5). A phase without a label reads Live with status.period null, as does a college basketball game whose clock was not read. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.",
         "operationId": "getSportScores",
         "parameters": [
           {
@@ -22990,7 +23860,7 @@
     },
     "/api/v1/{sport}/stats": {
       "get": {
-        "description": "Returns per-game team stats, score and status for every game on a date: live, scheduled and finished.\n\nCovers the current US Eastern day's matches: live, scheduled and finished (a finished match stays for 24 hours from its start). Use the history endpoints for older games.\n\ndate is compared with each game's start time in US Eastern time.\n\nscore is null for a scheduled game. For soccer it never includes penalty shootout goals: soccerDetail carries regulation, extraTime, penalties and decidedBy.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), Intermission (any other break between periods) or OT (period 5 for every overtime; overtimes are not numbered). NHL gives P1 to P3, Intermission between periods (status.period stays the period just played), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute; 0:00 in an intermission) and status.clock carries it as secondsRemaining (0 in an intermission) with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL and NCAAF between plays, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was true at the venue (the read, less the league feed's own edge-cache age, which for the NHL is up to 19 seconds): tick secondsRemaining down from asOf locally while running. While status.clock is present, status.period and status.detail are taken from the same clock read, so the three always agree; the clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half; the match minute is status.displayClock, e.g. 67 or 45+2), Half Time (status.period 1), Extra Time (status.period null: the feed does not say which of its two periods is on; the play-by-play does), Break (between the periods of extra time, status.period null) or Penalties (status.period 5). A phase without a label reads Live with status.period null, as does college basketball. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.\n\nA teamStats pair the source did not measure is null or absent, never 0.",
+        "description": "Returns per-game team stats, score and status for every game on a date: live, scheduled and finished.\n\nCovers the current US Eastern day's matches: live, scheduled and finished (a finished match stays for 24 hours from its start). Use the history endpoints for older games.\n\ndate is compared with each game's start time in US Eastern time.\n\nscore is null for a scheduled game. For soccer it never includes penalty shootout goals: soccerDetail carries regulation, extraTime, penalties and decidedBy.\n\nNFL, NCAAF and NBA give the period in status.period and its label in status.detail: Q1 to Q4, Halftime (period 2), Intermission (any other break between periods) or OT (period 5 for every overtime; overtimes are not numbered). NCAAB plays two halves: H1 and H2, Halftime (period 1), Intermission (before an overtime) or OT (period 3 and up: each overtime is a period). NHL gives P1 to P3, Intermission between periods (status.period stays the period just played), OT (period 4 for every overtime) or SO (period 5). While one of these games is in play, status.displayClock is the time left in the period as the venue shows it (5:32, or 48.3 under a minute; 0:00 in an intermission) and status.clock carries it as secondsRemaining (0 in an intermission) with running (true while it runs, false in a stoppage or intermission, null when the feed cannot say: NFL, NCAAF and NCAAB, whose clock is published in steps as plays are logged, and any game before its first movement is seen), intermission (halftime or between periods), period and asOf, the instant the clock was true at the venue (the read, less the league feed's own edge-cache age, which for the NHL is up to 19 seconds): tick secondsRemaining down from asOf locally while running. While status.clock is present, status.period and status.detail are taken from the same clock read, so the three always agree; the clock is read every few seconds and is absent when none was read for the game. Soccer status.detail is the half (1st Half, 2nd Half; the match minute is status.displayClock, e.g. 67 or 45+2), Half Time (status.period 1), Extra Time (status.period null: the feed does not say which of its two periods is on; the play-by-play does), Break (between the periods of extra time, status.period null) or Penalties (status.period 5). A phase without a label reads Live with status.period null, as does a college basketball game whose clock was not read. MLB gives the inning in status.period and status.detail (e.g. Top 7th); in extra innings status.detail reads Top Extra Inning, Bot Extra Inning, or Extra Inning when the half is unknown, with status.period null, because extra innings are not numbered. On /scores/live, a baseball linescore period 10 is every extra inning combined.\n\nA teamStats pair the source did not measure is null or absent, never 0.",
         "operationId": "getStats",
         "parameters": [
           {
@@ -23495,7 +24365,7 @@
     },
     "/api/v2/{book}/{sport}": {
       "get": {
-        "description": "Returns a sportsbook's native markets for a sport exactly as the source publishes them: no mapping, no team normalization, no merging. Each entry in data is one raw market blob keyed by the source's own market id.\n\nmarketIds narrows data to the listed market ids and prefixes (main,props-* or props-9524; case does not matter). Only those entries are returned, dated in meta.ageSeconds and hashed into the ETag, so a caller of one family keeps its 304s while another family moves. meta.marketIds echoes the filter and meta.marketsFilteredOut counts the entries left out. When the stored board exists but nothing matches, data is empty with meta.cached true and the status and age of the board's primary entries (those outside a family with its own freshness threshold, such as DraftKings game-* and props-*), so it is not mistaken for an outage; if none of those is left (for example only DraftKings game-* and props-* are stored), meta.status is no-data. An entry that is neither an id (letters, digits, - or _) nor a prefix ending in * is a 400. bet365, hardrock, mybookie, stake, thunderpick and underdog ignore marketIds and always return their whole board.\n\nDraftKings nba, nfl, nhl, mlb, ncaab and ncaaf hold main (the league page: game lines), live (the live feed snapshot, when it fits) and one props-<subcategoryId> entry per player-prop subcategory; nba, nfl and ncaaf also hold one game-<subcategoryId> entry per game-market subcategory: 1st half, 1st quarter, team totals, for football alternate spread and alternate total, and for the NBA the game leaders (game-16471 Most Points, game-16472 Most Rebounds, game-16473 Most Assists, game-16474 Most Threes, game-16475 Most Points + Rebounds + Assists: one market per game whose selections are the players, as DraftKings prices them). game-* entries are in the default response, refresh about every 30 seconds, are REST only and are judged against their own 90 second threshold. A default request's meta.status is judged by main and live: a game-* entry kept through a failed refresh does not turn it stale (meta.marketAges shows its age), and when main and live are both gone it reads stale. A marketIds request that includes game-* is judged by those entries too. Each props-* entry is DraftKings' response for that subcategory as received (parsed and re-serialized, not mapped), with its events, markets and selections. props-* entries refresh about every 3 to 5 minutes and are REST only (no draftkings-v2-update message). They are left out unless marketIds asks for them; meta.defaultExcluded then gives their count and the marketIds value that includes them. They are judged fresh against their own 480 second threshold, so they do not turn meta.status stale; meta.marketAges gives each returned entry's age in seconds. When one subcategory's request fails, its previous entry is kept for a cycle; if it reaches its 10 minute lifetime first, a request that includes it reads meta.status partial until the entry is cleared, at the latest on the next cycle.\n\nmeta.status is ok, stale, partial or no-data. It flips to stale once ageSeconds passes the book's own freshness threshold, which is set to that book's refresh cadence. Entries in a family with its own threshold (DraftKings game-* and props-*) are judged against that threshold instead, and only when the request asked for them.\n\nSend If-None-Match with the ETag response header, quoted exactly as received (a leading W/ is fine), to receive 304 when nothing changed. The body etag is the same value without quotes, so a bare etag never matches. A 304 on /api/v2 does not count toward your monthly quota; it still counts toward your per-minute limit and appears in your usage log. A key that has used up its monthly quota gets 429 even when the request would have been a 304.\n\nmeta.cached is false only when there is no stored board to serve (no-data, and partial-miss on the books that report it). It is not a freshness signal: read meta.ageSeconds and meta.status for that.\n\nFor a multi-league sport without league, most books return 400 with a hint to the /leagues index. Books flagged mergeWhenUnspecified instead return a merged board with league null, a leagues index attributing every market to its competition, and meta.merged true; if the merge had to truncate, meta.status is partial, meta.truncated says what was omitted, and meta.omittedIds lists the first 100 omitted market ids, to fetch with marketIds (50 per request) or by passing league.\n\nA few books key data by event rather than by market, so one entry holds a whole game. Each book's sport set, single-league sports and league rules are in the v2Books entries of this manifest.\n\nThe SDKs expose one method per book: get<Book>V2 in TypeScript and get_<book>_v2 in Python.\n\nThe stake board is the exception to the meta shape above: it serves meta { source, cached, status, timestamp, ageSeconds, hash, now } on every response, with data as an array of fixtures. On no-data and partial-miss, timestamp, ageSeconds and hash are null because there is no board to date, and now is the response clock; never read freshness from a null timestamp.\n\nOn stake ice-hockey and basketball, a fixture also carries swish when Stake prices player props for it: Stake's player props (ice hockey: shots on goal, goals, assists, points, hits, plus minus, power play points, blocked shots, and goalie saves once Stake prices them; NBA: points, rebounds, assists, points+assists+rebounds, threes made, double-double, triple-double and first scorer) as { id, status, startTime, players: [{ id, name, position, markets: [{ id, stat: { name }, lines: [{ id, name, line, over, under, balanced, suspended }] }] }] }, over and under in decimal odds. A market lists every line Stake offers: balanced true marks Stake's main line and the others are its alternate lines. Markets with no line are left out, and a game in progress has no swish block because Stake pulls player props once it starts.\n\npropbuilder (Prop Builder) holds one entry per game and market family, family first: game-<gameId> (the game record with home, away, startTime and entries, the ids stored for that game), gfm-<gameId>-<statistic>-<hash> (one game-market group), ou-<gameId>-<statistic>-<hash> (Over/Under lines for one statistic), ss-<gameId>-<statistic>-<hash> (an N+ milestone ladder), ppd-<gameId> (Player Doubles) and h2h-<gameId> (player vs player). marketIds=ou-* returns every Over/Under entry, and game-<gameId>,ou-<gameId>-*,ss-<gameId>-*,gfm-<gameId>-*,ppd-<gameId>,h2h-<gameId> returns one game. gameId is the board's own game id, not the eventId of the /api/v1 endpoints. Odds are decimal, and a market's oddsOverride replaces odds when it is greater than 1. Games are listed until they start, and a market the board suspends or withdraws leaves its entry, as on the board itself. The board sells the game markets (gfm) as parlay legs only, and a leg's price is not the price of a parlay. Several sportsbooks embed this board, and its prices were identical on every site we compared. propbuilder-v2-update pushes changed entries within seconds: load this board on every connect, then apply the messages.\n\nfanatics (Fanatics Sportsbook, not the prediction market) holds one entry per game, keyed by Fanatics' event id: { id, name, startTime, live (true while Fanatics offers in-game betting on it), homeTeam, awayTeam, markets }, teams as { name, abbreviation, nickname }, with every market Fanatics prices for it (moneyline, the full spread and total ladders, team totals, halves and quarters, player milestone props). Each market is { name, bets }, and each bet { id, marketId, name, side, line: { label, value }, status, american, decimal } in Fanatics' own ids: id is the selection id and marketId the market id, so one market of a ladder can hold several Fanatics market ids; side is HOME, AWAY, DRAW, YES or NO where the market has sides; line.label is the line as shown (+3.5, 48, 10+) and line.value its number without the sign (3.5; on correct-score markets read label). Moneyline is two-way in US sports and three-way (with a DRAW side) in soccer; Moneyline 3-Way is the regulation three-way for nba, nhl and ncaaf; Half Time Result is two-way in nfl and ncaaf and three-way in soccer. Only priced selections are listed. A game appears once Fanatics prices it, and while Fanatics prices nothing on it (a suspension) it stays listed with markets [] for up to 30 minutes. Prices are read about every 10 seconds; meta.ageSeconds is the time since the read that last confirmed the game, because the feed carries no change timestamp. nba, nfl, nhl, mlb, ncaaf and ncaab are single-league; soccer is keyed by competition (mls) and merges without league. REST only.\n\npick6 (DraftKings Pick6) is a pick'em board, not a sportsbook: there are no odds, only More/Less picks on players' stat lines, each side with a multiplier. Entries are Pick6's own responses, verbatim: pickgroups is the sport's pick-group list (pickGroups with each pickGroupId, its start times and the games in gameSet.competitionIds, plus competitions), and cards-{pickGroupId}-{pickCategoryId} is one category's board (Points, Rebounds, Kills, ...). In a cards entry, pickCardByPickableId holds one card per player: entities names the player (dkId, looked up in entityInfoByDkId) and the games (compIds, in competitionById), and activePickableMarkets lists the lines, each with its stat (pickSixMarketId, named in pickSixMarketById), targetValue (the line), isPaused, isLive and activeSelections: statLinePropositionId 1 is More and 2 is Less (names in pickSixMarketById[].propositionNameById), each with its standingsMultiplier. Most lines offer More only: activeSelections lists the sides a line offers. promoPickTypeId is 1 on every line read so far; the other ids are the promotions named in promotionalPickConfigurationsByPromotionTypeId (Gimme Pick, Stat Slice, Power Up). Every sport is single-league; marketIds=cards-* returns every category without the pick-group list, and cards-{pickGroupId}-* one pick group. The board is read about every 60 seconds; meta.ageSeconds is the age of the oldest entry returned, counted from the read that returned it, and meta.status reads stale after 240 seconds. A sport leaves the list when Pick6 offers no picks in it. REST only.\n\nfanaticsmarkets holds one entry per event (the event as Fanatics Markets publishes it, each outcome with its Nadex symbol and probability) and, for every event and market group with a live order book, a books-<eventId>-<group> entry (group: moneyline, spread, over_and_under and so on). books entries are left out unless marketIds asks for them (books-* for all, or marketIds=*). A books entry is { eventId, group, books: { <symbol>: { yes: { bids, asks }, no: { bids, asks }, asOf, live } } }, prices 0 to 1 and sizes in contracts. It is rewritten the moment a book moves on Fanatics Markets; when its group has no book left or the event leaves the board, it is deleted. Over WebSocket the books come on their own event, fanaticsmarkets-books-v2-update, only when you subscribe with books: true next to your fanaticsmarkets sports (v2: { fanaticsmarkets: { nfl: '*', books: true } }); fanaticsmarkets-v2-update keeps carrying the events alone. Each message arrives within about a second of the move and carries books entries (kind books), either whole (replace the entry) or with patch true, carrying only the books that changed (merge them by symbol; null means that book is gone); a deleted entry arrives in removedIds, and about once a minute a group carries ids, the full list of that league's books entries (drop any other entry of that league; other leagues are not affected). To sync: subscribe, hold the messages, load the books entries over REST (?marketIds=books-* with league), then apply what you held. For every message, keep per symbol the book with the later asOf (on a tie, take the message); a null removes the symbol. On a patch for an entry you do not hold, and after every reconnect, load it again over REST. Every entry is also sent whole about every 10 minutes, and once more shortly after a restart on our side. asOf is the time that book last CHANGED on Fanatics Markets, not when we read it: a quiet book keeps an old asOf while still current. live true means the book is held on our open subscription; live false means it is the last state we hold and is not confirmed: our subscription dropped or is reconnecting, or an update arrived for it that we could not apply (it turns true again with the next full book). meta.marketAges gives each entry's age: for a books entry, the seconds since we last confirmed it (at most about 30 while every book in it is live; it keeps growing while one is not); for an event, the seconds since its last refresh (a few minutes). The books response is stale once any books entry is 90 seconds old. The orderbook inside an event entry is a copy taken at the event's refresh, with live as of that refresh (false while our subscription is down, or after an update for it that we could not apply: it is then the last book we hold); read the books entries for live depth.",
+        "description": "Returns a sportsbook's native markets for a sport exactly as the source publishes them: no mapping, no team normalization, no merging. Each entry in data is one raw market blob keyed by the source's own market id.\n\nmarketIds narrows data to the listed market ids and prefixes (main,props-* or props-9524; case does not matter). Only those entries are returned, dated in meta.ageSeconds and hashed into the ETag, so a caller of one family keeps its 304s while another family moves. meta.marketIds echoes the filter and meta.marketsFilteredOut counts the entries left out. When the stored board exists but nothing matches, data is empty with meta.cached true and the status and age of the board's primary entries (those outside a family with its own freshness threshold, such as DraftKings game-* and props-*), so it is not mistaken for an outage; if none of those is left (for example only DraftKings game-* and props-* are stored), meta.status is no-data. An entry that is neither an id (letters, digits, - or _) nor a prefix ending in * is a 400. bet365, hardrock, mybookie, stake, thunderpick and underdog ignore marketIds and always return their whole board.\n\nDraftKings nba, nfl, nhl, mlb, ncaab and ncaaf hold main (the league page: game lines), live (the live feed snapshot, when it fits) and one props-<subcategoryId> entry per player-prop subcategory; nba, nfl and ncaaf also hold one game-<subcategoryId> entry per game-market subcategory: 1st half, 1st quarter, team totals, for football alternate spread and alternate total, and for the NBA the game leaders (game-16471 Most Points, game-16472 Most Rebounds, game-16473 Most Assists, game-16474 Most Threes, game-16475 Most Points + Rebounds + Assists: one market per game whose selections are the players, as DraftKings prices them). game-* entries are in the default response, refresh about every 30 seconds, are REST only and are judged against their own 90 second threshold. A default request's meta.status is judged by main and live: a game-* entry kept through a failed refresh does not turn it stale (meta.marketAges shows its age), and when main and live are both gone it reads stale. A marketIds request that includes game-* is judged by those entries too. Each props-* entry is DraftKings' response for that subcategory as received (parsed and re-serialized, not mapped), with its events, markets and selections. props-* entries refresh about every 3 to 5 minutes and are REST only (no draftkings-v2-update message). They are left out unless marketIds asks for them; meta.defaultExcluded then gives their count and the marketIds value that includes them. They are judged fresh against their own 480 second threshold, so they do not turn meta.status stale; meta.marketAges gives each returned entry's age in seconds. When one subcategory's request fails, its previous entry is kept for a cycle; if it reaches its 10 minute lifetime first, a request that includes it reads meta.status partial until the entry is cleared, at the latest on the next cycle.\n\nmeta.status is ok, stale, partial or no-data. It flips to stale once ageSeconds passes the book's own freshness threshold, which is set to that book's refresh cadence. Entries in a family with its own threshold (DraftKings game-* and props-*) are judged against that threshold instead, and only when the request asked for them.\n\nSend If-None-Match with the ETag response header, quoted exactly as received (a leading W/ is fine), to receive 304 when nothing changed. The body etag is the same value without quotes, so a bare etag never matches. A 304 on /api/v2 does not count toward your monthly quota; it still counts toward your per-minute limit and appears in your usage log. A key that has used up its monthly quota gets 429 even when the request would have been a 304.\n\nmeta.cached is false only when there is no stored board to serve (no-data, and partial-miss on the books that report it). It is not a freshness signal: read meta.ageSeconds and meta.status for that.\n\nFor a multi-league sport without league, most books return 400 with a hint to the /leagues index. Books flagged mergeWhenUnspecified instead return a merged board with league null, a leagues index attributing every market to its competition, and meta.merged true; if the merge had to truncate, meta.status is partial, meta.truncated says what was omitted, and meta.omittedIds lists the first 100 omitted market ids, to fetch with marketIds (50 per request) or by passing league.\n\nA few books key data by event rather than by market, so one entry holds a whole game. Each book's sport set, single-league sports and league rules are in the v2Books entries of this manifest.\n\nThe SDKs expose one method per book: get<Book>V2 in TypeScript and get_<book>_v2 in Python.\n\nThe stake board is the exception to the meta shape above: it serves meta { source, cached, status, timestamp, ageSeconds, hash, now } on every response, with data as an array of fixtures. On no-data and partial-miss, timestamp, ageSeconds and hash are null because there is no board to date, and now is the response clock; never read freshness from a null timestamp.\n\nOn stake ice-hockey and basketball, a fixture also carries swish when Stake prices player props for it: Stake's player props (ice hockey: shots on goal, goals, assists, points, hits, plus minus, power play points, blocked shots, and goalie saves once Stake prices them; NBA: points, rebounds, assists, points+assists+rebounds, threes made, double-double, triple-double and first scorer) as { id, status, startTime, players: [{ id, name, position, markets: [{ id, stat: { name }, lines: [{ id, name, line, over, under, balanced, suspended }] }] }] }, over and under in decimal odds. A market lists every line Stake offers: balanced true marks Stake's main line and the others are its alternate lines. Markets with no line are left out, and a game in progress has no swish block because Stake pulls player props once it starts.\n\npropbuilder (Prop Builder) holds one entry per game and market family, family first: game-<gameId> (the game record with home, away, startTime and entries, the ids stored for that game), gfm-<gameId>-<statistic>-<hash> (one game-market group), ou-<gameId>-<statistic>-<hash> (Over/Under lines for one statistic), ss-<gameId>-<statistic>-<hash> (an N+ milestone ladder), ppd-<gameId> (Player Doubles) and h2h-<gameId> (player vs player). marketIds=ou-* returns every Over/Under entry, and game-<gameId>,ou-<gameId>-*,ss-<gameId>-*,gfm-<gameId>-*,ppd-<gameId>,h2h-<gameId> returns one game. gameId is the board's own game id, not the eventId of the /api/v1 endpoints. Odds are decimal, and a market's oddsOverride replaces odds when it is greater than 1. Games are listed until they start, and a market the board suspends or withdraws leaves its entry, as on the board itself. The board sells the game markets (gfm) as parlay legs only, and a leg's price is not the price of a parlay. Several sportsbooks embed this board, and its prices were identical on every site we compared. propbuilder-v2-update pushes changed entries within seconds: load this board on every connect, then apply the messages.\n\nbovada holds one entry per event, keyed by Bovada's own event id: the whole Bovada event as Bovada publishes it, with its markets. bovada-v2-update pushes the entries that changed, in batches each second, each in full under the same marketId, plus removedIds for events that left the board: load this board on every connect, then replace entries as messages arrive and delete the removed ones. When the board stops refreshing, its events age out of this response with no removal message: reload the board when meta.status reads stale.\n\nfanatics (Fanatics Sportsbook, not the prediction market) holds one entry per game, keyed by Fanatics' event id: { id, name, startTime, live (true while Fanatics offers in-game betting on it), homeTeam, awayTeam, markets }, teams as { name, abbreviation, nickname }, with every market Fanatics prices for it (moneyline, the full spread and total ladders, team totals, halves and quarters, player milestone props). Each market is { name, bets }, and each bet { id, marketId, name, side, line: { label, value }, status, american, decimal } in Fanatics' own ids: id is the selection id and marketId the market id, so one market of a ladder can hold several Fanatics market ids; side is HOME, AWAY, DRAW, YES or NO where the market has sides; line.label is the line as shown (+3.5, 48, 10+) and line.value its number without the sign (3.5; on correct-score markets read label). Moneyline is two-way in US sports and three-way (with a DRAW side) in soccer; Moneyline 3-Way is the regulation three-way for nba, nhl and ncaaf; Half Time Result is two-way in nfl and ncaaf and three-way in soccer. Only priced selections are listed. A game appears once Fanatics prices it, and while Fanatics prices nothing on it (a suspension) it stays listed with markets [] for up to 30 minutes. Prices are read about every 10 seconds; meta.ageSeconds is the time since the read that last confirmed the game, because the feed carries no change timestamp. nba, nfl, nhl, mlb, ncaaf and ncaab are single-league; soccer is keyed by competition (mls) and merges without league. Changes are pushed on the fanatics-v2-update WebSocket event, in batches each second, each entry a whole game.\n\npick6 (DraftKings Pick6) is a pick'em board, not a sportsbook: there are no odds, only More/Less picks on players' stat lines, each side with a multiplier. Entries are Pick6's own responses, verbatim: pickgroups is the sport's pick-group list (pickGroups with each pickGroupId, its start times and the games in gameSet.competitionIds, plus competitions), and cards-{pickGroupId}-{pickCategoryId} is one category's board (Points, Rebounds, Kills, ...). In a cards entry, pickCardByPickableId holds one card per player: entities names the player (dkId, looked up in entityInfoByDkId) and the games (compIds, in competitionById), and activePickableMarkets lists the lines, each with its stat (pickSixMarketId, named in pickSixMarketById), targetValue (the line), isPaused, isLive and activeSelections: statLinePropositionId 1 is More and 2 is Less (names in pickSixMarketById[].propositionNameById), each with its standingsMultiplier. Most lines offer More only: activeSelections lists the sides a line offers. promoPickTypeId is 1 on every line read so far; the other ids are the promotions named in promotionalPickConfigurationsByPromotionTypeId (Gimme Pick, Stat Slice, Power Up). Every sport is single-league; marketIds=cards-* returns every category without the pick-group list, and cards-{pickGroupId}-* one pick group. The board is read about every 60 seconds; meta.ageSeconds is the age of the oldest entry returned, counted from the read that returned it, and meta.status reads stale after 240 seconds. A sport leaves the list when Pick6 offers no picks in it. REST only.\n\nfanaticsmarkets holds one entry per event (the event as Fanatics Markets publishes it, each outcome with its Nadex symbol and probability) and, for every event and market group with a live order book, a books-<eventId>-<group> entry (group: moneyline, spread, over_and_under and so on). books entries are left out unless marketIds asks for them (books-* for all, or marketIds=*). A books entry is { eventId, group, books: { <symbol>: { yes: { bids, asks }, no: { bids, asks }, asOf, live } } }, prices 0 to 1 and sizes in contracts. It is rewritten the moment a book moves on Fanatics Markets; when its group has no book left or the event leaves the board, it is deleted. Over WebSocket the books come on their own event, fanaticsmarkets-books-v2-update, only when you subscribe with books: true next to your fanaticsmarkets sports (v2: { fanaticsmarkets: { nfl: '*', books: true } }); fanaticsmarkets-v2-update keeps carrying the events alone. Each message arrives within about a second of the move and carries books entries (kind books), either whole (replace the entry) or with patch true, carrying only the books that changed (merge them by symbol; null means that book is gone); a deleted entry arrives in removedIds, and about once a minute a group carries ids, the full list of that league's books entries (drop any other entry of that league; other leagues are not affected). To sync: subscribe, hold the messages, load the books entries over REST (?marketIds=books-* with league), then apply what you held. For every message, keep per symbol the book with the later asOf (on a tie, take the message); a null removes the symbol. On a patch for an entry you do not hold, and after every reconnect, load it again over REST. Every entry is also sent whole about every 10 minutes, and once more shortly after a restart on our side. asOf is the time that book last CHANGED on Fanatics Markets, not when we read it: a quiet book keeps an old asOf while still current. live true means the book is held on our open subscription; live false means it is the last state we hold and is not confirmed: our subscription dropped or is reconnecting, or an update arrived for it that we could not apply (it turns true again with the next full book). meta.marketAges gives each entry's age: for a books entry, the seconds since we last confirmed it (at most about 30 while every book in it is live; it keeps growing while one is not); for an event, the seconds since its last refresh (a few minutes). The books response is stale once any books entry is 90 seconds old. The orderbook inside an event entry is a copy taken at the event's refresh, with live as of that refresh (false while our subscription is down, or after an update for it that we could not apply: it is then the last book we hold); read the books entries for live depth.",
         "operationId": "getV2",
         "parameters": [
           {
@@ -23519,6 +24389,7 @@
                 "fanatics",
                 "fanaticsmarkets",
                 "fanduel",
+                "fliff",
                 "kalshi",
                 "lowvig",
                 "mybookie",
@@ -23607,6 +24478,7 @@
                 "fanatics",
                 "fanaticsmarkets",
                 "fanduel",
+                "fliff",
                 "kalshi",
                 "lowvig",
                 "novig",
@@ -24389,7 +25261,7 @@
         "nfl",
         "nhl"
       ],
-      "wsEvent": null
+      "wsEvent": "bovada-v2-update"
     },
     {
       "book": "draftkings",
@@ -24417,7 +25289,7 @@
         "nhl",
         "soccer"
       ],
-      "wsEvent": null
+      "wsEvent": "fanatics-v2-update"
     },
     {
       "book": "fanaticsmarkets",
@@ -24455,6 +25327,23 @@
         "wnba"
       ],
       "wsEvent": "fanduel-v2-update"
+    },
+    {
+      "book": "fliff",
+      "sports": [
+        "boxing",
+        "cfl",
+        "mlb",
+        "mma",
+        "nba",
+        "ncaab",
+        "ncaaf",
+        "nfl",
+        "nhl",
+        "soccer",
+        "tennis"
+      ],
+      "wsEvent": "fliff-v2-update"
     },
     {
       "book": "hardrock",
@@ -24526,7 +25415,11 @@
       "book": "mybookie",
       "sports": [
         "mlb",
-        "nba"
+        "nba",
+        "ncaab",
+        "ncaaf",
+        "nfl",
+        "nhl"
       ],
       "wsEvent": "mybookie-v2-update"
     },
@@ -24666,7 +25559,7 @@
         "soccer",
         "tennis"
       ],
-      "wsEvent": null
+      "wsEvent": "thescore-v2-update"
     },
     {
       "book": "thunderpick",

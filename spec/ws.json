@@ -62,8 +62,8 @@
   },
   "info": {
     "title": "Owls Insight WebSocket",
-    "version": "0.91.0",
-    "x-owls-manifest-commit": "306be0da"
+    "version": "0.95.0",
+    "x-owls-manifest-commit": "a7bb68361"
   },
   "serverEvents": {
     "1xbet-update": {
@@ -184,6 +184,14 @@
         "$ref": "openapi.json#/components/schemas/V2Update"
       }
     },
+    "bovada-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Bovada Source API (v2) changed events, sent in batches each second: each entry is a whole event as REST serves it under that marketId, plus removedIds. Load the REST board on every connect.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
     "caesars-props-subscribed": {
       "documented": false,
       "payload": {
@@ -278,6 +286,14 @@
         "$ref": "openapi.json#/components/schemas/OddsUpdatePayload"
       }
     },
+    "fanatics-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Fanatics Sportsbook (v2) changed games, sent in batches each second: each entry is a whole game as REST serves it under that marketId, plus removedIds. Load the REST board on every connect.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
     "fanaticsmarkets-books-v2-update": {
       "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "Fanatics Markets live order books within about a second of a move: whole books-* entries or patch true (merge by symbol, null = gone), removedIds, and ids (the league's full list).",
@@ -325,6 +341,14 @@
     "fanduel-v2-update": {
       "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
       "description": "FanDuel Source API (v2) market deltas, one (event, tab) bucket per message, across every FanDuel v2 sport. Alternate lines and player prop tabs are included.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
+      }
+    },
+    "fliff-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "Fliff (v2) changed games, sent in batches each second: each entry is a whole game as REST serves it under that marketId (its conflict_fkey), plus removedIds. Load the REST board on every connect.",
       "documented": true,
       "payload": {
         "$ref": "openapi.json#/components/schemas/V2Update"
@@ -464,7 +488,7 @@
     },
     "scores-update": {
       "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
-      "description": "Live scores pushed within a few seconds of a change, one message per sport: {type, timestamp, sport, events, removed?}. Opt in with scores: true or an array of sport keys; no opt-in, no messages. Each event is a lean view of one game, {id, sport, name, startTime, status, home, away, lastUpdated}: status is the status object of GET /api/v1/scores/live (status.state is pre, in or post), home and away are {team: {displayName, abbreviation?}, score}, and id is that endpoint's event id. Stats, lineups and incidents are not included; the REST endpoint has them. type full lists every game in play for that sport and comes about every 30 seconds, so a client that joins late has the whole live board within 30 seconds; a sport with no game in play sends no full message. When a game leaves play in the same cycle, its delta comes just before the full. type delta carries only what changed since the previous message: games in play whose score or state changed, games that just finished (status.state post, with the final score), and removed, the ids of games that left the live board without a known final state. Treat a removed id as no longer live; GET /api/v1/scores/live has how it ended. In a delta, each event's lastUpdated is the time of that change. Replace your live board for the sport on a full, and on a delta merge events by id and drop the removed ids. A score change is sent within about 1 second where the source pushes scores and within about 3 seconds otherwise. An array takes the sport keys of the subscription sports list and drops unknown keys; esports and table tennis scores come only with scores: true.",
+      "description": "Live scores pushed within a few seconds of a change, one message per sport: {type, timestamp, sport, events, removed?}. Opt in with scores: true or an array of sport keys; no opt-in, no messages. Each event is a lean view of one game, {id, sport, name, startTime, status, home, away, lastUpdated}: status is the status object of GET /api/v1/scores/live (status.state is pre, in or post), home and away are {team: {displayName, abbreviation?}, score}, and id is that endpoint's event id. Stats, lineups and incidents are not included; the REST endpoint has them. type full lists every game in play for that sport and comes about every 30 seconds, so a client that joins late has the whole live board within 30 seconds; a sport with no game in play sends no full message. When a game leaves play in the same cycle, its delta comes just before the full. type delta carries only what changed since the previous message: games in play whose score or state changed, games whose clock cannot be counted forward (status.clock.running null) and shows a new reading, games that just finished (status.state post, with the final score), and removed, the ids of games that left the live board without a known final state. Treat a removed id as no longer live; GET /api/v1/scores/live has how it ended. In a delta, each event's lastUpdated is the time its score or state last changed; an event sent for a new clock reading alone keeps its earlier lastUpdated. Replace your live board for the sport on a full, and on a delta merge events by id and drop the removed ids. A score change is sent within about 1 second where the source pushes scores and within about 3 seconds otherwise. An array takes the sport keys of the subscription sports list and drops unknown keys; esports and table tennis scores come only with scores: true.",
       "documented": true,
       "payload": {
         "$ref": "openapi.json#/components/schemas/ScoresUpdate"
@@ -480,7 +504,7 @@
     },
     "server-notice": {
       "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
-      "description": "Why the server closed your previous connection, sent once on the next connect: {code, message, at, socketId, details, hint}. Codes: BACKLOG_CAP, AGGREGATE_SHED, GHOST, SLOT_EVICTED, CLIENT_FRAME_LIMIT, SERVER_RESTART. SERVER_RESTART is sent to open connections just before a restart instead; reconnect after a short delay and send your subscription again.",
+      "description": "Why the server closed your previous connection, sent once on the next connect: {code, message, at, socketId, details, hint}. Codes: BACKLOG_CAP, AGGREGATE_SHED, GHOST, SLOT_EVICTED, CLIENT_FRAME_LIMIT, SERVER_RESTART, REBALANCED. SERVER_RESTART is sent to open connections just before a restart instead; reconnect after a short delay and send your subscription again.",
       "documented": true,
       "payload": {
         "$ref": "openapi.json#/components/schemas/ServerNotice"
@@ -490,6 +514,14 @@
       "documented": false,
       "payload": {
         "$ref": "openapi.json#/components/schemas/ClientSubscription"
+      }
+    },
+    "thescore-v2-update": {
+      "access": "WebSocket access: Hall of Fame, or any paid tier with the WebSocket add-on",
+      "description": "theScore Bet (v2) changed competitions, sent in batches each second: each entry is a whole competition blob as REST serves it under that marketId. Load the REST board on every connect.",
+      "documented": true,
+      "payload": {
+        "$ref": "openapi.json#/components/schemas/V2Update"
       }
     },
     "thunderpick-v2-update": {

@@ -4,6 +4,30 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.12.0] - 2026-11-09
+
+### Added
+
+- The UFC odds archive on `GetHistoryOdds` and `IterHistoryOdds`: an `mma:` event id with no
+  captured history is answered from a third-party archive (2019 on). `Meta.Source` is
+  `third_party_archive`, with `Meta.MatchedEventID` (the archived bout the id matched) and
+  `Meta.ArchiveNote` (why an answer is empty, e.g. `Opening` on a bout with no opening price).
+  `OddsSnapshot.Phase` (`open`, `close` or `current`) and `OddsSnapshot.BookRegion` are set
+  only on those rows, and their `RecordedAt` is nil.
+- `V2EventName` and the event layer know `bovada-v2-update`, `fanatics-v2-update`,
+  `thescore-v2-update` and `fliff-v2-update`; subscribe with the book key (`bovada`,
+  `fanatics`, `thescore`, `fliff`). `GetV2(ctx, "fliff", sport, league)` reads Fliff
+  (nfl, ncaaf, cfl, nba, ncaab, nhl, mlb, soccer, tennis, mma, boxing).
+- Generated models from JS 0.92.0-0.95.0: `FootballStats`, `HockeySkaterStats` and
+  `HockeyGoalieStats` (NFL, NCAAF and NHL box scores in `GetHistoryStats`), and the
+  `BovadaV2BookSubscription`, `FanaticsV2BookSubscription`, `TheScoreV2BookSubscription`
+  and `FliffV2BookSubscription` shapes.
+
+### Changed
+
+- The vendored spec is regenerated from the JS SDK 0.95.0 spec. Bovada, Fanatics Sportsbook
+  and theScore Bet are no longer listed as REST only in the README.
+
 ## [0.11.0] - 2026-11-03
 
 ### Added

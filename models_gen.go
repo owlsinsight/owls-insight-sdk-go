@@ -135,12 +135,14 @@ type BasketballPlayDetail struct {
 
 // BasketballStats defines model for BasketballStats.
 type BasketballStats struct {
-	Assists    *float64       `json:"assists,omitempty"`
-	Blocks     *float64       `json:"blocks,omitempty"`
-	Fg         *ShootingSplit `json:"fg,omitempty"`
-	Fouls      *float64       `json:"fouls,omitempty"`
-	FreeThrow  *ShootingSplit `json:"freeThrow,omitempty"`
-	Minutes    *string        `json:"minutes,omitempty"`
+	Assists   *float64       `json:"assists,omitempty"`
+	Blocks    *float64       `json:"blocks,omitempty"`
+	Fg        *ShootingSplit `json:"fg,omitempty"`
+	Fouls     *float64       `json:"fouls,omitempty"`
+	FreeThrow *ShootingSplit `json:"freeThrow,omitempty"`
+	Minutes   *string        `json:"minutes,omitempty"`
+
+	// PlusMinus null for NCAAB: the college box score has no +/-.
 	PlusMinus  *float64       `json:"plusMinus,omitempty"`
 	Points     *float64       `json:"points,omitempty"`
 	Rebounds   *float64       `json:"rebounds,omitempty"`
@@ -641,6 +643,17 @@ type Bookmaker struct {
 	LastUpdate  *string  `json:"last_update,omitempty"`
 	Markets     []Market `json:"markets,omitempty"`
 	Title       *string  `json:"title,omitempty"`
+}
+
+// BovadaV2BookSubscription Per-sport filter for `v2: { bovada: {...} }`. Every sport is one league: pass `'*'`.
+type BovadaV2BookSubscription struct {
+	Mlb   *json.RawMessage `json:"mlb,omitempty"`
+	Mma   *json.RawMessage `json:"mma,omitempty"`
+	Nba   *json.RawMessage `json:"nba,omitempty"`
+	Ncaab *json.RawMessage `json:"ncaab,omitempty"`
+	Ncaaf *json.RawMessage `json:"ncaaf,omitempty"`
+	Nfl   *json.RawMessage `json:"nfl,omitempty"`
+	Nhl   *json.RawMessage `json:"nhl,omitempty"`
 }
 
 // CS2MapResult defines model for CS2MapResult.
@@ -1935,6 +1948,89 @@ type FanaticsMarketsV2BookSubscription struct {
 	Wnba *V2LeagueFilter `json:"wnba,omitempty"`
 }
 
+// FanaticsV2BookSubscription Per-sport filter for `v2: { fanatics: {...} }`. nba, nfl, nhl, mlb, ncaaf and ncaab are one
+// league each: pass `'*'`. soccer: `'*'` or competition keys (`['mls']`).
+type FanaticsV2BookSubscription struct {
+	Mlb    *json.RawMessage `json:"mlb,omitempty"`
+	Nba    *json.RawMessage `json:"nba,omitempty"`
+	Ncaab  *json.RawMessage `json:"ncaab,omitempty"`
+	Ncaaf  *json.RawMessage `json:"ncaaf,omitempty"`
+	Nfl    *json.RawMessage `json:"nfl,omitempty"`
+	Nhl    *json.RawMessage `json:"nhl,omitempty"`
+	Soccer *json.RawMessage `json:"soccer,omitempty"`
+}
+
+// FliffV2BookSubscription Per-sport filter for `v2: { fliff: {...} }`. nfl, ncaaf, cfl, nba, ncaab, nhl and mlb are one
+// league each: pass `'*'`. soccer, tennis, mma and boxing: `'*'` or league keys from
+// `getFliffV2Leagues` (`['ufc']`).
+type FliffV2BookSubscription struct {
+	Boxing *json.RawMessage `json:"boxing,omitempty"`
+	Cfl    *json.RawMessage `json:"cfl,omitempty"`
+	Mlb    *json.RawMessage `json:"mlb,omitempty"`
+	Mma    *json.RawMessage `json:"mma,omitempty"`
+	Nba    *json.RawMessage `json:"nba,omitempty"`
+	Ncaab  *json.RawMessage `json:"ncaab,omitempty"`
+	Ncaaf  *json.RawMessage `json:"ncaaf,omitempty"`
+	Nfl    *json.RawMessage `json:"nfl,omitempty"`
+	Nhl    *json.RawMessage `json:"nhl,omitempty"`
+	Soccer *json.RawMessage `json:"soccer,omitempty"`
+	Tennis *json.RawMessage `json:"tennis,omitempty"`
+}
+
+// FootballDefensiveStats defines model for FootballDefensiveStats.
+type FootballDefensiveStats struct {
+	PassesDefended *float64 `json:"passesDefended,omitempty"`
+	QbHits         *float64 `json:"qbHits,omitempty"`
+	QbHurries      *float64 `json:"qbHurries,omitempty"`
+	Sacks          *float64 `json:"sacks,omitempty"`
+	SoloTackles    *float64 `json:"soloTackles,omitempty"`
+	TacklesForLoss *float64 `json:"tacklesForLoss,omitempty"`
+	TotalTackles   *float64 `json:"totalTackles,omitempty"`
+	Touchdowns     *float64 `json:"touchdowns,omitempty"`
+}
+
+// FootballFumbleStats defines model for FootballFumbleStats.
+type FootballFumbleStats struct {
+	Fumbles   *float64 `json:"fumbles,omitempty"`
+	Lost      *float64 `json:"lost,omitempty"`
+	Recovered *float64 `json:"recovered,omitempty"`
+}
+
+// FootballInterceptionStats defines model for FootballInterceptionStats.
+type FootballInterceptionStats struct {
+	Interceptions *float64 `json:"interceptions,omitempty"`
+	Touchdowns    *float64 `json:"touchdowns,omitempty"`
+	Yards         *float64 `json:"yards,omitempty"`
+}
+
+// FootballKickingStats defines model for FootballKickingStats.
+type FootballKickingStats struct {
+	ExtraPointAttempts *float64 `json:"extraPointAttempts,omitempty"`
+	ExtraPointsMade    *float64 `json:"extraPointsMade,omitempty"`
+	FieldGoalAttempts  *float64 `json:"fieldGoalAttempts,omitempty"`
+	FieldGoalPct       *float64 `json:"fieldGoalPct,omitempty"`
+	FieldGoalsMade     *float64 `json:"fieldGoalsMade,omitempty"`
+	LongFieldGoal      *float64 `json:"longFieldGoal,omitempty"`
+	Points             *float64 `json:"points,omitempty"`
+}
+
+// FootballPassingStats defines model for FootballPassingStats.
+type FootballPassingStats struct {
+	// AdjQbr Total QBR.
+	AdjQbr        *float64 `json:"adjQbr,omitempty"`
+	Attempts      *float64 `json:"attempts,omitempty"`
+	Completions   *float64 `json:"completions,omitempty"`
+	Interceptions *float64 `json:"interceptions,omitempty"`
+
+	// QbRating Passer rating.
+	QbRating        *float64 `json:"qbRating,omitempty"`
+	SackYards       *float64 `json:"sackYards,omitempty"`
+	Sacks           *float64 `json:"sacks,omitempty"`
+	Touchdowns      *float64 `json:"touchdowns,omitempty"`
+	Yards           *float64 `json:"yards,omitempty"`
+	YardsPerAttempt *float64 `json:"yardsPerAttempt,omitempty"`
+}
+
 // FootballPlayDetail NFL and NCAAF: the down and distance before (`down`…) and after (`endDown`…) the play.
 type FootballPlayDetail struct {
 	Distance            *float64 `json:"distance,omitempty"`
@@ -1953,6 +2049,62 @@ type FootballPlayDetail struct {
 	YardLine            *float64 `json:"yardLine,omitempty"`
 	Yards               *float64 `json:"yards,omitempty"`
 	YardsToEndzone      *float64 `json:"yardsToEndzone,omitempty"`
+}
+
+// FootballPuntingStats defines model for FootballPuntingStats.
+type FootballPuntingStats struct {
+	GrossAverage *float64 `json:"grossAverage,omitempty"`
+	Inside20     *float64 `json:"inside20,omitempty"`
+	Long         *float64 `json:"long,omitempty"`
+	Punts        *float64 `json:"punts,omitempty"`
+	Touchbacks   *float64 `json:"touchbacks,omitempty"`
+	Yards        *float64 `json:"yards,omitempty"`
+}
+
+// FootballReceivingStats defines model for FootballReceivingStats.
+type FootballReceivingStats struct {
+	Long              *float64 `json:"long,omitempty"`
+	Receptions        *float64 `json:"receptions,omitempty"`
+	Targets           *float64 `json:"targets,omitempty"`
+	Touchdowns        *float64 `json:"touchdowns,omitempty"`
+	Yards             *float64 `json:"yards,omitempty"`
+	YardsPerReception *float64 `json:"yardsPerReception,omitempty"`
+}
+
+// FootballReturnStats Kick returns and punt returns.
+type FootballReturnStats struct {
+	Long           *float64 `json:"long,omitempty"`
+	Returns        *float64 `json:"returns,omitempty"`
+	Touchdowns     *float64 `json:"touchdowns,omitempty"`
+	Yards          *float64 `json:"yards,omitempty"`
+	YardsPerReturn *float64 `json:"yardsPerReturn,omitempty"`
+}
+
+// FootballRushingStats defines model for FootballRushingStats.
+type FootballRushingStats struct {
+	Attempts        *float64 `json:"attempts,omitempty"`
+	Long            *float64 `json:"long,omitempty"`
+	Touchdowns      *float64 `json:"touchdowns,omitempty"`
+	Yards           *float64 `json:"yards,omitempty"`
+	YardsPerAttempt *float64 `json:"yardsPerAttempt,omitempty"`
+}
+
+// FootballStats One object per box-score group the player recorded a stat in. A missing group means nothing was recorded there, not zeros.
+type FootballStats struct {
+	Defensive     *FootballDefensiveStats    `json:"defensive,omitempty"`
+	Fumbles       *FootballFumbleStats       `json:"fumbles,omitempty"`
+	Interceptions *FootballInterceptionStats `json:"interceptions,omitempty"`
+
+	// KickReturns Kick returns and punt returns.
+	KickReturns *FootballReturnStats  `json:"kickReturns,omitempty"`
+	Kicking     *FootballKickingStats `json:"kicking,omitempty"`
+	Passing     *FootballPassingStats `json:"passing,omitempty"`
+
+	// PuntReturns Kick returns and punt returns.
+	PuntReturns *FootballReturnStats    `json:"puntReturns,omitempty"`
+	Punting     *FootballPuntingStats   `json:"punting,omitempty"`
+	Receiving   *FootballReceivingStats `json:"receiving,omitempty"`
+	Rushing     *FootballRushingStats   `json:"rushing,omitempty"`
 }
 
 // FourcastersV2BookSubscription Per-sport league filter for `v2: { '4casters': {...} }`.
@@ -2308,12 +2460,22 @@ type HistoryOddsResponse struct {
 	Meta *struct {
 		ArchiveBuiltAt *string `json:"archiveBuiltAt,omitempty"`
 
+		// ArchiveNote On `third_party_archive` answers that come back empty: why, and what to ask instead.
+		ArchiveNote *string `json:"archiveNote,omitempty"`
+
 		// IgnoredParams Query parameters the endpoint did not honour, sorted. Absent when none were.
 		IgnoredParams []string `json:"ignored_params,omitempty"`
 
 		// IgnoredReasons Why, keyed by parameter name; only for entries that have a reason.
 		IgnoredReasons map[string]string `json:"ignored_reasons,omitempty"`
-		Source         *string           `json:"source,omitempty"`
+
+		// MatchedEventID On `third_party_archive` answers: the archived bout's own event id the request was matched to.
+		MatchedEventID *string `json:"matchedEventId,omitempty"`
+
+		// Source `third_party_archive` (Nov 2026): an MMA event id with no captured history, answered from the
+		// UFC odds archive (2019 on). Its rows carry `phase` and a null `recordedAt`; `matchedEventId`
+		// names the archived bout the id was matched to, and `archiveNote` explains an empty answer.
+		Source *string `json:"source,omitempty"`
 	} `json:"meta,omitempty"`
 	Success *bool `json:"success,omitempty"`
 }
@@ -2334,7 +2496,9 @@ type HistoryPlayerStat struct {
 	RecordedAt *string `json:"recordedAt,omitempty"`
 	Sport      *string `json:"sport,omitempty"`
 
-	// StatType Stat type discriminator. null = BasketballStats, "batter"|"team_batting" = BattingStats, "pitcher"|"team_pitching" = PitchingStats.
+	// StatType Stat type discriminator. null = BasketballStats (NBA, NCAAB), "batter"|"team_batting" = BattingStats,
+	// "pitcher"|"team_pitching" = PitchingStats (MLB), "player" = FootballStats (NFL, NCAAF),
+	// "skater" = HockeySkaterStats, "goalie" = HockeyGoalieStats (NHL). `stats` is null when the player did not play.
 	StatType *string          `json:"statType,omitempty"`
 	Stats    *json.RawMessage `json:"stats,omitempty"`
 	Team     *struct {
@@ -2425,6 +2589,25 @@ type HistoryStatsResponse struct {
 	Success *bool `json:"success,omitempty"`
 }
 
+// HockeyGoalieStats defines model for HockeyGoalieStats.
+type HockeyGoalieStats struct {
+	EvenStrengthSaves *float64 `json:"evenStrengthSaves,omitempty"`
+	GoalsAgainst      *float64 `json:"goalsAgainst,omitempty"`
+	PenaltyMinutes    *float64 `json:"penaltyMinutes,omitempty"`
+	PowerPlaySaves    *float64 `json:"powerPlaySaves,omitempty"`
+
+	// SavePct 0 to 1 (0.931).
+	SavePct              *float64 `json:"savePct,omitempty"`
+	Saves                *float64 `json:"saves,omitempty"`
+	ShootoutSaves        *float64 `json:"shootoutSaves,omitempty"`
+	ShootoutShotsAgainst *float64 `json:"shootoutShotsAgainst,omitempty"`
+	ShortHandedSaves     *float64 `json:"shortHandedSaves,omitempty"`
+	ShotsAgainst         *float64 `json:"shotsAgainst,omitempty"`
+
+	// TimeOnIce "MM:SS".
+	TimeOnIce *string `json:"timeOnIce,omitempty"`
+}
+
 // HockeyPlayDetail NHL: the players involved by role, the ice position, the shot or penalty.
 type HockeyPlayDetail struct {
 	AwayShotsOnGoal *float64 `json:"awayShotsOnGoal,omitempty"`
@@ -2455,6 +2638,39 @@ type HockeyPlayer struct {
 	Name    *string  `json:"name,omitempty"`
 	Role    *string  `json:"role,omitempty"`
 	Sweater *float64 `json:"sweater,omitempty"`
+}
+
+// HockeySkaterStats defines model for HockeySkaterStats.
+type HockeySkaterStats struct {
+	Assists               *float64 `json:"assists,omitempty"`
+	BlockedShots          *float64 `json:"blockedShots,omitempty"`
+	EvenStrengthTimeOnIce *string  `json:"evenStrengthTimeOnIce,omitempty"`
+
+	// FaceoffPct 0 to 100.
+	FaceoffPct     *float64 `json:"faceoffPct,omitempty"`
+	FaceoffsLost   *float64 `json:"faceoffsLost,omitempty"`
+	FaceoffsWon    *float64 `json:"faceoffsWon,omitempty"`
+	Giveaways      *float64 `json:"giveaways,omitempty"`
+	Goals          *float64 `json:"goals,omitempty"`
+	Hits           *float64 `json:"hits,omitempty"`
+	Penalties      *float64 `json:"penalties,omitempty"`
+	PenaltyMinutes *float64 `json:"penaltyMinutes,omitempty"`
+	PlusMinus      *float64 `json:"plusMinus,omitempty"`
+
+	// Points goals + assists; null when either is missing.
+	Points               *float64 `json:"points,omitempty"`
+	PowerPlayTimeOnIce   *string  `json:"powerPlayTimeOnIce,omitempty"`
+	Shifts               *float64 `json:"shifts,omitempty"`
+	ShootoutGoals        *float64 `json:"shootoutGoals,omitempty"`
+	ShortHandedTimeOnIce *string  `json:"shortHandedTimeOnIce,omitempty"`
+
+	// Shots Shots on goal.
+	Shots       *float64 `json:"shots,omitempty"`
+	ShotsMissed *float64 `json:"shotsMissed,omitempty"`
+	Takeaways   *float64 `json:"takeaways,omitempty"`
+
+	// TimeOnIce "MM:SS".
+	TimeOnIce *string `json:"timeOnIce,omitempty"`
 }
 
 // HomeAway defines model for HomeAway.
@@ -3055,8 +3271,8 @@ type MatchStatsResponse struct {
 
 // MyBookieV2BookSubscription Per-book subscription shape for MyBookie v2 events.
 //
-// MyBookie is single-league per sport (mlb, nba) - pass `'*'`. Arrays
-// are accepted and coerced to `'*'` server-side (V2_SINGLE_LEAGUE_PAIRS).
+// MyBookie is single-league per sport (mlb, nba, nhl, nfl, ncaab, ncaaf) -
+// pass `'*'`.
 type MyBookieV2BookSubscription struct {
 	// Mlb Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
 	// receive every league for that sport, or an array of league keys to
@@ -3069,6 +3285,30 @@ type MyBookieV2BookSubscription struct {
 	// filter to a specific set. League keys come from the corresponding
 	// `/leagues` REST endpoint.
 	Nba *V2LeagueFilter `json:"nba,omitempty"`
+
+	// Ncaab Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Ncaab *V2LeagueFilter `json:"ncaab,omitempty"`
+
+	// Ncaaf Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Ncaaf *V2LeagueFilter `json:"ncaaf,omitempty"`
+
+	// Nfl Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Nfl *V2LeagueFilter `json:"nfl,omitempty"`
+
+	// Nhl Per-sport league filter for v2 WebSocket subscriptions. Use `'*'` to
+	// receive every league for that sport, or an array of league keys to
+	// filter to a specific set. League keys come from the corresponding
+	// `/leagues` REST endpoint.
+	Nhl *V2LeagueFilter `json:"nhl,omitempty"`
 }
 
 // NormalizeBatchResponse defines model for NormalizeBatchResponse.
@@ -3264,6 +3504,9 @@ type OddsResponse struct {
 type OddsSnapshot struct {
 	Book *string `json:"book,omitempty"`
 
+	// BookRegion Only on UFC third-party archive rows: the state of a state-licensed book's price (NJ, CO, PA, TN), or null.
+	BookRegion *string `json:"bookRegion,omitempty"`
+
 	// InPlay Whether the game was in play when the row was captured.
 	//
 	// Three states, and the third is an ABSENT KEY: `true` in play, `false`
@@ -3273,6 +3516,12 @@ type OddsSnapshot struct {
 	// unknown-phase rows as pre-game.
 	InPlay *bool   `json:"inPlay,omitempty"`
 	Market *string `json:"market,omitempty"`
+
+	// Phase Only on UFC third-party archive rows (`meta.source` `third_party_archive`): which price of the
+	// bout this is. `open` and `close` are that book's opening and closing price; `current` is the last
+	// price the archive kept for that book, with no time (the only price it kept for most bouts
+	// before November 2023). Absent on every captured row.
+	Phase *string `json:"phase,omitempty"`
 
 	// Point The line (spread or total) as stored: a decimal string such as "-1.50",
 	// because the archive keeps two-decimal precision as text. Prefer
@@ -3292,12 +3541,17 @@ type OddsSnapshot struct {
 	// Populated for decimal-native books; null for American-native books.
 	// Available on snapshots archived after the price-precision fix (2026-07).
 	PriceDecimal *float64 `json:"priceDecimal,omitempty"`
-	RecordedAt   *string  `json:"recordedAt,omitempty"`
+
+	// RecordedAt When the row was captured, as stored. `null` only on rows served from the UFC third-party
+	// archive (`meta.source` `third_party_archive`, MMA event ids with no captured history): that
+	// archive keeps no quote time, and none is invented. See `phase` for which price such a row is.
+	RecordedAt *string `json:"recordedAt,omitempty"`
 
 	// RecordedAtUtc The capture time in UTC (ISO, ends in Z), or `null` when its clock cannot be known (rows stored
-	// before 2026-03-28, and book `pinnacle` before 2026-04-10). `recordedAt` is the time as stored: most
-	// rows stored before 2026-09-16 hold US Eastern wall time even though the value ends in Z. Use this
-	// one for time arithmetic. Added Oct 2026: absent on an API older than that.
+	// before 2026-03-28, and book `pinnacle` before 2026-04-10) and on UFC third-party archive rows.
+	// `recordedAt` is the time as stored: most rows stored before 2026-09-16 hold US Eastern wall time
+	// even though the value ends in Z. Use this one for time arithmetic. Added Oct 2026: absent on an
+	// API older than that.
 	RecordedAtUtc *string `json:"recordedAtUtc,omitempty"`
 	Side          *string `json:"side,omitempty"`
 }
@@ -6798,6 +7052,18 @@ type TennisStatsResponse struct {
 	Success *bool `json:"success,omitempty"`
 }
 
+// TheScoreV2BookSubscription Per-sport filter for `v2: { thescore: {...} }`. mlb, nfl, ncaaf, nba and nhl are one league
+// each: pass `'*'`. soccer and tennis: `'*'` or competition keys from `getTheScoreV2Leagues`.
+type TheScoreV2BookSubscription struct {
+	Mlb    *json.RawMessage `json:"mlb,omitempty"`
+	Nba    *json.RawMessage `json:"nba,omitempty"`
+	Ncaaf  *json.RawMessage `json:"ncaaf,omitempty"`
+	Nfl    *json.RawMessage `json:"nfl,omitempty"`
+	Nhl    *json.RawMessage `json:"nhl,omitempty"`
+	Soccer *json.RawMessage `json:"soccer,omitempty"`
+	Tennis *json.RawMessage `json:"tennis,omitempty"`
+}
+
 // ThunderpickV2BookSubscription Per-book subscription shape for Thunderpick v2 events.
 //
 // Each Thunderpick sport is a single stream (no per-league
@@ -7048,6 +7314,9 @@ type V2Subscription struct {
 	// Betus Per-sport league filter for `v2: { betus: {...} }`. Any BetUS sport.
 	Betus *BetusV2BookSubscription `json:"betus,omitempty"`
 
+	// Bovada Per-sport filter for `v2: { bovada: {...} }`. Every sport is one league: pass `'*'`.
+	Bovada *BovadaV2BookSubscription `json:"bovada,omitempty"`
+
 	// Draftkings Per-book subscription shape for DraftKings v2 events.
 	//
 	// Each key is a sport `draftkings-v2-update` carries. Soccer and mma are multi-league
@@ -7057,6 +7326,10 @@ type V2Subscription struct {
 	// to send; their main catalog is REST only. Unknown / unsupported sport keys are
 	// rejected at compile time.
 	Draftkings *DraftKingsV2BookSubscription `json:"draftkings,omitempty"`
+
+	// Fanatics Per-sport filter for `v2: { fanatics: {...} }`. nba, nfl, nhl, mlb, ncaaf and ncaab are one
+	// league each: pass `'*'`. soccer: `'*'` or competition keys (`['mls']`).
+	Fanatics *FanaticsV2BookSubscription `json:"fanatics,omitempty"`
 
 	// Fanaticsmarkets Per-book subscription shape for Fanatics Markets v2 events.
 	// Use `'*'` for a whole sport or exact series keys (e.g. `['mls']`) from
@@ -7069,6 +7342,11 @@ type V2Subscription struct {
 	// are multi-league: filter by specific league keys or `'*'` for all.
 	Fanduel *FanDuelV2BookSubscription `json:"fanduel,omitempty"`
 
+	// Fliff Per-sport filter for `v2: { fliff: {...} }`. nfl, ncaaf, cfl, nba, ncaab, nhl and mlb are one
+	// league each: pass `'*'`. soccer, tennis, mma and boxing: `'*'` or league keys from
+	// `getFliffV2Leagues` (`['ufc']`).
+	Fliff *FliffV2BookSubscription `json:"fliff,omitempty"`
+
 	// Kalshi Per-book subscription shape for Kalshi v2 events.
 	//
 	// Each Kalshi sport carries one or more series (game lines, props,
@@ -7079,8 +7357,8 @@ type V2Subscription struct {
 
 	// Mybookie Per-book subscription shape for MyBookie v2 events.
 	//
-	// MyBookie is single-league per sport (mlb, nba) - pass `'*'`. Arrays
-	// are accepted and coerced to `'*'` server-side (V2_SINGLE_LEAGUE_PAIRS).
+	// MyBookie is single-league per sport (mlb, nba, nhl, nfl, ncaab, ncaaf) -
+	// pass `'*'`.
 	Mybookie *MyBookieV2BookSubscription `json:"mybookie,omitempty"`
 
 	// Pinnacle Per-book subscription shape for Pinnacle v2 events.
@@ -7104,6 +7382,10 @@ type V2Subscription struct {
 
 	// Propbuilder Per-sport filter for `v2: { propbuilder: {...} }`. Every sport is one league: pass `'*'`.
 	Propbuilder *PropbuilderV2BookSubscription `json:"propbuilder,omitempty"`
+
+	// Thescore Per-sport filter for `v2: { thescore: {...} }`. mlb, nfl, ncaaf, nba and nhl are one league
+	// each: pass `'*'`. soccer and tennis: `'*'` or competition keys from `getTheScoreV2Leagues`.
+	Thescore *TheScoreV2BookSubscription `json:"thescore,omitempty"`
 
 	// Thunderpick Per-book subscription shape for Thunderpick v2 events.
 	//

@@ -64,7 +64,8 @@ var (
 	v2StreamBooks = []string{
 		"draftkings", "fanduel", "bet365", "mybookie", "kalshi", "polymarket", "thunderpick",
 		"pinnacle", "versus", "betonline", "lowvig", "betrivers", "fanaticsmarkets", "betus",
-		"bet105", "4casters", "tippmixpro", "ballybet", "propbuilder",
+		"bet105", "4casters", "tippmixpro", "ballybet", "propbuilder", "bovada", "fanatics",
+		"thescore", "fliff",
 	}
 )
 
