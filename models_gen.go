@@ -29,6 +29,9 @@ type ArchivedGame struct {
 	// AwayTeamID Stable roster id for `awayTeam`; same rules.
 	AwayTeamID *string `json:"awayTeamId,omitempty"`
 
+	// Card The card, e.g. "UFC Fight Night: Kattar vs. Chikadze".
+	Card *string `json:"card,omitempty"`
+
 	// CommenceTime Scheduled start of the game. Cut `recordedAtUtc` (not the stored `recordedAt`) against this to separate
 	// pre-game odds from in-play ones exactly, rather than by date.
 	//
@@ -37,6 +40,13 @@ type ArchivedGame struct {
 	// Treat its absence as "unknown", never as a start of midnight.
 	CommenceTime *string `json:"commenceTime,omitempty"`
 	EventID      *string `json:"eventId,omitempty"`
+
+	// FinishMethod "ko_tko", "submission", "decision", or the source's own result text lowercased with underscores.
+	FinishMethod *string  `json:"finishMethod,omitempty"`
+	FinishRound  *float64 `json:"finishRound,omitempty"`
+
+	// FinishTimeSeconds Seconds into finishRound when the bout ended.
+	FinishTimeSeconds *float64 `json:"finishTimeSeconds,omitempty"`
 
 	// GameDate The DATE the game is filed under, which is a UTC date and not the start time.
 	GameDate *string `json:"gameDate,omitempty"`
@@ -52,7 +62,7 @@ type ArchivedGame struct {
 
 	// OddsSnapshots Stored odds rows for the eventId, both team orderings. `null` when the count
 	// could not be taken when the game was archived ("not counted", never a false 0);
-	// a later recount fills it.
+	// a later recount fills it. On a UFC archive bout: its moneyline and total-rounds rows.
 	OddsSnapshots *float64 `json:"oddsSnapshots,omitempty"`
 
 	// PeriodScores Per-period scores, absent when none were captured. `period` is a label,
@@ -67,13 +77,22 @@ type ArchivedGame struct {
 	PlayerStats *float64 `json:"playerStats,omitempty"`
 
 	// PropsSnapshots Stored props rows for the eventId; `null` when not counted (as oddsSnapshots).
-	PropsSnapshots *float64 `json:"propsSnapshots,omitempty"`
-	Season         *string  `json:"season,omitempty"`
+	PropsSnapshots  *float64 `json:"propsSnapshots,omitempty"`
+	ScheduledRounds *float64 `json:"scheduledRounds,omitempty"`
+	Season          *string  `json:"season,omitempty"`
 
-	// Source How the row got here: the live pipeline, or a backfill run.
+	// Source How the row got here: the live pipeline, a backfill run, or (`sport: "mma"`) the
+	// UFC odds archive, a third-party archive of sportsbook prices from 2019 on.
 	Source *string `json:"source,omitempty"`
 	Sport  *string `json:"sport,omitempty"`
-	Venue  *string `json:"venue,omitempty"`
+
+	// Status "final", "scheduled" or "canceled". The archive was loaded once (2026-11-06), so a bout scheduled then stays "scheduled".
+	Status      *string `json:"status,omitempty"`
+	Venue       *string `json:"venue,omitempty"`
+	WeightClass *string `json:"weightClass,omitempty"`
+
+	// Winner The side that won; absent for a draw, a no contest, or a bout not decided.
+	Winner *string `json:"winner,omitempty"`
 }
 
 // BallybetV2BookSubscription defines model for BallybetV2BookSubscription.
@@ -647,13 +666,14 @@ type Bookmaker struct {
 
 // BovadaV2BookSubscription Per-sport filter for `v2: { bovada: {...} }`. Every sport is one league: pass `'*'`.
 type BovadaV2BookSubscription struct {
-	Mlb   *json.RawMessage `json:"mlb,omitempty"`
-	Mma   *json.RawMessage `json:"mma,omitempty"`
-	Nba   *json.RawMessage `json:"nba,omitempty"`
-	Ncaab *json.RawMessage `json:"ncaab,omitempty"`
-	Ncaaf *json.RawMessage `json:"ncaaf,omitempty"`
-	Nfl   *json.RawMessage `json:"nfl,omitempty"`
-	Nhl   *json.RawMessage `json:"nhl,omitempty"`
+	Mlb    *json.RawMessage `json:"mlb,omitempty"`
+	Mma    *json.RawMessage `json:"mma,omitempty"`
+	Nba    *json.RawMessage `json:"nba,omitempty"`
+	Ncaab  *json.RawMessage `json:"ncaab,omitempty"`
+	Ncaaf  *json.RawMessage `json:"ncaaf,omitempty"`
+	Nfl    *json.RawMessage `json:"nfl,omitempty"`
+	Nhl    *json.RawMessage `json:"nhl,omitempty"`
+	Soccer *json.RawMessage `json:"soccer,omitempty"`
 }
 
 // CS2MapResult defines model for CS2MapResult.
@@ -2463,6 +2483,12 @@ type HistoryOddsResponse struct {
 		// ArchiveNote On `third_party_archive` answers that come back empty: why, and what to ask instead.
 		ArchiveNote *string `json:"archiveNote,omitempty"`
 
+		// AwayTeam UFC bouts: the fighters' names in the requested id's order (the id's name keys are sorted, so
+		// they are not display names). Always on `third_party_archive` answers; on captured (`live`)
+		// answers when the UFC archive holds the bout.
+		AwayTeam *string `json:"awayTeam,omitempty"`
+		HomeTeam *string `json:"homeTeam,omitempty"`
+
 		// IgnoredParams Query parameters the endpoint did not honour, sorted. Absent when none were.
 		IgnoredParams []string `json:"ignored_params,omitempty"`
 
@@ -3388,6 +3414,16 @@ type OddsEvent struct {
 	// Phase OddsEvent.phase. More values can be added: treat an unknown one like a
 	// missing field.
 	Phase *EventPhase `json:"phase,omitempty"`
+
+	// Score Pinnacle realtime (`/{sport}/realtime`, `pinnacle-realtime`), soccer, NBA, NCAAB, NFL,
+	// NCAAF, NHL and MLB: the score as Pinnacle last sent it with its live lines, home and
+	// away, oriented to this event's `home_team`/`away_team`. Absent before kickoff, when
+	// Pinnacle has not sent one, on the closing event, and on other sports and sources. Not a
+	// final result (`getScores` has results).
+	Score *struct {
+		Away *float64 `json:"away,omitempty"`
+		Home *float64 `json:"home,omitempty"`
+	} `json:"score,omitempty"`
 
 	// SeenAt Epoch ms the feed last CONFIRMED a price on this event, changed or not (realtime only).
 	SeenAt     *float64    `json:"seenAt,omitempty"`

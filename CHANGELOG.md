@@ -4,6 +4,27 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the module uses
 [semantic versioning](https://semver.org/).
 
+## [0.13.0] - 2026-11-10
+
+### Added
+
+- UFC bouts on `GetHistoryGames` (`Sport: "mma"`): `ArchivedGame` gains `Card`, `WeightClass`,
+  `ScheduledRounds`, `Status` (`final`, `scheduled` or `canceled`), `Winner` (`away` or `home`),
+  `FinishMethod`, `FinishRound` and `FinishTimeSeconds`, each set only when the archive knows it
+  (no method of victory before June 2024). `Source` is `third_party_archive` on those games.
+- `HistoryOddsResponse.Meta.AwayTeam` / `HomeTeam`: UFC fighters' names in the requested event
+  id's order (the id's name keys are sorted, so they are not display names). Always on
+  `third_party_archive` answers; on captured (`live`) answers when the UFC archive holds the bout.
+- `OddsEvent.Score` (`Home`, `Away`): Pinnacle realtime's live score on in-play events (soccer,
+  NBA, NCAAB, NFL, NCAAF, NHL, MLB), oriented to the event's teams; nil before kickoff and on
+  other sources. Not a final result.
+- `BovadaV2BookSubscription.Soccer`: Bovada soccer (`GetV2(ctx, "bovada", "soccer", "")`), one
+  league holding every competition on Bovada's soccer coupon, game lines only.
+
+### Changed
+
+- The vendored spec is regenerated from the JS SDK 0.96.0 spec.
+
 ## [0.12.0] - 2026-11-09
 
 ### Added
